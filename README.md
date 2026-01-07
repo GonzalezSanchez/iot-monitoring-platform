@@ -80,7 +80,7 @@ PortfolioSensoDos/
 ##  Contact
 
 **Email:** a.gonzalez.sanchez@gmail.com  
-**LinkedIn:** https://www.linkedin.com/in/GonzalezSanchez
+**LinkedIn:** https://www.linkedin.com/in/GonzalezSanchez  
 **GitHub:** https://github.com/GonzalezSanchez
 
 ---
