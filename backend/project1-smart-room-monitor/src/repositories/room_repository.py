@@ -104,7 +104,7 @@ class RoomRepository:
     
     def get_all_rooms(self) -> List[Room]:
         """
-        Get all rooms
+        Get all rooms with pagination support
         
         Returns:
             List of Room objects
@@ -113,13 +113,24 @@ class RoomRepository:
             ClientError: When DynamoDB operation fails
             
         Note:
-            Uses scan() which is inefficient for large tables.
-            Consider pagination for production use.
+            Uses scan() with automatic pagination to handle tables > 1MB.
+            DynamoDB returns max 1MB per scan operation.
         """
         try:
-            logger.debug("Fetching all rooms")
+            logger.debug("Fetching all rooms with pagination")
+            items = []
+            
+            # Initial scan
             response = self.table.scan()
-            items = response.get('Items', [])
+            items.extend(response.get('Items', []))
+            
+            # Continue scanning if there are more results
+            while 'LastEvaluatedKey' in response:
+                logger.debug(f"Paginating scan, retrieved {len(items)} items so far")
+                response = self.table.scan(
+                    ExclusiveStartKey=response['LastEvaluatedKey']
+                )
+                items.extend(response.get('Items', []))
             
             room_count = len(items)
             logger.info(f"Retrieved {room_count} rooms from database")

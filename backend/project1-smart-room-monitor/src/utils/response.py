@@ -32,7 +32,7 @@ def error_response(
     status_code: int = 400,
     error_code: Optional[str] = None
 ) -> Dict:
-    """Create error HTTP response"""
+    """Create error HTTP response with consistent CORS headers"""
     body = {
         'error': message,
         'code': error_code or f'ERROR_{status_code}'
@@ -42,7 +42,8 @@ def error_response(
         'statusCode': status_code,
         'headers': {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': True
         },
         'body': json.dumps(body)
     }
