@@ -4,9 +4,9 @@ GET /rooms/{id} - Returns detailed room information with recent events
 """
 import logging
 from typing import Dict, Any
-from src.repositories.room_repository import RoomRepository
-from src.repositories.event_repository import EventRepository
-from src.utils.response import success_response, error_response
+from repositories.room_repository import RoomRepository
+from repositories.event_repository import EventRepository
+from utils.response import success_response, error_response
 
 # Configure logger
 logger = logging.getLogger(__name__)

@@ -5,8 +5,8 @@ POST /events - Receives and processes sensor events
 import json
 import logging
 from typing import Dict, Any
-from src.services.event_service import EventService, EventServiceError
-from src.utils.response import success_response, error_response
+from services.event_service import EventService, EventServiceError
+from utils.response import success_response, error_response
 
 # Configure logger
 logger = logging.getLogger(__name__)

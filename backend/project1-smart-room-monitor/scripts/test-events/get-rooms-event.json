@@ -1,0 +1,10 @@
+{
+  "httpMethod": "GET",
+  "path": "/rooms",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "queryStringParameters": null,
+  "pathParameters": null,
+  "body": null
+}

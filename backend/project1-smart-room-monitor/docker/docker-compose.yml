@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: iot-localstack
+    ports:
+      - "4566:4566"  # LocalStack main port
+      - "4571:4571"  # External service port (deprecated but some SDKs still use it)
+    environment:
+      - SERVICES=dynamodb,lambda,apigateway,logs,iam
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+      - LAMBDA_EXECUTOR=docker
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - AWS_DEFAULT_REGION=eu-west-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - "./localstack-init.sh:/etc/localstack/init/ready.d/init.sh"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "localstack-data:/tmp/localstack"
+    networks:
+      - iot-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Lambda function container (for standalone debugging only)
+  # NOTE: This container is NOT used by LocalStack.
+  # LocalStack creates its own containers when you deploy Lambda functions.
+  # This service is useful for:
+  # - Standalone testing without LocalStack
+  # - Direct Lambda handler invocation for debugging
+  # - Quick local development without AWS API Gateway
+  lambda-function:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: iot-lambda
+    environment:
+      - AWS_DEFAULT_REGION=eu-west-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - DYNAMODB_ENDPOINT=http://localstack:4566
+      - ROOMS_TABLE=rooms
+      - EVENTS_TABLE=sensor_events
+    networks:
+      - iot-network
+    depends_on:
+      localstack:
+        condition: service_healthy
+
+volumes:
+  localstack-data:
+
+networks:
+  iot-network:
+    driver: bridge

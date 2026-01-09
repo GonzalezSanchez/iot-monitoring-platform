@@ -1,0 +1,12 @@
+{
+  "httpMethod": "GET",
+  "path": "/rooms/room-001",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "queryStringParameters": null,
+  "pathParameters": {
+    "id": "room-001"
+  },
+  "body": null
+}
