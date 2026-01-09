@@ -3,7 +3,7 @@ Room Model
 Represents a monitored room with current state
 """
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Optional
 from pydantic import BaseModel, Field
 
 
