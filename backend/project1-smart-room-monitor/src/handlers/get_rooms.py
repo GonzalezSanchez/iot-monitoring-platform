@@ -18,30 +18,27 @@ room_repository = RoomRepository()
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Lambda handler for retrieving all rooms
-    
+
     Args:
         event: Lambda event object containing API Gateway request
         context: Lambda context object
-        
+
     Returns:
         API Gateway response dict with statusCode and body
     """
     logger.info("Processing get rooms request")
-    
+
     try:
         # Get all rooms from repository
         rooms = room_repository.get_all_rooms()
-        
+
         logger.info(f"Retrieved {len(rooms)} rooms")
-        
+
         return success_response(
-            data={
-                "rooms": [room.model_dump() for room in rooms],
-                "count": len(rooms)
-            },
-            status_code=200
+            data={"rooms": [room.model_dump() for room in rooms], "count": len(rooms)},
+            status_code=200,
         )
-        
+
     except Exception as e:
         # Repository or unexpected errors
         logger.error(f"Error retrieving rooms: {e}", exc_info=True)
