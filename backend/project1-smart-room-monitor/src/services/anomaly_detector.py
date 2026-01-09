@@ -3,7 +3,7 @@ Anomaly Detector
 Detects anomalies in sensor readings
 """
 import logging
-from typing import Tuple
+from typing import Dict, Tuple, cast
 from src.models.sensor_event import SensorEvent
 
 # Configure logger
@@ -57,7 +57,7 @@ class AnomalyDetector:
         if sensor_type not in self.THRESHOLDS:
             return "normal", ""
 
-        thresholds = self.THRESHOLDS[sensor_type]
+        thresholds: Dict[str, float] = cast(Dict[str, float], self.THRESHOLDS[sensor_type])
         unit = self.SENSOR_UNITS.get(sensor_type, "")
 
         # Check critical thresholds first (highest priority)
