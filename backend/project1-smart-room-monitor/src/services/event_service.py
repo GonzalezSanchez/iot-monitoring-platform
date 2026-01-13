@@ -5,15 +5,15 @@ Business logic for processing sensor events with error handling
 import logging
 from datetime import datetime
 from typing import Dict, Optional
-from ulid import ULID
+
 from botocore.exceptions import ClientError
 from pydantic import ValidationError
-
-from models.sensor_event import SensorEvent
-from models.room import Room, RoomState
 from repositories.event_repository import EventRepository
 from repositories.room_repository import RoomRepository
 from services.anomaly_detector import AnomalyDetector
+from src.models.room import Room, RoomState
+from src.models.sensor_event import SensorEvent
+from ulid import ULID
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -66,17 +66,20 @@ class EventService:
         try:
             # Validate and create event model
             event = self._validate_event(event_data)
-            if not event:
+            if event is None:
                 raise EventServiceError("Event validation failed")
 
             # Generate event_id if not provided (using ULID for uniqueness)
-            if not event.event_id:
+            if getattr(event, "event_id", None) is None:
                 event.event_id = str(ULID())
                 logger.debug(f"Generated ULID event_id: {event.event_id}")
 
             # Apply anomaly detection before saving
             event = self.anomaly_detector.apply_anomaly_detection(event)
-            logger.debug(f"Anomaly detection applied, status: {event.status}")
+            if event is not None:
+                logger.debug(f"Anomaly detection applied, status: {event.status}")
+            else:
+                logger.debug("Anomaly detection applied, but event is None")
 
             # Save event with error handling
             if not self._save_event(event):
@@ -85,17 +88,19 @@ class EventService:
             # Update room state with error handling (non-critical)
             if not self._update_room_state(event):
                 logger.warning(
-                    f"Failed to update room state for {event.room_id}, continuing anyway"
+                    f"Failed to update room state for "
+                    f"{getattr(event, 'room_id', 'unknown')}, continuing anyway"
                 )
                 # Don't fail entire process if room update fails
 
             logger.info(
-                f"Successfully processed event {event.event_id} for room {event.room_id}"
+                f"Successfully processed event {getattr(event, 'event_id', 'unknown')} "
+                f"for room {getattr(event, 'room_id', 'unknown')}"
             )
 
             return {
-                "event_id": event.event_id,
-                "event_status": event.status,
+                "event_id": getattr(event, "event_id", None),
+                "event_status": getattr(event, "status", None),
                 "processing_status": "success",
                 "timestamp": datetime.now().isoformat(),
             }
@@ -132,9 +137,9 @@ class EventService:
             return event
         except ValidationError as e:
             logger.error(f"Event validation failed: {e}")
-            raise
+            return None
 
-    def _save_event(self, event: SensorEvent) -> bool:
+    def _save_event(self, event: Optional[SensorEvent]) -> bool:
         """
         Save event to repository with error handling
 
@@ -145,17 +150,22 @@ class EventService:
             True if saved successfully, False otherwise
         """
         try:
+            if event is None:
+                logger.error("Cannot save event: event is None")
+                return False
             self.event_repo.save_event(event.to_dynamodb_item())
             logger.debug(f"Event saved: {event.event_id}")
             return True
         except ClientError as e:
-            logger.error(f"Failed to save event {event.event_id}: {e}")
+            logger.error(
+                f"Failed to save event {getattr(event, 'event_id', 'unknown')}: {e}"
+            )
             raise
         except Exception as e:
             logger.error(f"Unexpected error saving event: {e}")
             return False
 
-    def _update_room_state(self, event: SensorEvent) -> bool:
+    def _update_room_state(self, event: Optional[SensorEvent]) -> bool:
         """
         Update room status based on new event
 
@@ -166,6 +176,9 @@ class EventService:
             True if updated successfully, False otherwise
         """
         try:
+            if event is None:
+                logger.error("Cannot update room state: event is None")
+                return False
             room = self.room_repo.get_room(event.room_id)
 
             if not room:
@@ -208,5 +221,7 @@ class EventService:
             logger.error(f"DynamoDB error updating room state: {e}")
             return False
         except Exception as e:
-            logger.error(f"Unexpected error updating room {event.room_id}: {e}")
+            logger.error(
+                f"Unexpected error updating room {getattr(event, 'room_id', 'unknown')}: {e}"
+            )
             return False

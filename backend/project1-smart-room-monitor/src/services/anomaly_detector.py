@@ -4,7 +4,8 @@ Detects anomalies in sensor readings
 """
 import logging
 from typing import Dict, Tuple, cast
-from models.sensor_event import SensorEvent
+
+from src.models.sensor_event import SensorEvent
 
 # Configure logger
 logger = logging.getLogger(__name__)

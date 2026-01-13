@@ -98,6 +98,21 @@ PortfolioSensoDos/
 
 ---
 
+## 🧪 Testdata toevoegen aan DynamoDB
+
+Om het dashboard te testen, voeg een testkamer toe aan DynamoDB:
+
+1. Zorg dat je AWS credentials goed staan (via `aws configure`).
+2. Voer het script uit:
+   ```bash
+   python backend/project1-smart-room-monitor/scripts/add_test_room.py
+   ```
+   - Dit script voegt een demo-kamer toe aan de tabel 'dev-RoomStatus'.
+   - Zie het script voor commentaar en uitleg.
+3. Herlaad de frontend: je ziet nu de testkamer in het dashboard.
+
+---
+
 ##  Contact
 
 **Email:** a.gonzalez.sanchez@gmail.com

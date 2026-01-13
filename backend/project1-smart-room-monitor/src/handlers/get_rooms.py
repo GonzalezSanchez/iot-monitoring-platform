@@ -3,9 +3,10 @@ Get Rooms Lambda Handler
 GET /rooms - Returns list of all rooms with their current status
 """
 import logging
-from typing import Dict, Any
-from repositories.room_repository import RoomRepository
-from utils.response import success_response, error_response
+from typing import Any, Dict
+
+from src.repositories.room_repository import RoomRepository
+from src.utils.response import error_response, success_response
 
 # Configure logger
 logger = logging.getLogger(__name__)
