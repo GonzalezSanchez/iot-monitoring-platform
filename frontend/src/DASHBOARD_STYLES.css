@@ -1,6 +1,6 @@
 /**
  * PORTFOLIO DASHBOARD - CSS Styles
- * 
+ *
  * Clean, professional design voor backend portfolio
  * Responsive layout met focus op data visualisatie
  */
@@ -28,24 +28,35 @@
   --bg-secondary: #f3f4f6;
   --bg-tertiary: #e5e7eb;
   --border-color: #d1d5db;
-  
+
   /* Spacing */
   --spacing-xs: 0.5rem;
   --spacing-sm: 1rem;
   --spacing-md: 1.5rem;
   --spacing-lg: 2rem;
   --spacing-xl: 3rem;
-  
+
   /* Typography */
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
   --font-mono: 'Courier New', Courier, monospace;
 }
 
 body {
-  font-family: var(--font-family);
+  font-family: Arial, sans-serif;
   color: var(--text-primary);
-  background-color: var(--bg-secondary);
+  background: #f7f7f7;
   line-height: 1.6;
+  margin: 0;
+  padding: 0;
+}
+
+.App {
+  max-width: 600px;
+  margin: 40px auto;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 32px;
 }
 
 /* ============================================================================
@@ -517,31 +528,31 @@ code {
   .dashboard-header h1 {
     font-size: 1.8rem;
   }
-  
+
   .dashboard-header .subtitle {
     font-size: 0.9rem;
   }
-  
+
   .tab-navigation {
     flex-direction: column;
   }
-  
+
   .tab-button {
     justify-content: flex-start;
   }
-  
+
   .cards-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .project-footer {
     flex-direction: column;
   }
-  
+
   .footer-link {
     text-align: center;
     justify-content: center;
@@ -552,11 +563,11 @@ code {
   .portfolio-dashboard {
     padding: var(--spacing-sm);
   }
-  
+
   .project-container {
     padding: var(--spacing-md);
   }
-  
+
   .stats-grid {
     grid-template-columns: 1fr;
   }
