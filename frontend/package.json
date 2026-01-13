@@ -1,0 +1,19 @@
+{
+  "name": "iot-monitoring-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Frontend dashboard voor IoT Monitoring Platform",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "vite": "^4.4.9"
+  }
+}
