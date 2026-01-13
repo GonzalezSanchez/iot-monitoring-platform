@@ -142,3 +142,13 @@ aws cloudformation deploy \
 ## 🔒 Licentie
 
 Deze code is uitsluitend bedoeld voor gebruik door het projectteam Smart Room Monitor. Gebruik, verspreiding of kopiëren door derden is niet toegestaan zonder expliciete toestemming.
+
+## 🔒 Git & Deployment Best Practices
+
+- Commit en push alleen broncode, scripts en configuratiebestanden.
+- Voeg alle Lambda zip-bestanden (zoals lambda_package.zip, lambda_room_detail.zip, lambda_ingest_event.zip) toe aan .gitignore. Deze build-artifacts horen niet in git.
+- Voeg testdata en coverage output (zoals htmlcov/, scripts/test-events/*.json) ook toe aan .gitignore.
+- Herhaal dit voor elke nieuwe Lambda-functie (zoals room details, ingest event, etc).
+- Frontend-bestanden en build-artifacts van de backend mogen niet naar elkaar gekopieerd of gecommit worden.
+
+Zie .gitignore voor voorbeelden.

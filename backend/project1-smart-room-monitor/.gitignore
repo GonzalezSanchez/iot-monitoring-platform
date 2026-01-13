@@ -1,0 +1,34 @@
+# Lambda build artifact
+lambda_package.zip
+lambda_room_detail.zip
+lambda_ingest_event.zip
+htmlcov/
+scripts/test-events/*.json
+# Python dependencies for Lambda (niet committen)
+src/annotated_types-0.7.0.dist-info/
+src/annotated_types/
+src/bin/
+src/boto3-1.34.0.dist-info/
+src/boto3/
+src/botocore-1.34.162.dist-info/
+src/botocore/
+src/dateutil/
+src/dotenv/
+src/jmespath-1.0.1.dist-info/
+src/jmespath/
+src/pydantic-2.5.0.dist-info/
+src/pydantic/
+src/pydantic_core-2.14.1.dist-info/
+src/pydantic_core/
+src/python_dateutil-2.9.0.post0.dist-info/
+src/python_dotenv-1.0.0.dist-info/
+src/python_ulid-2.2.0.dist-info/
+src/s3transfer-0.9.0.dist-info/
+src/s3transfer/
+src/six-1.17.0.dist-info/
+src/six.py
+src/typing_extensions-4.15.0.dist-info/
+src/typing_extensions.py
+src/ulid/
+src/urllib3-2.6.3.dist-info/
+src/urllib3/

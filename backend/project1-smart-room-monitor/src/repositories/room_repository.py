@@ -6,9 +6,10 @@ import logging
 import os
 from datetime import datetime
 from typing import List, Optional
+
 import boto3
 from botocore.exceptions import ClientError
-from models.room import Room
+from src.models.room import Room
 
 # Configure logger
 logger = logging.getLogger(__name__)
