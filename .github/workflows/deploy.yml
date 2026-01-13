@@ -1,0 +1,88 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      working-directory: ./backend/project1-smart-room-monitor
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt -t package/
+        cp -r src package/
+
+    - name: Package Lambda functions
+      working-directory: ./backend/project1-smart-room-monitor
+      run: |
+        cd package
+        zip -r ../lambda-deployment.zip .
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: eu-west-1
+
+    - name: Deploy CloudFormation stack
+      working-directory: ./backend/project1-smart-room-monitor
+      run: |
+        aws cloudformation deploy \
+          --template-file infrastructure/cloudformation.yaml \
+          --stack-name smart-room-monitor-${{ github.event.inputs.environment || 'dev' }} \
+          --parameter-overrides Environment=${{ github.event.inputs.environment || 'dev' }} \
+          --capabilities CAPABILITY_NAMED_IAM \
+          --no-fail-on-empty-changeset
+
+    - name: Update Lambda functions
+      working-directory: ./backend/project1-smart-room-monitor
+      run: |
+        ENV=${{ github.event.inputs.environment || 'dev' }}
+        aws lambda update-function-code \
+          --function-name ${ENV}-IngestEvent \
+          --zip-file fileb://lambda-deployment.zip
+        aws lambda update-function-code \
+          --function-name ${ENV}-GetRooms \
+          --zip-file fileb://lambda-deployment.zip
+        aws lambda update-function-code \
+          --function-name ${ENV}-GetRoomDetail \
+          --zip-file fileb://lambda-deployment.zip
+
+    - name: Get API Endpoint
+      run: |
+        ENV=${{ github.event.inputs.environment || 'dev' }}
+        ENDPOINT=$(aws cloudformation describe-stacks \
+          --stack-name smart-room-monitor-${ENV} \
+          --query 'Stacks[0].Outputs[?OutputKey==`ApiEndpoint`].OutputValue' \
+          --output text)
+        echo "API Endpoint: $ENDPOINT"
+        echo "ENDPOINT=$ENDPOINT" >> $GITHUB_OUTPUT
+
+    - name: Run tests
+      working-directory: ./backend/project1-smart-room-monitor
+      run: |
+        pip install -r requirements-dev.txt
+        pytest --maxfail=1 --disable-warnings --tb=short

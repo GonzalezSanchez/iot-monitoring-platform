@@ -1,0 +1,249 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Smart Room Monitor - IoT Serverless Stack'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+
+Resources:
+  SensorEventsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${Environment}-SensorEvents'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: room_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: room_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: SmartRoomMonitor
+
+  RoomStatusTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${Environment}-RoomStatus'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: room_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: room_id
+          KeyType: HASH
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: SmartRoomMonitor
+
+  LambdaExecutionRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: !Sub '${Environment}-SmartRoomMonitor-LambdaRole'
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: lambda.amazonaws.com
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        Policies:
+          - PolicyName: DynamoDBAccess
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - dynamodb:PutItem
+                    - dynamodb:GetItem
+                    - dynamodb:Query
+                    - dynamodb:Scan
+                    - dynamodb:UpdateItem
+                  Resource:
+                    - !GetAtt SensorEventsTable.Arn
+                    - !GetAtt RoomStatusTable.Arn
+
+    # Lambda Functions (placeholders)
+  IngestEventFunction:
+      Type: AWS::Lambda::Function
+      Properties:
+        FunctionName: !Sub '${Environment}-IngestEvent'
+        Runtime: python3.12
+        Handler: src.handlers.ingest_event.handler
+        Role: !GetAtt LambdaExecutionRole.Arn
+        Code:
+          ZipFile: |
+            # Placeholder - deploy with actual code
+            def handler(event, context):
+                return {'statusCode': 200}
+        Environment:
+          Variables:
+            DYNAMODB_TABLE_EVENTS: !Ref SensorEventsTable
+            DYNAMODB_TABLE_ROOMS: !Ref RoomStatusTable
+        Timeout: 30
+        MemorySize: 256
+
+  GetRoomsFunction:
+      Type: AWS::Lambda::Function
+      Properties:
+        FunctionName: !Sub '${Environment}-GetRooms'
+        Runtime: python3.12
+        Handler: src.handlers.get_rooms.handler
+        Role: !GetAtt LambdaExecutionRole.Arn
+        Code:
+          ZipFile: |
+            # Placeholder - deploy with actual code
+            def handler(event, context):
+                return {'statusCode': 200}
+        Environment:
+          Variables:
+            DYNAMODB_TABLE_ROOMS: !Ref RoomStatusTable
+        Timeout: 30
+        MemorySize: 256
+
+  GetRoomDetailFunction:
+      Type: AWS::Lambda::Function
+      Properties:
+        FunctionName: !Sub '${Environment}-GetRoomDetail'
+        Runtime: python3.12
+        Handler: src.handlers.get_room_detail.handler
+        Role: !GetAtt LambdaExecutionRole.Arn
+        Code:
+          ZipFile: |
+            # Placeholder - deploy with actual code
+            def handler(event, context):
+                return {'statusCode': 200}
+        Environment:
+          Variables:
+            DYNAMODB_TABLE_EVENTS: !Ref SensorEventsTable
+            DYNAMODB_TABLE_ROOMS: !Ref RoomStatusTable
+        Timeout: 30
+        MemorySize: 256
+
+    # API Gateway
+  SmartRoomApi:
+      Type: AWS::ApiGatewayV2::Api
+      Properties:
+        Name: !Sub '${Environment}-SmartRoomMonitor'
+        ProtocolType: HTTP
+        CorsConfiguration:
+          AllowOrigins:
+            - '*'
+          AllowMethods:
+            - GET
+            - POST
+            - OPTIONS
+          AllowHeaders:
+            - '*'
+
+    # API Gateway Integrations
+  IngestEventIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref SmartRoomApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${IngestEventFunction}'
+      PayloadFormatVersion: '2.0'
+
+  GetRoomsIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref SmartRoomApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${GetRoomsFunction}'
+      PayloadFormatVersion: '2.0'
+
+  GetRoomDetailIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref SmartRoomApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${GetRoomDetailFunction}'
+      PayloadFormatVersion: '2.0'
+
+    # API Routes
+  PostEventsRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref SmartRoomApi
+      RouteKey: 'POST /events'
+      Target: !Join ['', ['integrations/', !Ref IngestEventIntegration]]
+
+  GetRoomsRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref SmartRoomApi
+      RouteKey: 'GET /rooms'
+      Target: !Join ['', ['integrations/', !Ref GetRoomsIntegration]]
+
+  GetRoomDetailRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref SmartRoomApi
+      RouteKey: 'GET /rooms/{room_id}'
+      Target: !Join ['', ['integrations/', !Ref GetRoomDetailIntegration]]
+
+    # API Stage
+  ApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref SmartRoomApi
+      StageName: !Ref Environment
+      AutoDeploy: true
+
+    # Lambda Permissions
+  IngestEventPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref IngestEventFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SmartRoomApi}/*'
+
+  GetRoomsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetRoomsFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SmartRoomApi}/*'
+
+  GetRoomDetailPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetRoomDetailFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SmartRoomApi}/*'
+
+
+
+Outputs:
+  SensorEventsTableName:
+    Description: 'DynamoDB Events Table'
+    Value: !Ref SensorEventsTable
+
+  RoomStatusTableName:
+    Description: 'DynamoDB Room Status Table'
+    Value: !Ref RoomStatusTable
+
+  ApiEndpoint:
+    Description: 'HTTP API endpoint'
+    Value: !Sub 'https://${SmartRoomApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
