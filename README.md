@@ -77,24 +77,24 @@ PortfolioSensoDos/
 
 ---
 
+## 🚀 CI/CD Pipeline & Deployment
+
+- Automatische deployment via GitHub Actions (zie `.github/workflows/deploy.yml`).
+- Testen worden automatisch uitgevoerd vóór deployment.
+- CloudFormation-template (`backend/project1-smart-room-monitor/infrastructure/cloudformation.yaml`) beheert alle AWS resources: DynamoDB, Lambda, API Gateway.
+- YAML-linting is uitgeschakeld voor CloudFormation-bestanden vanwege AWS-specifieke tags.
+
 ## 🗺️ Project Roadmap & Fases
 
-| Fase | Omschrijving                        |
-|------|--------------------------------------|
-| 1    | Project Setup                        |
-| 2    | Core Models                          |
-| 3    | Repositories                         |
-| 4    | Services & Business Logic            |
-| 5    | Lambda Handlers                      |
-| 6    | Unit Tests                           |
-| 7    | Docker                               |
-| 8    | Simulator                            |
-| 9    | CI/CD                                |
-| 10   | Infrastructure as Code (IaC)         |
-| 11   | Documentatie                         |
-
-- Zie docs/STAPPEN_PROJECT1.md voor het volledige stappenplan per fase.
-- Fase 9 t/m 11 zijn nu gescheiden voor maximale duidelijkheid en kwaliteit.
+1. Setup & documentatie
+2. CI/CD pipeline
+3. Infrastructure as Code (CloudFormation)
+4. API development
+5. Testing & coverage
+6. Deployment
+7. Monitoring & logging
+8. Security & compliance
+9. Demo & evaluatie
 
 ---
 

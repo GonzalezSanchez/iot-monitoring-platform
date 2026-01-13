@@ -6,10 +6,19 @@ Real-time monitoring systeem voor conferentiezalen met IoT sensoren. Detecteert 
 
 ## Tech Stack
 
-- **Runtime:** Python 3.11
+- **Runtime:** Python 3.12
 - **Cloud Services:** AWS Lambda, DynamoDB, API Gateway, CloudWatch
 - **Containerization:** Docker
 - **Testing:** pytest
+- **CI/CD:** GitHub Actions
+- **IaC:** CloudFormation
+
+## CI/CD & Infrastructure as Code
+
+- Deployment gebeurt automatisch via GitHub Actions (`.github/workflows/deploy.yml`).
+- CloudFormation-template (`infrastructure/cloudformation.yaml`) definieert alle AWS resources.
+- Testen worden automatisch uitgevoerd vóór deployment.
+- YAML-linting is uitgeschakeld voor CloudFormation-bestanden.
 
 ## Features
 
@@ -18,6 +27,7 @@ Real-time monitoring systeem voor conferentiezalen met IoT sensoren. Detecteert 
 - Historical data storage
 - REST API voor data retrieval
 - WebSocket support voor live updates
+- Volledige CI/CD pipeline en automatische infrastructuur provisioning
 
 ## API Endpoints
 
@@ -28,7 +38,7 @@ Ontvang sensor readings
 ```json
 {
   "room_id": "conference-a1",
-  "timestamp": "2026-01-07T10:30:00Z",
+  "timestamp": "2026-01-13T10:30:00Z",
   "temperature": 22.5,
   "humidity": 45,
   "co2": 650,
@@ -58,7 +68,7 @@ Haal sensor data op voor een kamer
   "room_id": "conference-a1",
   "data": [
     {
-      "timestamp": "2026-01-07T10:30:00Z",
+      "timestamp": "2026-01-13T10:30:00Z",
       "temperature": 22.5,
       "humidity": 45,
       "co2": 650,
