@@ -4,6 +4,9 @@ lambda_room_detail.zip
 lambda_ingest_event.zip
 htmlcov/
 scripts/test-events/*.json
+# Environment variables
+.env
+.env.*
 # Python dependencies for Lambda (niet committen)
 src/annotated_types-0.7.0.dist-info/
 src/annotated_types/
