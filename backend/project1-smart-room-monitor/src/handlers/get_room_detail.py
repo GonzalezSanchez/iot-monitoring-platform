@@ -3,10 +3,11 @@ Get Room Detail Lambda Handler
 GET /rooms/{id} - Returns detailed room information with recent events
 """
 import logging
-from typing import Dict, Any
-from repositories.room_repository import RoomRepository
+from typing import Any, Dict
+
 from repositories.event_repository import EventRepository
-from utils.response import success_response, error_response
+from repositories.room_repository import RoomRepository
+from utils.response import error_response, success_response
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -31,9 +32,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     logger.info("Processing get room detail request")
 
     try:
-        # Extract room_id from path parameters
+        # Extract room_id from path parameters (support both 'id' and 'room_id')
         path_params = event.get("pathParameters", {})
-        room_id = path_params.get("id")
+        room_id = path_params.get("id") or path_params.get("room_id")
 
         if not room_id:
             logger.warning("Missing room_id in path parameters")
