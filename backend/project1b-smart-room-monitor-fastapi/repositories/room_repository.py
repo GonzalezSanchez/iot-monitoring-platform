@@ -33,5 +33,23 @@ class RoomRepository:
 
         self.table = self.dynamodb.Table(self.table_name)
 
+    def get_room(self, room_id: str) -> Optional[dict]:
+        """
+        Haal één room op uit DynamoDB op basis van room_id.
+        Returns:
+            dict | None: Room-item of None als niet gevonden
+        """
+        response = self.table.get_item(Key={"room_id": room_id})
+        return response.get("Item")
+
     def save_room(self, room):
         raise NotImplementedError("save_room not yet implemented.")
+
+    def list_rooms(self):
+        """
+        Haal alle rooms op uit DynamoDB.
+        Returns:
+            List[dict]: Lijst van room-items
+        """
+        response = self.table.scan()
+        return response.get("Items", [])
