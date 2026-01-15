@@ -1,8 +1,16 @@
-# Portfolio Architectuur
+
+# Portfolio Architectuur (status: 15 januari 2026)
 
 ## Overzicht
 
 Dit portfolio bestaat uit 3 backend projecten en 1 frontend dashboard die samen een IoT monitoring en analytics platform vormen.
+
+**Status per 15 januari 2026:**
+
+- Project 1 (Smart Room Monitor, AWS Lambda): volledig getest met echte AWS-resources (Lambda, DynamoDB, API Gateway).
+- Project 1b (Smart Room Monitor, FastAPI): volledig getest met lokale Docker-omgeving (DynamoDB Local, FastAPI backend, React frontend).
+- Project 2 (Behavior Analyzer): nog te ontwikkelen.
+- Project 3 (IoT Gateway): nog te ontwikkelen.
 
 ## Tech Stack
 
@@ -56,11 +64,17 @@ Dit portfolio bestaat uit 3 backend projecten en 1 frontend dashboard die samen 
 
 ## Deployment
 
+
 Alle projecten zijn containerized met Docker en deployable naar AWS:
-- **Lambda:** Python functions
-- **API Gateway:** REST endpoints
-- **DynamoDB/RDS:** Data persistence
-- **CloudWatch:** Monitoring & logging
+- **Lambda:** Python functions (project 1)
+- **API Gateway:** REST endpoints (project 1)
+- **DynamoDB/RDS:** Data persistence (project 1, 1b)
+- **CloudWatch:** Monitoring & logging (project 1)
+
+**Teststatus:**
+- Project 1: getest met AWS (productie-achtige omgeving)
+- Project 1b: getest met lokale Docker-stack (geen AWS nodig)
+- Project 2 & 3: nog te realiseren
 
 ## Zie Ook
 
