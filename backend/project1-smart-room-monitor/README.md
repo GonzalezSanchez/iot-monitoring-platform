@@ -1,6 +1,14 @@
+
+Laatste update: 15 januari 2026
+
+© 2026 Álvaro González Sánchez. Alle rechten voorbehouden. Gebruik of verspreiding zonder toestemming is niet toegestaan.
+
 # Smart Room Monitor
 
+
 Real-time IoT monitoring system for conference rooms using AWS serverless architecture.
+
+**Status:** Getest met AWS (Lambda, DynamoDB, API Gateway, CloudWatch)
 
 ## 🎯 Overview
 
