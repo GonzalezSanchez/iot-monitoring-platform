@@ -1,12 +1,25 @@
 from typing import List, Optional
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from models.room import Room
 from models.sensor_event import SensorEvent
 from repositories.event_repository import EventRepository
 from repositories.room_repository import RoomRepository
 
+load_dotenv()
+
 app = FastAPI(title="Smart Room Monitor API (FastAPI)")
+
+# CORS instellen voor frontend op localhost:5174
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 room_repo = RoomRepository()
 event_repo = EventRepository()
 

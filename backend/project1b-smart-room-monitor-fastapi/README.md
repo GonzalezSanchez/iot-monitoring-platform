@@ -30,14 +30,28 @@ IoT Sensors → FastAPI Endpoints → Business Logic/Repositories → DynamoDB
 
 ## Snel starten
 
-
 ### Prerequisites
 - Python 3.11+
-- Docker (optioneel)
+- Docker (voor lokale DynamoDB)
 
 ### Local Development
 1. Clone de repository en ga naar de projectmap:
+
+2. Start DynamoDB lokaal:
 	```bash
+	cd docker
+	docker-compose up -d
+	```
+
+3. Installeer dependencies en start de backend:
+	```bash
+	pip install -r requirements.txt
+	uvicorn main:app --reload --port 8000
+	```
+
+4. Maak DynamoDB tabellen aan (zie infra/cloudformation.yaml of handmatig via AWS CLI).
+
+Nu draait de backend lokaal met een eigen DynamoDB database.
 	git clone <repo-url>
 	cd backend/project1b-smart-room-monitor-fastapi
 	```
