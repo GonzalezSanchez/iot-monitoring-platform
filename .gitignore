@@ -45,6 +45,7 @@ borrar*
 # Internal planning documents
 docs/PROJECT_PLAN.md
 docs/STAPPEN_PROJECT*.md
+docs/STAPPEN_PROJECT1B.md
 
 # Python test coverage
 .coverage
