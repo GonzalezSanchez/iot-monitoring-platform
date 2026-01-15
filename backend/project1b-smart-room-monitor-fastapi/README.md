@@ -1,7 +1,15 @@
-# ![CI](https://github.com/GonzalezSanchez/iot-monitoring-platform/actions/workflows/ci.yml/badge.svg)
+
+Laatste update: 15 januari 2026
+
+© 2026 Álvaro González Sánchez. Alle rechten voorbehouden. Gebruik of verspreiding zonder toestemming is niet toegestaan.
+
+![CI](https://github.com/GonzalezSanchez/iot-monitoring-platform/actions/workflows/ci.yml/badge.svg)
 # Smart Room Monitor (FastAPI) — Project 1b
 
-Real-time IoT monitoring system for conference rooms using FastAPI (Python) as an alternative to the AWS Lambda variant (project 1).
+
+Real-time IoT monitoring system for conference rooms using FastAPI (Python) als alternatief voor de AWS Lambda variant (project 1).
+
+**Status:** Getest met lokale Docker-stack (DynamoDB Local, FastAPI, React)
 
 ## 🎯 Overzicht
 
