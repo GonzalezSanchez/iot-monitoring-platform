@@ -30,5 +30,38 @@ class EventRepository:
 
         self.table = self.dynamodb.Table(self.table_name)
 
-    def save_event(self, event_item):
-        raise NotImplementedError("save_event not yet implemented.")
+    def list_events(self, room_id: Optional[str] = None) -> list:
+        """
+        Haal events op uit DynamoDB. Optioneel filteren op room_id.
+        Returns:
+            List[dict]: Lijst van event-items
+        """
+        if room_id:
+            # Query op room_id (partition key)
+            response = self.table.query(
+                KeyConditionExpression=boto3.dynamodb.conditions.Key("room_id").eq(
+                    room_id
+                )
+            )
+            return response.get("Items", [])
+        else:
+            # Scan alle events (alleen voor test/kleine datasets)
+            response = self.table.scan()
+            return response.get("Items", [])
+
+    def save_event(self, event_item: dict):
+        """
+        Sla een event op in DynamoDB.
+        Args:
+            event_item (dict): Event data in DynamoDB formaat
+        Returns:
+            dict: DynamoDB response
+        """
+        try:
+            print(f"[DEBUG] put_item to table {self.table_name}: {event_item}")
+            response = self.table.put_item(Item=event_item)
+            print(f"[DEBUG] put_item response: {response}")
+            return response
+        except Exception as e:
+            print(f"[ERROR] Exception in save_event: {e}")
+            raise

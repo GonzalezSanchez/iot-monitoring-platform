@@ -41,12 +41,16 @@ class SensorEvent(BaseModel):
         return units.get(sensor_type, "unknown")
 
     def to_dynamodb_item(self) -> dict:
-        """Convert to DynamoDB item format"""
+        """Convert to DynamoDB item format, ensuring float values are Decimal for DynamoDB"""
+        from decimal import Decimal
+
         return {
             "room_id": self.room_id,
             "timestamp": self.timestamp.isoformat(),
             "event_id": self.event_id or f"{self.room_id}_{self.timestamp.timestamp()}",
             "sensor_type": self.sensor_type,
-            "value": self.value,
+            "value": Decimal(str(self.value))
+            if isinstance(self.value, float)
+            else self.value,
             "unit": self.unit,
         }
