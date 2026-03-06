@@ -1,12 +1,15 @@
-import os
-from typing import Optional
-
-import boto3
-
 """
 Room Repository
 Handles DynamoDB operations for room status
 """
+import logging
+import os
+from typing import List, Optional
+
+import boto3
+from models.room import Room
+
+logger = logging.getLogger(__name__)
 
 
 class RoomRepository:
@@ -35,21 +38,43 @@ class RoomRepository:
 
     def get_room(self, room_id: str) -> Optional[dict]:
         """
-        Haal één room op uit DynamoDB op basis van room_id.
+        Get a single room by ID.
+
+        Args:
+            room_id: Unique room identifier
+
         Returns:
-            dict | None: Room-item of None als niet gevonden
+            Room item dict if found, None otherwise
         """
+        logger.debug("Fetching room: %s", room_id)
         response = self.table.get_item(Key={"room_id": room_id})
-        return response.get("Item")
+        item = response.get("Item")
+        if item:
+            logger.debug("Room found: %s", room_id)
+        else:
+            logger.debug("Room not found: %s", room_id)
+        return item  # type: ignore[return-value]
 
-    def save_room(self, room):
-        raise NotImplementedError("save_room not yet implemented.")
-
-    def list_rooms(self):
+    def save_room(self, room: Room) -> None:
         """
-        Haal alle rooms op uit DynamoDB.
+        Save or update a room in DynamoDB.
+
+        Args:
+            room: Room instance to persist
+        """
+        logger.debug("Saving room: %s", room.room_id)
+        self.table.put_item(Item=room.to_dynamodb_item())
+        logger.info("Room saved: %s", room.room_id)
+
+    def list_rooms(self) -> List[dict]:
+        """
+        List all rooms (scan — suitable for small datasets).
+
         Returns:
-            List[dict]: Lijst van room-items
+            List of room item dicts
         """
+        logger.debug("Listing all rooms")
         response = self.table.scan()
-        return response.get("Items", [])
+        items: List[dict] = response.get("Items", [])
+        logger.info("Retrieved %d rooms", len(items))
+        return items
