@@ -1,122 +1,175 @@
+# Smart Room Monitor — FastAPI (Project 1b)
 
-Laatste update: 15 januari 2026
+Real-time IoT sensor monitoring API for conference rooms, built with FastAPI and DynamoDB.
 
-© 2026 Álvaro González Sánchez. Alle rechten voorbehouden. Gebruik of verspreiding zonder toestemming is niet toegestaan.
+This is the locally-runnable counterpart to [Project 1](../project1-smart-room-monitor/) (AWS Lambda). Same domain logic and clean architecture, different infrastructure layer — no AWS account needed.
 
-![CI](https://github.com/GonzalezSanchez/iot-monitoring-platform/actions/workflows/ci.yml/badge.svg)
-# Smart Room Monitor (FastAPI) — Project 1b
+**Status:** Fully implemented and tested (12/12 tests passing)
 
+---
 
-Real-time IoT monitoring system for conference rooms using FastAPI (Python) als alternatief voor de AWS Lambda variant (project 1).
+## Tech Stack
 
-**Status:** Getest met lokale Docker-stack (DynamoDB Local, FastAPI, React)
+- **Python 3.12** — FastAPI, Pydantic v2, boto3
+- **DynamoDB Local** — via Docker (no AWS account required)
+- **pytest + moto** — unit and integration tests with mocked DynamoDB
+- **mypy + pre-commit** — static type checking enforced on every commit
 
-## 🎯 Overzicht
+---
 
-Dit project demonstreert:
-- ✅ Python OOP met clean architecture
-- ✅ FastAPI + DynamoDB
-- ✅ Docker containerization
-- ✅ Unit testing met pytest
-- ✅ IoT sensor simulatie
-
-## 🏗️ Architectuur
+## Architecture
 
 ```
-IoT Sensors → FastAPI Endpoints → Business Logic/Repositories → DynamoDB
+POST /events
+    └── EventService.process_event()
+            ├── AnomalyDetector   → sets status: normal / warning / alert
+            ├── EventRepository   → persists event to DynamoDB (SensorEvents table)
+            └── RoomRepository    → upserts room state (RoomStatus table)
 ```
 
+Clean layered architecture:
 
-## 🚀 Snel starten
+```
+main.py (FastAPI routes)
+    └── services/       application logic, anomaly detection
+        └── repositories/   DynamoDB access
+            └── models/     Pydantic domain models
+```
 
-- `main.py` — FastAPI entrypoint en endpoints
-- `requirements.txt` — dependencies
-- `models/` — datamodellen (herbruikbaar uit project1)
-- `repositories/` — data access/repository-laag (herbruikbaar uit project1)
-- `services/` — business logic (herbruikbaar uit project1)
-- `utils/` — hulpfuncties
+---
 
-## Snel starten
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check |
+| GET | `/events` | List all events (optional `?room_id=` filter) |
+| POST | `/events` | Ingest a sensor event — runs anomaly detection |
+| GET | `/rooms` | List all rooms with current state |
+| GET | `/rooms/{room_id}` | Get current state of a specific room |
+| GET | `/rooms/{room_id}/events` | Get all events for a specific room |
+
+Interactive docs available at `http://localhost:8000/docs` when running locally.
+
+### Sensor Types
+
+`temperature`, `humidity`, `occupancy`, `motion`
+
+### Anomaly Detection Thresholds
+
+| Sensor | Warning | Alert |
+|--------|---------|-------|
+| Temperature | > 26°C or < 18°C | >= 30°C or <= 10°C |
+| Humidity | > 70% or < 30% | >= 80% or <= 20% |
+| Occupancy | > 20 people | >= 30 people |
+
+---
+
+## Local Setup
 
 ### Prerequisites
+
 - Python 3.11+
-- Docker (voor lokale DynamoDB)
+- Docker
 
-### Local Development
-1. Clone de repository en ga naar de projectmap:
-
-2. Start DynamoDB lokaal:
-	```bash
-	cd docker
-	docker-compose up -d
-	```
-
-3. Installeer dependencies en start de backend:
-	```bash
-	pip install -r requirements.txt
-	uvicorn main:app --reload --port 8000
-	```
-
-4. Maak DynamoDB tabellen aan (zie infra/cloudformation.yaml of handmatig via AWS CLI).
-
-Nu draait de backend lokaal met een eigen DynamoDB database.
-	git clone <repo-url>
-	cd backend/project1b-smart-room-monitor-fastapi
-	```
-2. Maak een virtual environment aan en installeer dependencies:
-	```bash
-	python3 -m venv .venv
-	source .venv/bin/activate
-	pip install -r requirements-dev.txt
-	```
-3. Start de FastAPI server:
-	```bash
-	uvicorn main:app --reload
-	```
-
-> **Tip:** Gebruik requirements-dev.txt voor development (inclusief linting, tests, etc). requirements.txt is voor productie.
-
-
-## 📡 API Endpoints
-
-- `GET /rooms` — lijst van kamers
-- `GET /rooms/{room_id}` — details van een kamer
-
-
-## 🏗️ Projectstructuur
-
-- `main.py` — FastAPI entrypoint en endpoints
-- `requirements.txt` — dependencies
-- `models/` — datamodellen (herbruikbaar uit project1)
-- `repositories/` — data access/repository-laag (herbruikbaar uit project1)
-- `services/` — business logic (herbruikbaar uit project1)
-- `utils/` — hulpfuncties
-
-## ♻️ Hergebruik uit project 1
-Je kunt code uit project1 (Lambda) direct hergebruiken in de `models/`, `repositories/` en `services/` folders. Alleen de API-laag (handlers) moet je herschrijven naar FastAPI-routes.
-
-
-## 🧪 Testing
+### 1. Start DynamoDB Local
 
 ```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=src --cov-report=html
+cd docker
+docker-compose up -d
 ```
 
-## 🛳️ Deployment
+DynamoDB will be available at `http://localhost:8001`.
 
-Deployment naar productie kan via Docker of een eigen server. Zie project1 voor best practices.
+### 2. Create tables
 
-## TODO
-- [ ] Models, repositories en services kopiëren/aanpassen uit project1
-- [ ] DynamoDB-verbinding toevoegen (of mocken voor lokaal testen)
-- [ ] Endpoints koppelen aan echte logica
-- [ ] Testen met curl of frontend
-- [ ] Documentatie bijwerken
+```bash
+python scripts/create_roomstatus_table_local.py
+```
 
+### 3. Install dependencies and run
 
-> **Notitie:**
-> Deze map is voorbereid voor verdere ontwikkeling. Zie project1 voor bestaande business logica en datamodellen.
+```bash
+pip install -r requirements-dev.txt
+uvicorn main:app --reload
+```
+
+API available at `http://localhost:8000`.
+
+### 4. Add test data (optional)
+
+```bash
+python scripts/add_test_room_local.py
+```
+
+---
+
+## Running Tests
+
+Tests use `moto` to mock DynamoDB — no Docker or AWS needed.
+
+```bash
+pytest tests/ -v
+```
+
+All 12 tests cover: health check, event ingestion, anomaly detection thresholds, input validation, room auto-creation, and the room events endpoint.
+
+**Coverage: 91%** across all source modules (100% on models and repositories).
+
+---
+
+## Project Structure
+
+```
+project1b-smart-room-monitor-fastapi/
+├── main.py                  # FastAPI app, routes
+├── models/
+│   ├── sensor_event.py      # SensorEvent (Pydantic v2)
+│   └── room.py              # Room, RoomState (Pydantic v2)
+├── repositories/
+│   ├── event_repository.py  # DynamoDB: SensorEvents table
+│   └── room_repository.py   # DynamoDB: RoomStatus table
+├── services/
+│   ├── event_service.py     # Orchestrates event processing
+│   └── anomaly_detector.py  # Threshold-based anomaly logic
+├── tests/
+│   ├── conftest.py          # moto fixtures, dependency injection
+│   └── test_endpoints.py    # 12 endpoint tests
+├── docker/
+│   └── docker-compose.yml   # DynamoDB Local
+└── scripts/
+    ├── create_roomstatus_table_local.py
+    └── add_test_room_local.py
+```
+
+---
+
+## Example Request
+
+```bash
+curl -X POST http://localhost:8000/events \
+  -H "Content-Type: application/json" \
+  -d '{
+    "room_id": "room-1",
+    "sensor_type": "temperature",
+    "value": 32.0,
+    "timestamp": "2026-01-15T12:00:00"
+  }'
+```
+
+Response:
+
+```json
+{
+  "room_id": "room-1",
+  "sensor_type": "temperature",
+  "value": 32.0,
+  "unit": "°C",
+  "timestamp": "2026-01-15T12:00:00",
+  "status": "alert"
+}
+```
+
+---
+
+© 2026 Álvaro González Sánchez
