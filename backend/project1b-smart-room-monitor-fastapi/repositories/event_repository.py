@@ -1,7 +1,10 @@
+import logging
 import os
-from typing import Optional
+from typing import List, Optional
 
 import boto3
+
+logger = logging.getLogger(__name__)
 
 
 class EventRepository:
@@ -30,38 +33,38 @@ class EventRepository:
 
         self.table = self.dynamodb.Table(self.table_name)
 
-    def list_events(self, room_id: Optional[str] = None) -> list:
+    def list_events(self, room_id: Optional[str] = None) -> List[dict]:
         """
-        Haal events op uit DynamoDB. Optioneel filteren op room_id.
+        List events, optionally filtered by room_id.
+
+        Args:
+            room_id: If provided, query events for this room only
+
         Returns:
-            List[dict]: Lijst van event-items
+            List of event item dicts
         """
         if room_id:
-            # Query op room_id (partition key)
+            logger.debug("Querying events for room: %s", room_id)
             response = self.table.query(
                 KeyConditionExpression=boto3.dynamodb.conditions.Key("room_id").eq(
                     room_id
                 )
             )
-            return response.get("Items", [])
         else:
-            # Scan alle events (alleen voor test/kleine datasets)
+            logger.debug("Scanning all events")
             response = self.table.scan()
-            return response.get("Items", [])
 
-    def save_event(self, event_item: dict):
+        items: List[dict] = response.get("Items", [])
+        logger.info("Retrieved %d events", len(items))
+        return items
+
+    def save_event(self, event_item: dict) -> None:
         """
-        Sla een event op in DynamoDB.
+        Save an event to DynamoDB.
+
         Args:
-            event_item (dict): Event data in DynamoDB formaat
-        Returns:
-            dict: DynamoDB response
+            event_item: Event data in DynamoDB item format
         """
-        try:
-            print(f"[DEBUG] put_item to table {self.table_name}: {event_item}")
-            response = self.table.put_item(Item=event_item)
-            print(f"[DEBUG] put_item response: {response}")
-            return response
-        except Exception as e:
-            print(f"[ERROR] Exception in save_event: {e}")
-            raise
+        logger.debug("Saving event to table %s: %s", self.table_name, event_item)
+        self.table.put_item(Item=event_item)
+        logger.info("Event saved: %s", event_item.get("event_id"))

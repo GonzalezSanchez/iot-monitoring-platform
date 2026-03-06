@@ -53,4 +53,5 @@ class SensorEvent(BaseModel):
             if isinstance(self.value, float)
             else self.value,
             "unit": self.unit,
+            "status": self.status,
         }
