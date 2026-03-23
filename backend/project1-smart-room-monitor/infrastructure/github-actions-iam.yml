@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  IoT Monitoring Platform (Project 1 — Lambda) — IAM user for GitHub Actions CI/CD.
+  Grants least-privilege permissions to deploy Lambda functions and CloudFormation stacks.
+
+Resources:
+
+  GitHubActionsUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: iot-monitoring-github-actions
+      Tags:
+        - Key: Project
+          Value: iot-monitoring-platform
+        - Key: Purpose
+          Value: github-actions-cicd
+
+  GitHubActionsPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: iot-monitoring-github-actions-policy
+      Users:
+        - !Ref GitHubActionsUser
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: CloudFormation
+            Effect: Allow
+            Action:
+              - cloudformation:CreateStack
+              - cloudformation:UpdateStack
+              - cloudformation:DeleteStack
+              - cloudformation:DescribeStacks
+              - cloudformation:DescribeStackEvents
+              - cloudformation:GetTemplate
+              - cloudformation:ValidateTemplate
+              - cloudformation:CreateChangeSet
+              - cloudformation:ExecuteChangeSet
+              - cloudformation:DescribeChangeSet
+            Resource: "arn:aws:cloudformation:eu-north-1:*:stack/smart-room-monitor-*"
+
+          - Sid: Lambda
+            Effect: Allow
+            Action:
+              - lambda:CreateFunction
+              - lambda:UpdateFunctionCode
+              - lambda:UpdateFunctionConfiguration
+              - lambda:GetFunction
+              - lambda:DeleteFunction
+              - lambda:AddPermission
+              - lambda:RemovePermission
+              - lambda:ListFunctions
+            Resource: "arn:aws:lambda:eu-north-1:*:function:*-IngestEvent"
+
+          - Sid: LambdaOtherFunctions
+            Effect: Allow
+            Action:
+              - lambda:CreateFunction
+              - lambda:UpdateFunctionCode
+              - lambda:UpdateFunctionConfiguration
+              - lambda:GetFunction
+              - lambda:DeleteFunction
+              - lambda:AddPermission
+              - lambda:RemovePermission
+            Resource:
+              - "arn:aws:lambda:eu-north-1:*:function:*-GetRooms"
+              - "arn:aws:lambda:eu-north-1:*:function:*-GetRoomDetail"
+
+          - Sid: IAMForLambdaRoles
+            Effect: Allow
+            Action:
+              - iam:CreateRole
+              - iam:DeleteRole
+              - iam:AttachRolePolicy
+              - iam:DetachRolePolicy
+              - iam:PutRolePolicy
+              - iam:DeleteRolePolicy
+              - iam:GetRole
+              - iam:PassRole
+            Resource: "arn:aws:iam::*:role/smart-room-monitor-*"
+
+          - Sid: DynamoDB
+            Effect: Allow
+            Action:
+              - dynamodb:CreateTable
+              - dynamodb:DeleteTable
+              - dynamodb:DescribeTable
+              - dynamodb:UpdateTable
+            Resource: "arn:aws:dynamodb:eu-north-1:*:table/*-smart-room-*"
+
+          - Sid: APIGateway
+            Effect: Allow
+            Action:
+              - apigateway:POST
+              - apigateway:PUT
+              - apigateway:PATCH
+              - apigateway:GET
+              - apigateway:DELETE
+            Resource: "arn:aws:apigateway:eu-north-1::*"
+
+Outputs:
+  GitHubActionsUserArn:
+    Description: IAM user ARN for GitHub Actions — create access key manually after deployment
+    Value: !GetAtt GitHubActionsUser.Arn
