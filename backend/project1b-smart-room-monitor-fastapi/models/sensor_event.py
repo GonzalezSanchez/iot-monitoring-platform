@@ -5,11 +5,22 @@ Represents a single sensor reading event
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class SensorEvent(BaseModel):
     """Sensor event data model"""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "room_id": "room-101",
+                "sensor_type": "temperature",
+                "value": 24.5,
+                "timestamp": "2025-01-15T10:30:00Z",
+            }
+        }
+    )
 
     event_id: Optional[str] = None
     room_id: str = Field(..., min_length=1, max_length=50)

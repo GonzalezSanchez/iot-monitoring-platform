@@ -15,6 +15,30 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+tags_metadata = [
+    {
+        "name": "Health",
+        "description": "Service health check. Use this to verify the API is running.",
+    },
+    {
+        "name": "Events",
+        "description": (
+            "Ingest and query sensor events. "
+            "Each event represents a single sensor reading "
+            "(temperature, humidity, occupancy, or motion). "
+            "Events are processed through anomaly detection before being stored."
+        ),
+    },
+    {
+        "name": "Rooms",
+        "description": (
+            "Query room state. "
+            "Each room aggregates the latest readings from all its sensors. "
+            "Room status reflects the worst active alert across all sensor types."
+        ),
+    },
+]
+
 app = FastAPI(
     title="Smart Room Monitor API",
     description=(
@@ -23,7 +47,12 @@ app = FastAPI(
         "runs anomaly detection, and tracks room state."
     ),
     version="1.0.0",
-    contact={"name": "Álvaro González Sánchez"},
+    contact={
+        "name": "Álvaro González Sánchez",
+        "email": "a.gonzalez.sanchez@gmail.com",
+        "url": "https://www.linkedin.com/in/GonzalezSanchez",
+    },
+    openapi_tags=tags_metadata,
 )
 
 app.add_middleware(

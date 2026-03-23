@@ -6,7 +6,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RoomState(BaseModel):
@@ -20,6 +20,24 @@ class RoomState(BaseModel):
 
 class Room(BaseModel):
     """Room data model"""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "room_id": "room-101",
+                "name": "Conference Room A",
+                "status": "active",
+                "last_update": "2025-01-15T10:30:00Z",
+                "current_state": {
+                    "temperature": 22.1,
+                    "humidity": 45.0,
+                    "occupancy": 3,
+                    "motion": True,
+                },
+                "alert_count_24h": 0,
+            }
+        }
+    )
 
     room_id: str = Field(..., min_length=1, max_length=50)
     name: str
