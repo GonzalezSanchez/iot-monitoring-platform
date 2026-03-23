@@ -144,6 +144,42 @@ project1b-smart-room-monitor-fastapi/
 
 ---
 
+## Production Deployment
+
+The project is deployed at **https://iot.gonzalezsanchez.dev** using Docker Compose on a self-hosted server behind a Cloudflare tunnel.
+
+### Stack
+
+```
+Cloudflare tunnel
+    └── nginx (port 3000)
+            ├── /* → React SPA (static files)
+            └── /rooms, /events, /health, /docs → FastAPI backend (port 8000)
+```
+
+### Infrastructure (AWS)
+
+Provisioned via CloudFormation (`infrastructure/dynamodb-iam.yml`):
+- `prod-RoomStatus` — DynamoDB table, PAY_PER_REQUEST
+- `prod-SensorEvents` — DynamoDB table, PAY_PER_REQUEST
+- `iot-monitoring-app` — IAM user with least-privilege policy (GetItem, PutItem, Query, Scan only)
+
+### Running in production
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Requires `.env.prod` in `backend/project1b-smart-room-monitor-fastapi/` with AWS credentials (not committed to git).
+
+### Scaling to Kubernetes
+
+This deployment uses Docker Compose, which is the right tool for a single-server setup. The architecture is intentionally simple — 2 services, no orchestration overhead.
+
+If the platform were to scale (multiple backend replicas, high availability, multi-region), the natural next step would be Kubernetes (e.g. AWS EKS). Each service maps directly to a Kubernetes `Deployment`, the nginx ingress would be replaced by an Ingress controller, and DynamoDB already scales seamlessly on the AWS side. The clean separation between services makes this migration straightforward.
+
+---
+
 ## Example Request
 
 ```bash

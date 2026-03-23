@@ -1,6 +1,8 @@
 # Ignore environment variables and sensitive files
 .env
 .env.*
+# Exception: .env.production has no secrets (only public API URL)
+!.env.production
 # Node modules
 node_modules/
 # Build output
