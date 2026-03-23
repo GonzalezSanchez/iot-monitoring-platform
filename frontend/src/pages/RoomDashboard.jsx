@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-const API_BASE = import.meta.env.VITE_API_ENDPOINT || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_ENDPOINT || '';
 
 const STATUS_COLOR = {
   normal: '#16a34a',
