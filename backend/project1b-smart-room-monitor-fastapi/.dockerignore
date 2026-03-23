@@ -1,0 +1,12 @@
+.env
+.env.*
+__pycache__
+*.py[cod]
+*.pyc
+.pytest_cache
+.mypy_cache
+.coverage
+htmlcov
+tests
+scripts
+docker
