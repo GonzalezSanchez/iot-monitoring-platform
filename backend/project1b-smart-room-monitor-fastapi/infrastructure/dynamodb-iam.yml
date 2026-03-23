@@ -1,0 +1,103 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  IoT Monitoring Platform (Project 1b) — DynamoDB tables and IAM user
+  for the Smart Room Monitor FastAPI backend.
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [prod, staging]
+    Description: Deployment environment prefix for table names
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # DynamoDB Tables
+  # ---------------------------------------------------------------------------
+
+  RoomStatusTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${Environment}-RoomStatus'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: room_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: room_id
+          KeyType: HASH
+      Tags:
+        - Key: Project
+          Value: iot-monitoring-platform
+        - Key: Environment
+          Value: !Ref Environment
+
+  SensorEventsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${Environment}-SensorEvents'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: room_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: room_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      Tags:
+        - Key: Project
+          Value: iot-monitoring-platform
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ---------------------------------------------------------------------------
+  # IAM User (least privilege — only what the app needs)
+  # ---------------------------------------------------------------------------
+
+  AppUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: iot-monitoring-app
+      Tags:
+        - Key: Project
+          Value: iot-monitoring-platform
+
+  AppUserPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: iot-monitoring-app-dynamodb
+      Users:
+        - !Ref AppUser
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:Scan
+            Resource:
+              - !GetAtt RoomStatusTable.Arn
+              - !GetAtt SensorEventsTable.Arn
+
+# ---------------------------------------------------------------------------
+# Outputs
+# ---------------------------------------------------------------------------
+
+Outputs:
+  RoomStatusTableName:
+    Description: DynamoDB table name for room status
+    Value: !Ref RoomStatusTable
+
+  SensorEventsTableName:
+    Description: DynamoDB table name for sensor events
+    Value: !Ref SensorEventsTable
+
+  AppUserArn:
+    Description: IAM user ARN — create access key manually after deployment
+    Value: !GetAtt AppUser.Arn
