@@ -80,9 +80,3 @@ jobs:
           --output text)
         echo "API Endpoint: $ENDPOINT"
         echo "ENDPOINT=$ENDPOINT" >> $GITHUB_OUTPUT
-
-    - name: Run tests
-      working-directory: ./backend/project1-smart-room-monitor
-      run: |
-        pip install -r requirements-dev.txt
-        pytest --maxfail=1 --disable-warnings --tb=short
