@@ -50,7 +50,7 @@ app = FastAPI(
     contact={
         "name": "Álvaro González Sánchez",
         "email": "a.gonzalez.sanchez@gmail.com",
-        "url": "https://www.linkedin.com/in/GonzalezSanchez",
+        "url": "https://gonzalezsanchez.dev",
     },
     openapi_tags=tags_metadata,
 )
