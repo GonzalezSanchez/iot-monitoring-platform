@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from ulid import ULID
 
 
 class SensorEvent(BaseModel):
@@ -22,7 +23,7 @@ class SensorEvent(BaseModel):
         }
     )
 
-    event_id: Optional[str] = None
+    event_id: str = Field(default_factory=lambda: str(ULID()))
     room_id: str = Field(..., min_length=1, max_length=50)
     sensor_type: str = Field(..., pattern="^(temperature|motion|occupancy|humidity)$")
     value: float
@@ -58,7 +59,7 @@ class SensorEvent(BaseModel):
         return {
             "room_id": self.room_id,
             "timestamp": self.timestamp.isoformat(),
-            "event_id": self.event_id or f"{self.room_id}_{self.timestamp.timestamp()}",
+            "event_id": self.event_id,
             "sensor_type": self.sensor_type,
             "value": Decimal(str(self.value))
             if isinstance(self.value, float)
