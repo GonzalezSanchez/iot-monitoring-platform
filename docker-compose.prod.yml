@@ -1,9 +1,6 @@
-version: '3.8'
-
 services:
   backend:
-    build:
-      context: ./backend/project1b-smart-room-monitor-fastapi
+    image: ghcr.io/gonzalezsanchez/iot-backend:latest
     env_file:
       - ./backend/project1b-smart-room-monitor-fastapi/.env.prod
     restart: unless-stopped
@@ -11,8 +8,7 @@ services:
       - "8000"
 
   frontend:
-    build:
-      context: ./frontend
+    image: ghcr.io/gonzalezsanchez/iot-frontend:latest
     ports:
       - "3000:80"
     depends_on:
