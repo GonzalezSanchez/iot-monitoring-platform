@@ -42,6 +42,7 @@ def test_post_event_normal_temperature():
     assert data["room_id"] == "room-1"
     assert data["sensor_type"] == "temperature"
     assert data["status"] == "normal"
+    assert data["event_id"] is not None
 
 
 def test_post_event_high_temperature_triggers_warning():
