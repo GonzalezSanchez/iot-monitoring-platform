@@ -82,13 +82,13 @@ jobs:
         echo "API Endpoint: $ENDPOINT"
         echo "ENDPOINT=$ENDPOINT" >> $GITHUB_OUTPUT
 
-    - name: Smoke test — health check
+    - name: Smoke test — get rooms
       run: |
         ENDPOINT="${{ steps.get_endpoint.outputs.ENDPOINT }}"
-        STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${ENDPOINT}/health")
-        echo "Health check status: $STATUS"
+        STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${ENDPOINT}/rooms")
+        echo "Smoke test status: $STATUS"
         if [ "$STATUS" != "200" ]; then
-          echo "Smoke test failed — /health returned $STATUS"
+          echo "Smoke test failed — /rooms returned $STATUS"
           exit 1
         fi
         echo "Smoke test passed"
