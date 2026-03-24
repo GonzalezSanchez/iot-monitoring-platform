@@ -3,7 +3,9 @@ Room Model
 Represents a monitored room with current state
 """
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -28,12 +30,18 @@ class Room(BaseModel):
 
     def to_dynamodb_item(self) -> dict:
         """Convert to DynamoDB item format"""
+        state_dict = self.current_state.dict(exclude_none=True)
+        # DynamoDB does not support float — convert to Decimal
+        state_dict = {
+            k: Decimal(str(v)) if isinstance(v, float) else v
+            for k, v in state_dict.items()
+        }
         return {
             "room_id": self.room_id,
             "name": self.name,
             "status": self.status,
             "last_update": self.last_update.isoformat(),
-            "current_state": self.current_state.dict(exclude_none=True),
+            "current_state": state_dict,
             "alert_count_24h": self.alert_count_24h,
         }
 

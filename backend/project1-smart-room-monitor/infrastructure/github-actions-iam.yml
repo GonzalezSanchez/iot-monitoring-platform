@@ -39,6 +39,12 @@ Resources:
               - cloudformation:DescribeChangeSet
             Resource: "arn:aws:cloudformation:eu-north-1:*:stack/smart-room-monitor-*"
 
+          - Sid: CloudFormationTemplateSummary
+            Effect: Allow
+            Action:
+              - cloudformation:GetTemplateSummary
+            Resource: "*"
+
           - Sid: Lambda
             Effect: Allow
             Action:
