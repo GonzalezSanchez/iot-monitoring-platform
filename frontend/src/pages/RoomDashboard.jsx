@@ -233,20 +233,27 @@ function RoomDashboard() {
       setEvents([]);
       return;
     }
-    setEventsLoading(true);
-    fetch(`${API_BASE}/rooms/${selectedRoom}/events`)
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then(data => {
-        setEvents(Array.isArray(data) ? data.slice().reverse() : []);
-        setEventsLoading(false);
-      })
-      .catch(() => {
-        setEvents([]);
-        setEventsLoading(false);
-      });
+
+    const fetchEvents = () => {
+      setEventsLoading(true);
+      fetch(`${API_BASE}/rooms/${selectedRoom}/events`)
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+        .then(data => {
+          setEvents(Array.isArray(data) ? data.slice().reverse() : []);
+          setEventsLoading(false);
+        })
+        .catch(() => {
+          setEvents([]);
+          setEventsLoading(false);
+        });
+    };
+
+    fetchEvents();
+    const interval = setInterval(fetchEvents, 30000);
+    return () => clearInterval(interval);
   }, [selectedRoom]);
 
   if (loading) return <div style={{ padding: '2rem', color: '#6b7280' }}>Loading rooms...</div>;
