@@ -10,8 +10,6 @@ jobs:
   test-project1:
     name: project1 lambda tests
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     defaults:
       run:
         working-directory: backend/project1-smart-room-monitor
@@ -33,8 +31,6 @@ jobs:
   test-project1b:
     name: project1b tests
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     defaults:
       run:
         working-directory: backend/project1b-smart-room-monitor-fastapi
