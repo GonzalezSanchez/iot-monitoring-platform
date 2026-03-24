@@ -72,6 +72,7 @@ jobs:
           --zip-file fileb://lambda-deployment.zip
 
     - name: Get API Endpoint
+      id: get_endpoint
       run: |
         ENV=${{ github.event.inputs.environment || 'dev' }}
         ENDPOINT=$(aws cloudformation describe-stacks \
@@ -80,3 +81,14 @@ jobs:
           --output text)
         echo "API Endpoint: $ENDPOINT"
         echo "ENDPOINT=$ENDPOINT" >> $GITHUB_OUTPUT
+
+    - name: Smoke test — health check
+      run: |
+        ENDPOINT="${{ steps.get_endpoint.outputs.ENDPOINT }}"
+        STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${ENDPOINT}/health")
+        echo "Health check status: $STATUS"
+        if [ "$STATUS" != "200" ]; then
+          echo "Smoke test failed — /health returned $STATUS"
+          exit 1
+        fi
+        echo "Smoke test passed"
