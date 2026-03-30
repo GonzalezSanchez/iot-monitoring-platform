@@ -40,6 +40,20 @@ DynamoDB
 
 ---
 
+## Platform Architecture
+
+A real IoT system has three distinct layers. This platform covers all three:
+
+| Layer | Responsibility | Project |
+|-------|---------------|---------|
+| **Device layer** | How devices authenticate and send data securely | Project 3 |
+| **Ingestion layer** | How sensor events are processed and stored | Project 1 / 1b |
+| **Analytics layer** | What patterns emerge from the data over time | Project 2a / 2b |
+
+Projects 1 and 2 are each implemented twice — deliberately — to demonstrate that the same business logic can be solved with different infrastructure choices.
+
+---
+
 ## Projects
 
 ### Project 1 — Smart Room Monitor (AWS Lambda + API Gateway)
@@ -58,8 +72,8 @@ processed through anomaly detection, and stored in DynamoDB.
 
 ### Project 1b — Smart Room Monitor (FastAPI + Docker)
 
-Same domain logic re-implemented with FastAPI. Deployed on a home server behind
-a Cloudflare tunnel. Uses real AWS DynamoDB in production.
+Same domain logic as Project 1, re-implemented with FastAPI and deployed as a
+containerised application. A deliberate choice to show infrastructure independence.
 
 **Stack:** Python, FastAPI, DynamoDB (AWS), Docker, nginx, Cloudflare tunnel
 **Live:** [iot.gonzalezsanchez.dev](https://iot.gonzalezsanchez.dev)
@@ -69,19 +83,32 @@ a Cloudflare tunnel. Uses real AWS DynamoDB in production.
 
 ---
 
-### Project 2 — Behavior Pattern Analyzer *(planned)*
+### Project 2a — Behavior Pattern Analyzer (AWS native) *(planned)*
 
-ETL pipeline for detecting behavioral patterns and anomalies across rooms over time.
+ETL pipeline that reads historical sensor data and detects behavioral patterns across
+rooms over time — occupancy schedules, temperature trends, unusual activity.
+Scheduled batch processing via EventBridge + Step Functions, results exposed via REST API.
 
-**Stack:** AWS Lambda, RDS PostgreSQL, Step Functions, Python
+**Stack:** Python, AWS Lambda, Step Functions, EventBridge, RDS PostgreSQL, S3, Docker
 
 ---
 
-### Project 3 — IoT Device Gateway *(planned)*
+### Project 2b — Behavior Pattern Analyzer (Data Engineering stack) *(planned)*
 
-Secure gateway for IoT device registration, authentication, and rate limiting.
+Same analytics goal as Project 2a, re-implemented with a data engineering stack.
+A deliberate choice to demonstrate the same problem solved with different tools.
 
-**Stack:** API Gateway, Cognito, DynamoDB, SQS, Python
+**Stack:** Python, Apache Airflow, PySpark, RDS PostgreSQL, Power BI
+
+---
+
+### Project 3 — IoT Device Gateway Simulator *(planned)*
+
+Secure gateway for IoT device registration, authentication (JWT via Cognito), and
+rate limiting. Simulates how a production IoT platform manages devices — registration,
+command & control, reliable message delivery via SQS, and device status monitoring.
+
+**Stack:** Python, AWS API Gateway, Lambda, Cognito, DynamoDB, SQS, Docker
 
 ---
 
@@ -118,8 +145,12 @@ Real-time dashboard for visualising sensor data and room states.
 ```
 iot-monitoring-platform/
 ├── backend/
-│   ├── project1-smart-room-monitor/          # AWS Lambda + API Gateway
-│   └── project1b-smart-room-monitor-fastapi/ # FastAPI + Docker (live)
+│   ├── project1-smart-room-monitor/          # AWS Lambda + API Gateway (live)
+│   ├── project1b-smart-room-monitor-fastapi/ # FastAPI + Docker (live)
+│   ├── project2a-behavior-analyzer/          # AWS native ETL pipeline (planned)
+│   ├── project2b-behavior-analyzer/          # Airflow + PySpark (planned)
+│   └── project3-iot-gateway/                 # Device gateway (planned)
+├── docs/                                      # Project specs and architecture
 ├── frontend/                                  # React dashboard
 ├── docker-compose.prod.yml                    # Production deployment
 └── .github/workflows/                         # CI + deploy pipelines
