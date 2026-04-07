@@ -7,7 +7,8 @@ import random
 import time
 from datetime import datetime
 from typing import Optional
-import requests
+
+import requests  # type: ignore[import-untyped]
 
 
 class SensorSimulator:
@@ -54,7 +55,7 @@ class SensorSimulator:
     def check_api_health(self) -> bool:
         """Check if API is reachable"""
         try:
-            response = requests.get(f"{self.api_url}/health", timeout=5)
+            response = requests.get(f"{self.api_url}/rooms", timeout=5)
             return response.status_code == 200
         except requests.exceptions.RequestException:
             return False
@@ -162,8 +163,7 @@ class SensorSimulator:
         )
 
         print(
-            f"[{room_id}] T:{temperature}°C H:{humidity}% "
-            f"O:{occupancy} M:{motion}"
+            f"[{room_id}] T:{temperature}°C H:{humidity}% " f"O:{occupancy} M:{motion}"
         )
 
     def run(self, duration_seconds: int = 300, interval_seconds: int = 10):
@@ -183,8 +183,7 @@ class SensorSimulator:
         print("Checking API health...")
         if not self.check_api_health():
             print(
-                "⚠️  Warning: API health check failed. "
-                "Events may not be delivered."
+                "⚠️  Warning: API health check failed. " "Events may not be delivered."
             )
             print("Continuing anyway...")
         else:
@@ -207,9 +206,7 @@ class SensorSimulator:
         # Print statistics
         total_events = self.successful_events + self.failed_events
         success_rate = (
-            (self.successful_events / total_events * 100)
-            if total_events > 0
-            else 0
+            (self.successful_events / total_events * 100) if total_events > 0 else 0
         )
 
         print(f"\n{'=' * 60}")
@@ -225,9 +222,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description=(
-            "Simulate IoT sensors sending data to Smart Room Monitor API"
-        ),
+        description=("Simulate IoT sensors sending data to Smart Room Monitor API"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -279,6 +274,4 @@ Examples:
         max_retries=args.max_retries,
         retry_delay=args.retry_delay,
     )
-    simulator.run(
-        duration_seconds=args.duration, interval_seconds=args.interval
-    )
+    simulator.run(duration_seconds=args.duration, interval_seconds=args.interval)

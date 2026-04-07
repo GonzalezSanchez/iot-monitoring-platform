@@ -7,12 +7,12 @@ from datetime import datetime
 from typing import Dict, Optional
 
 from botocore.exceptions import ClientError
+from models.room import Room, RoomState
+from models.sensor_event import SensorEvent
 from pydantic import ValidationError
 from repositories.event_repository import EventRepository
 from repositories.room_repository import RoomRepository
 from services.anomaly_detector import AnomalyDetector
-from src.models.room import Room, RoomState
-from src.models.sensor_event import SensorEvent
 from ulid import ULID
 
 # Configure logger
@@ -179,7 +179,9 @@ class EventService:
             if event is None:
                 logger.error("Cannot update room state: event is None")
                 return False
-            room = self.room_repo.get_room(event.room_id)
+            room: Optional[Room] = self.room_repo.get_room(  # type: ignore[assignment]
+                event.room_id
+            )
 
             if not room:
                 # Create new room if doesn't exist
@@ -205,13 +207,12 @@ class EventService:
 
             room.last_update = event.timestamp
 
-            # Update status if there's an alert
-            if event.status in ["warning", "alert"]:
-                room.status = event.status
+            # Recalculate room status from all current sensor values
+            new_status = self._calculate_room_status(room)
+            if new_status in ["warning", "alert"] and new_status != room.status:
                 room.alert_count_24h += 1
-                logger.warning(
-                    f"Alert detected for room {room.room_id}: {event.status}"
-                )
+                logger.warning(f"Alert detected for room {room.room_id}: {new_status}")
+            room.status = new_status
 
             self.room_repo.save_room(room)
             logger.debug(f"Room state updated: {room.room_id}")
@@ -225,3 +226,33 @@ class EventService:
                 f"Unexpected error updating room {getattr(event, 'room_id', 'unknown')}: {e}"
             )
             return False
+
+    def _calculate_room_status(self, room: Room) -> str:
+        """
+        Recalculate room status from all current sensor values.
+        Takes the worst status across all sensors.
+        """
+        severity = {"normal": 0, "warning": 1, "alert": 2}
+        worst = "active"
+
+        state = room.current_state
+        sensors = {
+            "temperature": state.temperature,
+            "humidity": state.humidity,
+            "occupancy": state.occupancy,
+        }
+
+        for sensor_type, value in sensors.items():
+            if value is None:
+                continue
+            mock_event = SensorEvent(
+                room_id=room.room_id,
+                sensor_type=sensor_type,
+                value=float(value),
+                timestamp=room.last_update,
+            )
+            status, _ = self.anomaly_detector.check_anomaly(mock_event)
+            if severity.get(status, 0) > severity.get(worst, 0):
+                worst = status
+
+        return worst
