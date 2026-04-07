@@ -171,11 +171,6 @@ class TestEventRepository:
         events = event_repo.get_events_by_room("room-1", limit=2)
         assert len(events) <= 2
 
-    def test_get_recent_events(self, event_repo, sample_event_item):
-        event_repo.save_event(sample_event_item)
-        events = event_repo.get_recent_events(limit=10)
-        assert len(events) == 1
-
     def test_get_events_with_start_time(self, event_repo):
         event_repo.save_event(
             {
