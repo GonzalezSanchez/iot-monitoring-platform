@@ -4,13 +4,15 @@ POST /events - Receives and processes sensor events
 """
 import json
 import logging
-from typing import Dict, Any
+import os
+from typing import Any, Dict
+
 from services.event_service import EventService, EventServiceError
-from utils.response import success_response, error_response
+from utils.response import error_response, success_response
 
 # Configure logger
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
 # Initialize EventService once for Lambda warm starts
 event_service = EventService()
