@@ -4,7 +4,6 @@ Handles DynamoDB operations for room status
 """
 import logging
 import os
-from datetime import datetime
 from typing import List, Optional
 
 import boto3
@@ -37,7 +36,7 @@ class RoomRepository:
             self.dynamodb = boto3.resource(
                 "dynamodb",
                 endpoint_url=os.getenv("AWS_ENDPOINT_URL"),
-                region_name=os.getenv("AWS_REGION", "eu-west-1"),
+                region_name=os.getenv("AWS_REGION", "eu-central-1"),
             )
 
         self.table = self.dynamodb.Table(self.table_name)
@@ -151,40 +150,3 @@ class RoomRepository:
             # Unexpected errors (deserialization, etc.)
             logger.error(f"Unexpected error fetching all rooms: {e}", exc_info=True)
             raise
-
-    def update_room_state(self, room_id: str, sensor_type: str, value: float) -> bool:
-        """
-        Update specific sensor value in room state
-
-        Args:
-            room_id: Room identifier
-            sensor_type: Type of sensor (temperature, humidity, etc.)
-            value: Sensor value to update
-
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            logger.debug(f"Updating room state: {room_id}, {sensor_type}={value}")
-            self.table.update_item(
-                Key={"room_id": room_id},
-                UpdateExpression=f"SET current_state.{sensor_type} = :val, last_update = :time",
-                ExpressionAttributeValues={
-                    ":val": value,
-                    ":time": datetime.now().isoformat(),
-                },
-            )
-            logger.info(f"Room state updated: {room_id}")
-            return True
-        except ClientError as e:
-            # DynamoDB-specific errors (item not found, conditional check failed, etc.)
-            error_code = e.response["Error"]["Code"]
-            logger.error(f"DynamoDB error updating room {room_id}: {error_code} - {e}")
-            return False
-        except Exception as e:
-            # Unexpected errors
-            logger.error(
-                f"Unexpected error updating room state for {room_id}: {e}",
-                exc_info=True,
-            )
-            return False

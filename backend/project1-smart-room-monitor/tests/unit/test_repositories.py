@@ -119,18 +119,6 @@ class TestRoomRepository:
         assert result.status == "warning"
         assert result.alert_count_24h == 1
 
-    def test_update_room_state(self, room_repo, sample_room):
-        room_repo.save_room(sample_room)
-        success = room_repo.update_room_state("room-1", "temperature", Decimal("28.0"))
-        assert success is True
-
-    def test_update_room_state_nonexistent_room(self, room_repo):
-        # Nested path update fails when parent map doesn't exist — returns False gracefully
-        success = room_repo.update_room_state(
-            "nonexistent", "temperature", Decimal("22.0")
-        )
-        assert success is False
-
     def test_room_state_temperature_preserved(self, room_repo, sample_room):
         room_repo.save_room(sample_room)
         result = room_repo.get_room("room-1")
