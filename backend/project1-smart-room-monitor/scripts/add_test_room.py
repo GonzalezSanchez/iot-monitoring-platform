@@ -10,11 +10,8 @@ from decimal import Decimal
 
 import boto3
 
-# DynamoDB resource en tabel
-# Pas 'dev-RoomStatus' aan indien je een andere omgeving gebruikt
-
 dynamodb = boto3.resource("dynamodb", region_name="eu-north-1")
-table = dynamodb.Table("dev-RoomStatus")
+table = dynamodb.Table("prod-RoomStatus")
 
 # Testkamer-item
 item = {

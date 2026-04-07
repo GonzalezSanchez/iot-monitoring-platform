@@ -5,8 +5,8 @@ GET /rooms - Returns list of all rooms with their current status
 import logging
 from typing import Any, Dict
 
-from src.repositories.room_repository import RoomRepository
-from src.utils.response import error_response, success_response
+from repositories.room_repository import RoomRepository
+from utils.response import error_response, success_response
 
 # Configure logger
 logger = logging.getLogger(__name__)

@@ -124,9 +124,42 @@ class EventService:
 
         room.last_update = event.timestamp
 
-        if event.status in ("warning", "alert"):
-            room.status = event.status
+        # Recalculate room status from all current sensor values
+        new_status = self._calculate_room_status(room)
+        if new_status in ("warning", "alert") and new_status != room.status:
             room.alert_count_24h += 1
+            logger.warning("Alert detected for room %s: %s", room.room_id, new_status)
+        room.status = new_status
 
         self.room_repo.save_room(room)
         logger.debug("Room state updated: %s", room.room_id)
+
+    def _calculate_room_status(self, room: Room) -> str:
+        """
+        Recalculate room status from all current sensor values.
+        Takes the worst status across all sensors.
+        """
+        severity = {"normal": 0, "warning": 1, "alert": 2}
+        worst = "active"
+
+        state = room.current_state
+        sensors = {
+            "temperature": state.temperature,
+            "humidity": state.humidity,
+            "occupancy": state.occupancy,
+        }
+
+        for sensor_type, value in sensors.items():
+            if value is None:
+                continue
+            mock_event = SensorEvent(
+                room_id=room.room_id,
+                sensor_type=sensor_type,
+                value=float(value),
+                timestamp=room.last_update,
+            )
+            status, _ = self.anomaly_detector.check_anomaly(mock_event)
+            if severity.get(status, 0) > severity.get(worst, 0):
+                worst = status
+
+        return worst
