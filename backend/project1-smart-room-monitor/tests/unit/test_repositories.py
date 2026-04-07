@@ -14,7 +14,7 @@ from src.models.room import Room, RoomState
 
 TABLE_ROOMS = "RoomStatus"
 TABLE_EVENTS = "SensorEvents"
-REGION = "eu-west-1"
+REGION = "eu-central-1"
 
 
 @pytest.fixture
