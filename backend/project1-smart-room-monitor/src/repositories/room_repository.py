@@ -92,9 +92,9 @@ class RoomRepository:
             item = response.get("Item")
 
             if item:
-                logger.debug(f"Room found: {room_id}")
+                logger.info(f"Room found: {room_id}")
                 return Room.from_dynamodb_item(item)
-            logger.debug(f"Room not found: {room_id}")
+            logger.info(f"Room not found: {room_id}")
             return None
         except ClientError as e:
             # DynamoDB-specific errors
