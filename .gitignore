@@ -12,6 +12,7 @@ pnpm-debug.log*
 dist/
 build/
 *.log
+*.zip
 
 # Environment variables
 .env

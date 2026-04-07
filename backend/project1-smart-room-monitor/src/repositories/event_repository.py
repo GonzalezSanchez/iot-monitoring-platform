@@ -6,6 +6,7 @@ import logging
 import os
 from datetime import datetime
 from typing import List, Optional
+
 import boto3
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
@@ -38,7 +39,7 @@ class EventRepository:
             self.dynamodb = boto3.resource(
                 "dynamodb",
                 endpoint_url=os.getenv("AWS_ENDPOINT_URL"),
-                region_name=os.getenv("AWS_REGION", "eu-west-1"),
+                region_name=os.getenv("AWS_REGION", "eu-central-1"),
             )
 
         self.table = self.dynamodb.Table(self.table_name)
@@ -122,41 +123,4 @@ class EventRepository:
                 f"Unexpected error querying events for room {room_id}: {e}",
                 exc_info=True,
             )
-            raise
-
-    def get_recent_events(self, limit: int = 100) -> List[dict]:
-        """
-        Get most recent events across all rooms
-
-        Args:
-            limit: Maximum number of events to return
-
-        Returns:
-            List of event dictionaries sorted by timestamp
-
-        Raises:
-            ClientError: When DynamoDB operation fails
-
-        Note:
-            Uses scan() which is inefficient for large tables.
-            Consider using query with GSI for production use.
-        """
-        try:
-            logger.debug(f"Fetching recent events, limit: {limit}")
-            response = self.table.scan(Limit=limit)
-            items = response.get("Items", [])
-
-            # Sort by timestamp descending
-            items.sort(key=lambda x: x["timestamp"], reverse=True)
-            event_count = len(items[:limit])
-            logger.info(f"Retrieved {event_count} recent events")
-            return items[:limit]
-        except ClientError as e:
-            # DynamoDB-specific errors (throttling, capacity exceeded)
-            error_code = e.response["Error"]["Code"]
-            logger.error(f"DynamoDB error scanning recent events: {error_code} - {e}")
-            raise
-        except Exception as e:
-            # Unexpected errors (sorting, etc.)
-            logger.error(f"Unexpected error fetching recent events: {e}", exc_info=True)
             raise

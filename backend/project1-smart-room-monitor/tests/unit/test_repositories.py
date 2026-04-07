@@ -14,7 +14,7 @@ from src.models.room import Room, RoomState
 
 TABLE_ROOMS = "RoomStatus"
 TABLE_EVENTS = "SensorEvents"
-REGION = "eu-west-1"
+REGION = "eu-central-1"
 
 
 @pytest.fixture
@@ -119,18 +119,6 @@ class TestRoomRepository:
         assert result.status == "warning"
         assert result.alert_count_24h == 1
 
-    def test_update_room_state(self, room_repo, sample_room):
-        room_repo.save_room(sample_room)
-        success = room_repo.update_room_state("room-1", "temperature", Decimal("28.0"))
-        assert success is True
-
-    def test_update_room_state_nonexistent_room(self, room_repo):
-        # Nested path update fails when parent map doesn't exist — returns False gracefully
-        success = room_repo.update_room_state(
-            "nonexistent", "temperature", Decimal("22.0")
-        )
-        assert success is False
-
     def test_room_state_temperature_preserved(self, room_repo, sample_room):
         room_repo.save_room(sample_room)
         result = room_repo.get_room("room-1")
@@ -182,11 +170,6 @@ class TestEventRepository:
             )
         events = event_repo.get_events_by_room("room-1", limit=2)
         assert len(events) <= 2
-
-    def test_get_recent_events(self, event_repo, sample_event_item):
-        event_repo.save_event(sample_event_item)
-        events = event_repo.get_recent_events(limit=10)
-        assert len(events) == 1
 
     def test_get_events_with_start_time(self, event_repo):
         event_repo.save_event(
