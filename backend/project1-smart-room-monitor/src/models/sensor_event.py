@@ -4,7 +4,9 @@ Represents a single sensor reading event
 """
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field, validator
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+from ulid import ULID
 
 
 class SensorEvent(BaseModel):
@@ -18,38 +20,34 @@ class SensorEvent(BaseModel):
     timestamp: datetime
     status: str = Field(default="normal", pattern="^(normal|warning|alert)$")
 
-    @validator("timestamp", pre=True)
+    @field_validator("timestamp", mode="before")
+    @classmethod
     def parse_timestamp(cls, v):
         if isinstance(v, str):
             return datetime.fromisoformat(v.replace("Z", "+00:00"))
         return v
 
-    @validator("unit", always=True)
-    def set_unit(cls, v, values):
+    @model_validator(mode="after")
+    def set_unit(self):
         """Auto-set unit based on sensor type"""
-        if v is not None:
-            return v
-
-        sensor_type = values.get("sensor_type")
-        units = {
-            "temperature": "°C",
-            "humidity": "%",
-            "occupancy": "people",
-            "motion": "boolean",
-        }
-        return units.get(sensor_type, "unknown")
+        if self.unit is None:
+            units = {
+                "temperature": "°C",
+                "humidity": "%",
+                "occupancy": "people",
+                "motion": "boolean",
+            }
+            self.unit = units.get(self.sensor_type, "unknown")
+        return self
 
     def to_dynamodb_item(self) -> dict:
         """Convert to DynamoDB item format"""
         return {
             "room_id": self.room_id,
             "timestamp": self.timestamp.isoformat(),
-            "event_id": self.event_id or f"{self.room_id}_{self.timestamp.timestamp()}",
+            "event_id": self.event_id or str(ULID()),
             "sensor_type": self.sensor_type,
             "value": self.value,
             "unit": self.unit,
             "status": self.status,
         }
-
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
