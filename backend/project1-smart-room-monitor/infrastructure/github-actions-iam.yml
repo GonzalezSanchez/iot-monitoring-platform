@@ -7,6 +7,7 @@ Resources:
 
   GitHubActionsUser:
     Type: AWS::IAM::User
+    DeletionPolicy: Retain
     Properties:
       UserName: iot-monitoring-github-actions
       Tags:
@@ -16,11 +17,11 @@ Resources:
           Value: github-actions-cicd
 
   GitHubActionsPolicy:
-    Type: AWS::IAM::Policy
+    Type: AWS::IAM::UserPolicy
+    DeletionPolicy: Retain
     Properties:
       PolicyName: iot-monitoring-github-actions-policy
-      Users:
-        - !Ref GitHubActionsUser
+      UserName: !Ref GitHubActionsUser
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -83,7 +84,7 @@ Resources:
               - iam:DeleteRolePolicy
               - iam:GetRole
               - iam:PassRole
-            Resource: "arn:aws:iam::*:role/smart-room-monitor-*"
+            Resource: "arn:aws:iam::*:role/*-SmartRoomMonitor-*"
 
           - Sid: DynamoDB
             Effect: Allow
