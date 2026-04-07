@@ -7,8 +7,8 @@ ETL pipeline voor detectie van gedragspatronen en anomalieën uit sensor data. G
 ## Tech Stack
 
 - **Runtime:** Python 3.11
-- **Cloud Services:** AWS Lambda, RDS PostgreSQL, Step Functions, S3
-- **Database:** PostgreSQL 15+
+- **Cloud Services:** AWS Lambda, Aurora Serverless v2 (PostgreSQL-compatible), Step Functions, S3
+- **Database:** Aurora Serverless v2 (PostgreSQL 15+ compatible — scales to zero when idle)
 - **Containerization:** Docker
 - **Testing:** pytest
 
@@ -128,11 +128,11 @@ CREATE TABLE anomalies (
 ```
 EventBridge (Scheduled) → Step Functions
                               ↓
-                    Lambda (Extract) → RDS PostgreSQL
+                    Lambda (Extract) → Aurora Serverless v2
                               ↓           (raw_sensor_data)
                     Lambda (Transform)
                               ↓
-                    Lambda (Analyze) → RDS PostgreSQL
+                    Lambda (Analyze) → Aurora Serverless v2
                                        (patterns, anomalies)
 ```
 

@@ -3,6 +3,7 @@ Get Room Detail Lambda Handler
 GET /rooms/{id} - Returns detailed room information with recent events
 """
 import logging
+import os
 from typing import Any, Dict
 
 from repositories.event_repository import EventRepository
@@ -11,7 +12,7 @@ from utils.response import error_response, success_response
 
 # Configure logger
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
 # Initialize repositories once for Lambda warm starts
 room_repository = RoomRepository()

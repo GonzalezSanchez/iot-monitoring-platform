@@ -3,12 +3,14 @@ Anomaly Detector
 Detects anomalies in sensor readings
 """
 import logging
+import os
 from typing import Dict, Tuple, cast
 
 from models.sensor_event import SensorEvent
 
 # Configure logger
 logger = logging.getLogger(__name__)
+logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
 
 class AnomalyDetector:

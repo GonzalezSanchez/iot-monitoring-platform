@@ -3,6 +3,7 @@ Event Service
 Business logic for processing sensor events with error handling
 """
 import logging
+import os
 from datetime import datetime
 from typing import Dict, Optional
 
@@ -17,6 +18,7 @@ from ulid import ULID
 
 # Configure logger
 logger = logging.getLogger(__name__)
+logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
 
 class EventServiceError(Exception):

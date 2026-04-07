@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  IoT Monitoring Platform — DynamoDB tables only (region-specific).
+  IAM user is managed separately as it is a global resource.
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [prod, staging]
+    Description: Deployment environment prefix for table names
+
+Resources:
+
+  RoomStatusTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${Environment}-RoomStatus'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: room_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: room_id
+          KeyType: HASH
+      Tags:
+        - Key: Project
+          Value: iot-monitoring-platform
+        - Key: Environment
+          Value: !Ref Environment
+
+  SensorEventsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${Environment}-SensorEvents'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: room_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: room_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      Tags:
+        - Key: Project
+          Value: iot-monitoring-platform
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  RoomStatusTableName:
+    Description: DynamoDB table name for room status
+    Value: !Ref RoomStatusTable
+
+  SensorEventsTableName:
+    Description: DynamoDB table name for sensor events
+    Value: !Ref SensorEventsTable
