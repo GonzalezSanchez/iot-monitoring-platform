@@ -54,7 +54,7 @@ Resources:
     Properties:
       FunctionName: !Sub '${Environment}-IngestEvent'
       Runtime: python3.12
-      Handler: src.handlers.ingest_event.handler
+      Handler: handlers.ingest_event.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
         ZipFile: |
@@ -73,7 +73,7 @@ Resources:
     Properties:
       FunctionName: !Sub '${Environment}-GetRooms'
       Runtime: python3.12
-      Handler: src.handlers.get_rooms.handler
+      Handler: handlers.get_rooms.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
         ZipFile: |
@@ -91,7 +91,7 @@ Resources:
     Properties:
       FunctionName: !Sub '${Environment}-GetRoomDetail'
       Runtime: python3.12
-      Handler: src.handlers.get_room_detail.handler
+      Handler: handlers.get_room_detail.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
         ZipFile: |
