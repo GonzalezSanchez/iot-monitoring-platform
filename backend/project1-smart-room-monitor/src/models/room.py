@@ -30,7 +30,7 @@ class Room(BaseModel):
 
     def to_dynamodb_item(self) -> dict:
         """Convert to DynamoDB item format"""
-        state_dict = self.current_state.dict(exclude_none=True)
+        state_dict = self.current_state.model_dump(exclude_none=True)
         # DynamoDB does not support float — convert to Decimal
         state_dict = {
             k: Decimal(str(v)) if isinstance(v, float) else v
@@ -56,6 +56,3 @@ class Room(BaseModel):
             current_state=RoomState(**item.get("current_state", {})),
             alert_count_24h=item.get("alert_count_24h", 0),
         )
-
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
