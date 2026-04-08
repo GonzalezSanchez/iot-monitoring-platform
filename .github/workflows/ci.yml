@@ -54,3 +54,31 @@ jobs:
 
       - name: Run tests with coverage
         run: pytest tests/ -v --cov=. --cov-report=term-missing
+
+  test-project2a:
+    name: project2a tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/project2a-behavior-analyzer
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run ruff
+        run: ruff check lambdas/ tests/
+
+      - name: Run mypy
+        run: mypy lambdas/ --ignore-missing-imports
+
+      - name: Run tests with coverage
+        # TODO: add --cov-fail-under=80 once lambda code exists
+        run: pytest tests/unit/ -v --cov=lambdas --cov-report=term-missing
