@@ -1,10 +1,11 @@
 """
 Unit tests for services
 """
-import pytest
 from datetime import datetime
-from src.services.anomaly_detector import AnomalyDetector
+
+import pytest
 from src.models.sensor_event import SensorEvent
+from src.services.anomaly_detector import AnomalyDetector
 
 
 class TestAnomalyDetector:

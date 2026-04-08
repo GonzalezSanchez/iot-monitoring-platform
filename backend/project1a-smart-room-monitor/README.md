@@ -41,7 +41,7 @@ IoT Sensors → API Gateway → Lambda Handlers → DynamoDB
 1. **Clone repository**
 ```bash
 git clone <repo-url>
-cd backend/project1-smart-room-monitor
+cd backend/project1a-smart-room-monitor
 ```
 
 2. **Start LocalStack**

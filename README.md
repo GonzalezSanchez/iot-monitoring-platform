@@ -66,7 +66,7 @@ processed through anomaly detection, and stored in DynamoDB.
 **CI/CD:** GitHub Actions — tests on every push, deploy to AWS on merge to main
 **Tests:** 108 unit tests, 82% coverage (pytest + moto for DynamoDB mocking)
 
-[View project](backend/project1-smart-room-monitor/)
+[View project](backend/project1a-smart-room-monitor/)
 
 ---
 
@@ -145,7 +145,7 @@ Real-time dashboard for visualising sensor data and room states.
 ```
 iot-monitoring-platform/
 ├── backend/
-│   ├── project1-smart-room-monitor/          # AWS Lambda + API Gateway (live)
+│   ├── project1a-smart-room-monitor/          # AWS Lambda + API Gateway (live)
 │   ├── project1b-smart-room-monitor-fastapi/ # FastAPI + Docker (live)
 │   ├── project2a-behavior-analyzer/          # AWS native ETL pipeline (planned)
 │   ├── project2b-behavior-analyzer/          # Airflow + PySpark (planned)

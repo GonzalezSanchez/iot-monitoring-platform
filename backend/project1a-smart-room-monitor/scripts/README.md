@@ -33,7 +33,7 @@ Use this once after deploying to seed initial data.
 **Prerequisites:** AWS credentials configured (`aws configure` or environment variables)
 
 ```bash
-cd backend/project1-smart-room-monitor
+cd backend/project1a-smart-room-monitor
 python scripts/add_test_room.py
 ```
 

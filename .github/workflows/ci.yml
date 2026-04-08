@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend/project1-smart-room-monitor
+        working-directory: backend/project1a-smart-room-monitor
 
     steps:
       - uses: actions/checkout@v4
