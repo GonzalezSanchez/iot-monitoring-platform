@@ -83,13 +83,18 @@ containerised application. A deliberate choice to show infrastructure independen
 
 ---
 
-### Project 2a — Behavior Pattern Analyzer (AWS native) *(planned)*
+### Project 2a — Behavior Pattern Analyzer (AWS native) *(in progress)*
 
-ETL pipeline that reads historical sensor data and detects behavioral patterns across
-rooms over time — occupancy schedules, temperature trends, unusual activity.
-Scheduled batch processing via EventBridge + Step Functions, results exposed via REST API.
+ETL pipeline that reads historical sensor data from Project 1a (DynamoDB) and detects
+behavioral patterns across rooms over time — occupancy schedules, temperature trends,
+unusual activity. Scheduled batch processing via EventBridge + Step Functions, results
+stored in Aurora Serverless v2 and exposed via REST API.
 
-**Stack:** Python, AWS Lambda, Step Functions, EventBridge, RDS PostgreSQL, S3, Docker
+**Stack:** Python, AWS Lambda, Step Functions, EventBridge, Aurora Serverless v2, CloudFormation, Docker
+**Infrastructure:** Provisioned via CloudFormation (VPC, Aurora, IAM, Secrets Manager)
+**Deploy:** On-demand for demos (`./scripts/deploy.sh`) — destroyed after to minimise costs
+
+[View project](backend/project2a-behavior-analyzer/)
 
 ---
 
