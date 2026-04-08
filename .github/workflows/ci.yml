@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend/project1-smart-room-monitor
+        working-directory: backend/project1a-smart-room-monitor
 
     steps:
       - uses: actions/checkout@v4
@@ -24,6 +24,9 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+
+      - name: Run mypy
+        run: mypy src/ --ignore-missing-imports
 
       - name: Run tests with coverage
         run: pytest tests/ -v
@@ -45,6 +48,9 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+
+      - name: Run mypy
+        run: mypy src/ --ignore-missing-imports
 
       - name: Run tests with coverage
         run: pytest tests/ -v --cov=. --cov-report=term-missing

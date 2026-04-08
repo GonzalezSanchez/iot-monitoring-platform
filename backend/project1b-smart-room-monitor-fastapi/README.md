@@ -2,7 +2,7 @@
 
 Real-time IoT sensor monitoring API for conference rooms, built with FastAPI and DynamoDB.
 
-This is the locally-runnable counterpart to [Project 1](../project1-smart-room-monitor/) (AWS Lambda). Same domain logic and clean architecture, different infrastructure layer — no AWS account needed.
+This is the locally-runnable counterpart to [Project 1](../project1a-smart-room-monitor/) (AWS Lambda). Same domain logic and clean architecture, different infrastructure layer — no AWS account needed.
 
 **Status:** Fully implemented and tested (12/12 tests passing)
 

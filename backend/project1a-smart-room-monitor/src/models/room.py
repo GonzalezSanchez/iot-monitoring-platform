@@ -1,0 +1,58 @@
+"""
+Room Model
+Represents a monitored room with current state
+"""
+
+from datetime import datetime
+from decimal import Decimal
+from typing import Optional
+
+from pydantic import BaseModel, Field
+
+
+class RoomState(BaseModel):
+    """Current state of a room"""
+
+    temperature: Optional[float] = None
+    motion: Optional[bool] = None
+    occupancy: Optional[int] = None
+    humidity: Optional[float] = None
+
+
+class Room(BaseModel):
+    """Room data model"""
+
+    room_id: str = Field(..., min_length=1, max_length=50)
+    name: str
+    status: str = Field(default="active", pattern="^(active|warning|alert|offline)$")
+    last_update: datetime
+    current_state: RoomState = Field(default_factory=RoomState)
+    alert_count_24h: int = Field(default=0, ge=0)
+
+    def to_dynamodb_item(self) -> dict:
+        """Convert to DynamoDB item format"""
+        state_dict = self.current_state.model_dump(exclude_none=True)
+        # DynamoDB does not support float — convert to Decimal
+        state_dict = {
+            k: Decimal(str(v)) if isinstance(v, float) else v for k, v in state_dict.items()
+        }
+        return {
+            "room_id": self.room_id,
+            "name": self.name,
+            "status": self.status,
+            "last_update": self.last_update.isoformat(),
+            "current_state": state_dict,
+            "alert_count_24h": self.alert_count_24h,
+        }
+
+    @classmethod
+    def from_dynamodb_item(cls, item: dict) -> "Room":
+        """Create Room from DynamoDB item"""
+        return cls(
+            room_id=item["room_id"],
+            name=item["name"],
+            status=item["status"],
+            last_update=datetime.fromisoformat(item["last_update"]),
+            current_state=RoomState(**item.get("current_state", {})),
+            alert_count_24h=item.get("alert_count_24h", 0),
+        )

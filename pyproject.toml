@@ -1,0 +1,9 @@
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]  # pycodestyle errors, pyflakes, isort
+ignore = ["E203"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src", "repositories", "services", "models", "handlers"]
