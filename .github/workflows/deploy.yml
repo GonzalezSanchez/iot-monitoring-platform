@@ -28,14 +28,14 @@ jobs:
         python-version: '3.12'
 
     - name: Install dependencies
-      working-directory: ./backend/project1-smart-room-monitor
+      working-directory: ./backend/project1a-smart-room-monitor
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt -t package/
         cp -r src/* package/
 
     - name: Package Lambda functions
-      working-directory: ./backend/project1-smart-room-monitor
+      working-directory: ./backend/project1a-smart-room-monitor
       run: |
         cd package
         zip -r ../lambda-deployment.zip .
@@ -48,7 +48,7 @@ jobs:
         aws-region: eu-central-1
 
     - name: Deploy CloudFormation stack
-      working-directory: ./backend/project1-smart-room-monitor
+      working-directory: ./backend/project1a-smart-room-monitor
       run: |
         aws cloudformation deploy \
           --template-file infrastructure/cloudformation.yaml \
@@ -58,7 +58,7 @@ jobs:
           --no-fail-on-empty-changeset
 
     - name: Update Lambda functions
-      working-directory: ./backend/project1-smart-room-monitor
+      working-directory: ./backend/project1a-smart-room-monitor
       run: |
         ENV=${{ github.event.inputs.environment || 'dev' }}
         aws lambda update-function-code \

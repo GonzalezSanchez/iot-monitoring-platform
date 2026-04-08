@@ -118,7 +118,7 @@ API Gateway → Lambda (Ingest) → DynamoDB (sensor_readings)
 ## Installatie & Gebruik
 
 ```bash
-cd backend/project1-smart-room-monitor
+cd backend/project1a-smart-room-monitor
 
 # Build Docker image
 docker build -t smart-room-monitor .

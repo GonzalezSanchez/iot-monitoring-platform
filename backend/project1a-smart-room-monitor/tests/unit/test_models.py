@@ -1,10 +1,11 @@
 """
 Unit tests for models
 """
-import pytest
 from datetime import datetime
-from src.models.sensor_event import SensorEvent
+
+import pytest
 from src.models.room import Room, RoomState
+from src.models.sensor_event import SensorEvent
 
 
 class TestSensorEvent:
