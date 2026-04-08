@@ -49,5 +49,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
+      - name: Run mypy
+        run: mypy src/ --ignore-missing-imports
+
       - name: Run tests with coverage
         run: pytest tests/ -v --cov=. --cov-report=term-missing
