@@ -77,7 +77,12 @@ jobs:
         run: ruff check lambdas/ tests/
 
       - name: Run mypy
-        run: mypy lambdas/ --ignore-missing-imports
+        run: |
+          if find lambdas -name "*.py" | grep -q .; then
+            mypy lambdas/ --ignore-missing-imports
+          else
+            echo "No Python files in lambdas/ yet — skipping mypy"
+          fi
 
       - name: Run tests with coverage
         # TODO: add --cov-fail-under=80 once lambda code exists
