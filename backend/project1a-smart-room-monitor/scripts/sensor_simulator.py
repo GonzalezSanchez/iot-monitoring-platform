@@ -3,6 +3,7 @@
 Sensor Simulator
 Simulates IoT sensors sending data to the Smart Room Monitor API
 """
+
 import random
 import time
 from datetime import datetime
@@ -99,10 +100,7 @@ class SensorSimulator:
                     self.failed_events += 1
 
             except requests.exceptions.RequestException as e:
-                print(
-                    f"⚠️  Connection error "
-                    f"(attempt {attempt + 1}/{self.max_retries}): {e}"
-                )
+                print(f"⚠️  Connection error (attempt {attempt + 1}/{self.max_retries}): {e}")
 
                 if attempt < self.max_retries - 1:
                     delay = self.retry_delay * (2**attempt)
@@ -162,9 +160,7 @@ class SensorSimulator:
             }
         )
 
-        print(
-            f"[{room_id}] T:{temperature}°C H:{humidity}% " f"O:{occupancy} M:{motion}"
-        )
+        print(f"[{room_id}] T:{temperature}°C H:{humidity}% O:{occupancy} M:{motion}")
 
     def run(self, duration_seconds: int = 300, interval_seconds: int = 10):
         """
@@ -182,9 +178,7 @@ class SensorSimulator:
         # Check API health before starting
         print("Checking API health...")
         if not self.check_api_health():
-            print(
-                "⚠️  Warning: API health check failed. " "Events may not be delivered."
-            )
+            print("⚠️  Warning: API health check failed. Events may not be delivered.")
             print("Continuing anyway...")
         else:
             print("✅ API is reachable\n")
@@ -205,9 +199,7 @@ class SensorSimulator:
 
         # Print statistics
         total_events = self.successful_events + self.failed_events
-        success_rate = (
-            (self.successful_events / total_events * 100) if total_events > 0 else 0
-        )
+        success_rate = (self.successful_events / total_events * 100) if total_events > 0 else 0
 
         print(f"\n{'=' * 60}")
         print("Simulation complete!")

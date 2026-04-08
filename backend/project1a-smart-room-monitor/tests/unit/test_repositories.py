@@ -2,12 +2,14 @@
 Unit tests for repositories (RoomRepository and EventRepository)
 Using moto to mock DynamoDB
 """
+
 from datetime import datetime
 from decimal import Decimal
 
 import boto3
 import pytest
 from moto import mock_dynamodb
+
 from repositories.event_repository import EventRepository
 from repositories.room_repository import RoomRepository
 from src.models.room import Room, RoomState

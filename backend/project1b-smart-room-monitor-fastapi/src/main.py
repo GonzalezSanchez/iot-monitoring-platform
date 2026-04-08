@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+
 from models.room import Room
 from models.sensor_event import SensorEvent
 from repositories.event_repository import EventRepository

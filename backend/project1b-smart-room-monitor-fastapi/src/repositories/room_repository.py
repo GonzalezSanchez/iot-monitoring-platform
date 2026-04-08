@@ -2,11 +2,13 @@
 Room Repository
 Handles DynamoDB operations for room status
 """
+
 import logging
 import os
 from typing import List, Optional
 
 import boto3
+
 from models.room import Room
 
 logger = logging.getLogger(__name__)

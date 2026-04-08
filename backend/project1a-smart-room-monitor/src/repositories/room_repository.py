@@ -2,12 +2,14 @@
 Room Repository
 Handles DynamoDB operations for room status
 """
+
 import logging
 import os
 from typing import List, Optional
 
 import boto3
 from botocore.exceptions import ClientError
+
 from models.room import Room
 
 # Configure logger
@@ -62,15 +64,11 @@ class RoomRepository:
         except ClientError as e:
             # DynamoDB-specific errors (throttling, capacity, etc.)
             error_code = e.response["Error"]["Code"]
-            logger.error(
-                f"DynamoDB error saving room {room.room_id}: {error_code} - {e}"
-            )
+            logger.error(f"DynamoDB error saving room {room.room_id}: {error_code} - {e}")
             raise
         except Exception as e:
             # Unexpected errors (serialization, network, etc.)
-            logger.error(
-                f"Unexpected error saving room {room.room_id}: {e}", exc_info=True
-            )
+            logger.error(f"Unexpected error saving room {room.room_id}: {e}", exc_info=True)
             raise
 
     def get_room(self, room_id: str) -> Optional[Room]:
@@ -103,9 +101,7 @@ class RoomRepository:
             raise
         except Exception as e:
             # Unexpected errors (deserialization, etc.)
-            logger.error(
-                f"Unexpected error fetching room {room_id}: {e}", exc_info=True
-            )
+            logger.error(f"Unexpected error fetching room {room_id}: {e}", exc_info=True)
             raise
 
     def get_all_rooms(self) -> List[Room]:
@@ -133,9 +129,7 @@ class RoomRepository:
             # Continue scanning if there are more results
             while "LastEvaluatedKey" in response:
                 logger.debug(f"Paginating scan, retrieved {len(items)} items so far")
-                response = self.table.scan(
-                    ExclusiveStartKey=response["LastEvaluatedKey"]
-                )
+                response = self.table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
                 items.extend(response.get("Items", []))
 
             room_count = len(items)

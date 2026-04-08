@@ -18,9 +18,7 @@ class EventRepository:
             dynamodb_resource: boto3 DynamoDB resource (creates default if None)
             table_name: DynamoDB table name (uses env var if None)
         """
-        self.table_name = table_name or os.getenv(
-            "DYNAMODB_TABLE_EVENTS", "SensorEvents"
-        )
+        self.table_name = table_name or os.getenv("DYNAMODB_TABLE_EVENTS", "SensorEvents")
 
         if dynamodb_resource:
             self.dynamodb = dynamodb_resource
@@ -46,9 +44,7 @@ class EventRepository:
         if room_id:
             logger.debug("Querying events for room: %s", room_id)
             response = self.table.query(
-                KeyConditionExpression=boto3.dynamodb.conditions.Key("room_id").eq(
-                    room_id
-                )
+                KeyConditionExpression=boto3.dynamodb.conditions.Key("room_id").eq(room_id)
             )
         else:
             logger.debug("Scanning all events")

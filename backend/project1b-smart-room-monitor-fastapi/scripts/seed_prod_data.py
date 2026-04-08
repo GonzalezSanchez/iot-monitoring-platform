@@ -258,9 +258,7 @@ def seed_events() -> None:
             "status": ev["status"],
         }
         events_table.put_item(Item=item)
-        print(
-            f"  ✓ {ev['room_id']} / {ev['sensor_type']} = {ev['value']} ({ev['status']})"
-        )
+        print(f"  ✓ {ev['room_id']} / {ev['sensor_type']} = {ev['value']} ({ev['status']})")
 
 
 if __name__ == "__main__":

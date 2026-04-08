@@ -2,6 +2,7 @@
 Anomaly Detector
 Detects anomalies in sensor readings
 """
+
 from typing import Dict, Tuple
 
 from models.sensor_event import SensorEvent
@@ -63,14 +64,12 @@ class AnomalyDetector:
         # Check warning thresholds
         if "max" in thresholds and value > thresholds["max"]:
             return "warning", (
-                f"{sensor_type} above threshold "
-                f"({value}{unit} > {thresholds['max']}{unit})"
+                f"{sensor_type} above threshold ({value}{unit} > {thresholds['max']}{unit})"
             )
 
         if "min" in thresholds and value < thresholds["min"]:
             return "warning", (
-                f"{sensor_type} below threshold "
-                f"({value}{unit} < {thresholds['min']}{unit})"
+                f"{sensor_type} below threshold ({value}{unit} < {thresholds['min']}{unit})"
             )
 
         return "normal", ""

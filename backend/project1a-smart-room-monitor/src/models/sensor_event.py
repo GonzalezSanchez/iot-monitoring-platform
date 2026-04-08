@@ -2,6 +2,7 @@
 Sensor Event Model
 Represents a single sensor reading event
 """
+
 from datetime import datetime
 from typing import Optional
 

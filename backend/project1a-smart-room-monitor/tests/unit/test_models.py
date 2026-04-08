@@ -1,9 +1,11 @@
 """
 Unit tests for models
 """
+
 from datetime import datetime
 
 import pytest
+
 from src.models.room import Room, RoomState
 from src.models.sensor_event import SensorEvent
 

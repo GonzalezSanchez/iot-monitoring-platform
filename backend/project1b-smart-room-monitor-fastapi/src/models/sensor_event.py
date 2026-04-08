@@ -2,6 +2,7 @@
 Sensor Event Model
 Represents a single sensor reading event
 """
+
 from datetime import datetime
 from typing import Optional
 
@@ -61,9 +62,7 @@ class SensorEvent(BaseModel):
             "timestamp": self.timestamp.isoformat(),
             "event_id": self.event_id,
             "sensor_type": self.sensor_type,
-            "value": Decimal(str(self.value))
-            if isinstance(self.value, float)
-            else self.value,
+            "value": Decimal(str(self.value)) if isinstance(self.value, float) else self.value,
             "unit": self.unit,
             "status": self.status,
         }
