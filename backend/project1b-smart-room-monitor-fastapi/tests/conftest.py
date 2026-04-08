@@ -47,16 +47,13 @@ def dynamodb_mock(monkeypatch):
 
         # Build fresh repos backed by the moto resource
         import main
+
         from repositories.event_repository import EventRepository
         from repositories.room_repository import RoomRepository
         from services.event_service import EventService
 
-        event_repo = EventRepository(
-            dynamodb_resource=dynamodb, table_name=DYNAMODB_TABLE_EVENTS
-        )
-        room_repo = RoomRepository(
-            dynamodb_resource=dynamodb, table_name=DYNAMODB_TABLE_ROOMS
-        )
+        event_repo = EventRepository(dynamodb_resource=dynamodb, table_name=DYNAMODB_TABLE_EVENTS)
+        room_repo = RoomRepository(dynamodb_resource=dynamodb, table_name=DYNAMODB_TABLE_ROOMS)
         svc = EventService(event_repo=event_repo, room_repo=room_repo)
 
         # Patch the module-level instances so every request uses the moto mock

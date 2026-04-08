@@ -78,6 +78,6 @@ Alle projecten zijn containerized met Docker en deployable naar AWS:
 
 ## Zie Ook
 
-- [Project 1: Smart Room Monitor](project1-smart-room-monitor.md)
-- [Project 2: Behavior Analyzer](project2-behavior-analyzer.md)
+- [Project 1: Smart Room Monitor](project1a-smart-room-monitor.md)
+- [Project 2: Behavior Analyzer](project2a-behavior-analyzer.md)
 - [Project 3: IoT Gateway](project3-iot-gateway.md)
