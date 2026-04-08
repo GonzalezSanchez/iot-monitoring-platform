@@ -7,6 +7,7 @@ scripts/test-events/*.json
 # Environment variables
 .env
 .env.*
+!.env.example
 # Python dependencies for Lambda (niet committen)
 src/annotated_types-0.7.0.dist-info/
 src/annotated_types/
