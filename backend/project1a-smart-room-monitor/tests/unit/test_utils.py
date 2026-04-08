@@ -1,6 +1,7 @@
 """
 Unit tests for response utilities
 """
+
 import json
 
 from utils.response import error_response, success_response

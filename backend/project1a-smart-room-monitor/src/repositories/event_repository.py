@@ -2,6 +2,7 @@
 Event Repository
 Handles DynamoDB operations for sensor events
 """
+
 import logging
 import os
 from datetime import datetime
@@ -27,9 +28,7 @@ class EventRepository:
             table_name: DynamoDB table name (uses env var if None)
         """
         # Allow table name override for testing or multi-environment use
-        self.table_name = table_name or os.getenv(
-            "DYNAMODB_TABLE_EVENTS", "SensorEvents"
-        )
+        self.table_name = table_name or os.getenv("DYNAMODB_TABLE_EVENTS", "SensorEvents")
 
         # Use injected resource or create default
         # Enables mocking in unit tests
@@ -70,9 +69,7 @@ class EventRepository:
             raise
         except Exception as e:
             # Unexpected errors (serialization, network, etc.)
-            logger.error(
-                f"Unexpected error saving event {event_id}: {e}", exc_info=True
-            )
+            logger.error(f"Unexpected error saving event {event_id}: {e}", exc_info=True)
             raise
 
     def get_events_by_room(
@@ -113,9 +110,7 @@ class EventRepository:
         except ClientError as e:
             # DynamoDB-specific errors (throttling, invalid query, etc.)
             error_code = e.response["Error"]["Code"]
-            logger.error(
-                f"DynamoDB error querying events for room {room_id}: {error_code} - {e}"
-            )
+            logger.error(f"DynamoDB error querying events for room {room_id}: {error_code} - {e}")
             raise
         except Exception as e:
             # Unexpected errors

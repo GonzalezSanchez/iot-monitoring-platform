@@ -1,11 +1,13 @@
 """
 Unit tests for Lambda handlers
 """
+
 import json
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from src.models.room import Room, RoomState
 
 
@@ -73,9 +75,7 @@ class TestIngestEventHandler:
         with patch("handlers.ingest_event.event_service", MagicMock()):
             from handlers.ingest_event import lambda_handler
 
-            response = lambda_handler(
-                {"body": json.dumps({"room_id": "room-1"})}, lambda_context
-            )
+            response = lambda_handler({"body": json.dumps({"room_id": "room-1"})}, lambda_context)
             assert response["statusCode"] == 400
             body = json.loads(response["body"])
             assert "Missing required fields" in body["error"]
@@ -188,8 +188,9 @@ class TestGetRoomDetailHandler:
         mock_room_repo.get_room.return_value = mock_room
         mock_event_repo = MagicMock()
         mock_event_repo.get_events_by_room.return_value = [{"event_id": "evt-001"}]
-        with patch("handlers.get_room_detail.room_repository", mock_room_repo), patch(
-            "handlers.get_room_detail.event_repository", mock_event_repo
+        with (
+            patch("handlers.get_room_detail.room_repository", mock_room_repo),
+            patch("handlers.get_room_detail.event_repository", mock_event_repo),
         ):
             from handlers.get_room_detail import lambda_handler
 
@@ -201,8 +202,9 @@ class TestGetRoomDetailHandler:
             assert body["room"]["room_id"] == "room-1"
 
     def test_missing_room_id_returns_400(self, lambda_context):
-        with patch("handlers.get_room_detail.room_repository", MagicMock()), patch(
-            "handlers.get_room_detail.event_repository", MagicMock()
+        with (
+            patch("handlers.get_room_detail.room_repository", MagicMock()),
+            patch("handlers.get_room_detail.event_repository", MagicMock()),
         ):
             from handlers.get_room_detail import lambda_handler
 
@@ -212,8 +214,9 @@ class TestGetRoomDetailHandler:
     def test_room_not_found_returns_404(self, lambda_context):
         mock_room_repo = MagicMock()
         mock_room_repo.get_room.return_value = None
-        with patch("handlers.get_room_detail.room_repository", mock_room_repo), patch(
-            "handlers.get_room_detail.event_repository", MagicMock()
+        with (
+            patch("handlers.get_room_detail.room_repository", mock_room_repo),
+            patch("handlers.get_room_detail.event_repository", MagicMock()),
         ):
             from handlers.get_room_detail import lambda_handler
 
@@ -222,8 +225,9 @@ class TestGetRoomDetailHandler:
             assert response["statusCode"] == 404
 
     def test_no_path_parameters_returns_400(self, lambda_context):
-        with patch("handlers.get_room_detail.room_repository", MagicMock()), patch(
-            "handlers.get_room_detail.event_repository", MagicMock()
+        with (
+            patch("handlers.get_room_detail.room_repository", MagicMock()),
+            patch("handlers.get_room_detail.event_repository", MagicMock()),
         ):
             from handlers.get_room_detail import lambda_handler
 
@@ -233,8 +237,9 @@ class TestGetRoomDetailHandler:
     def test_repository_error_returns_500(self, lambda_context):
         mock_room_repo = MagicMock()
         mock_room_repo.get_room.side_effect = Exception("DB error")
-        with patch("handlers.get_room_detail.room_repository", mock_room_repo), patch(
-            "handlers.get_room_detail.event_repository", MagicMock()
+        with (
+            patch("handlers.get_room_detail.room_repository", mock_room_repo),
+            patch("handlers.get_room_detail.event_repository", MagicMock()),
         ):
             from handlers.get_room_detail import lambda_handler
 
@@ -248,8 +253,9 @@ class TestGetRoomDetailHandler:
         mock_room_repo.get_room.return_value = mock_room
         mock_event_repo = MagicMock()
         mock_event_repo.get_events_by_room.return_value = []
-        with patch("handlers.get_room_detail.room_repository", mock_room_repo), patch(
-            "handlers.get_room_detail.event_repository", mock_event_repo
+        with (
+            patch("handlers.get_room_detail.room_repository", mock_room_repo),
+            patch("handlers.get_room_detail.event_repository", mock_event_repo),
         ):
             from handlers.get_room_detail import lambda_handler
 

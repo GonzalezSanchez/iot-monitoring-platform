@@ -2,6 +2,7 @@
 Anomaly Detector
 Detects anomalies in sensor readings
 """
+
 import logging
 import os
 from typing import Dict, Tuple, cast
@@ -52,43 +53,36 @@ class AnomalyDetector:
         # Only numeric sensors support threshold-based anomaly detection
         # Motion sensors (bool) and other non-numeric types are skipped
         if not isinstance(value, (int, float)):
-            logger.debug(
-                f"Skipping threshold check for non-numeric sensor: {sensor_type}"
-            )
+            logger.debug(f"Skipping threshold check for non-numeric sensor: {sensor_type}")
             return "normal", ""
 
         if sensor_type not in self.THRESHOLDS:
             return "normal", ""
 
-        thresholds: Dict[str, float] = cast(
-            Dict[str, float], self.THRESHOLDS[sensor_type]
-        )
+        thresholds: Dict[str, float] = cast(Dict[str, float], self.THRESHOLDS[sensor_type])
         unit = self.SENSOR_UNITS.get(sensor_type, "")
 
         # Check critical thresholds first (highest priority)
         if "critical_max" in thresholds and value >= thresholds["critical_max"]:
             return "alert", (
                 f"{sensor_type} critically high "
-                f'({value}{unit} ≥ {thresholds["critical_max"]}{unit})'
+                f"({value}{unit} ≥ {thresholds['critical_max']}{unit})"
             )
 
         if "critical_min" in thresholds and value <= thresholds["critical_min"]:
             return "alert", (
-                f"{sensor_type} critically low "
-                f'({value}{unit} ≤ {thresholds["critical_min"]}{unit})'
+                f"{sensor_type} critically low ({value}{unit} ≤ {thresholds['critical_min']}{unit})"
             )
 
         # Check warning thresholds
         if "max" in thresholds and value > thresholds["max"]:
             return "warning", (
-                f"{sensor_type} above threshold "
-                f'({value}{unit} > {thresholds["max"]}{unit})'
+                f"{sensor_type} above threshold ({value}{unit} > {thresholds['max']}{unit})"
             )
 
         if "min" in thresholds and value < thresholds["min"]:
             return "warning", (
-                f"{sensor_type} below threshold "
-                f'({value}{unit} < {thresholds["min"]}{unit})'
+                f"{sensor_type} below threshold ({value}{unit} < {thresholds['min']}{unit})"
             )
 
         return "normal", ""
@@ -107,9 +101,7 @@ class AnomalyDetector:
 
         if detected_severity > current_severity:
             event.status = detected_status
-            logger.info(
-                f"Status escalated to '{detected_status}' for {event.sensor_type}"
-            )
+            logger.info(f"Status escalated to '{detected_status}' for {event.sensor_type}")
 
         # Log anomalies for monitoring and debugging
         if message:

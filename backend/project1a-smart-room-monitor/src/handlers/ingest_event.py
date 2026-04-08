@@ -2,13 +2,15 @@
 Ingest Event Lambda Handler
 POST /events - Receives and processes sensor events
 """
+
 import json
 import logging
 import os
 from typing import Any, Dict
 
-from services.event_service import EventService, EventServiceError
 from utils.response import error_response, success_response
+
+from services.event_service import EventService, EventServiceError
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -51,9 +53,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         if missing_fields:
             logger.warning(f"Missing required fields: {missing_fields}")
-            return error_response(
-                f"Missing required fields: {', '.join(missing_fields)}", 400
-            )
+            return error_response(f"Missing required fields: {', '.join(missing_fields)}", 400)
 
         # Process event through EventService
         result = event_service.process_event(event_data)

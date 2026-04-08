@@ -1,13 +1,12 @@
 """
 HTTP Response utilities for Lambda handlers
 """
+
 import json
 from typing import Any, Dict, Optional
 
 
-def success_response(
-    data: Any, status_code: int = 200, headers: Optional[Dict] = None
-) -> Dict:
+def success_response(data: Any, status_code: int = 200, headers: Optional[Dict] = None) -> Dict:
     """Create successful HTTP response"""
     default_headers = {
         "Content-Type": "application/json",
@@ -25,9 +24,7 @@ def success_response(
     }
 
 
-def error_response(
-    message: str, status_code: int = 400, error_code: Optional[str] = None
-) -> Dict:
+def error_response(message: str, status_code: int = 400, error_code: Optional[str] = None) -> Dict:
     """Create error HTTP response with consistent CORS headers"""
     body = {"error": message, "code": error_code or f"ERROR_{status_code}"}
 

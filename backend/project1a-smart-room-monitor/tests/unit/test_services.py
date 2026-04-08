@@ -1,9 +1,11 @@
 """
 Unit tests for services
 """
+
 from datetime import datetime
 
 import pytest
+
 from src.models.sensor_event import SensorEvent
 from src.services.anomaly_detector import AnomalyDetector
 

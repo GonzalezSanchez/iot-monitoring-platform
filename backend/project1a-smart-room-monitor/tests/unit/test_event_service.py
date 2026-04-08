@@ -1,10 +1,12 @@
 """
 Unit tests for EventService
 """
+
 from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
+
 from services.event_service import EventService, EventServiceError
 from src.models.room import Room, RoomState
 
@@ -57,9 +59,7 @@ class TestEventServiceProcessEvent:
         event_service.process_event(valid_event_data)
         mock_event_repo.save_event.assert_called_once()
 
-    def test_process_event_updates_room(
-        self, event_service, mock_room_repo, valid_event_data
-    ):
+    def test_process_event_updates_room(self, event_service, mock_room_repo, valid_event_data):
         event_service.process_event(valid_event_data)
         mock_room_repo.save_room.assert_called_once()
 
@@ -96,9 +96,7 @@ class TestEventServiceProcessEvent:
                 }
             )
 
-    def test_process_warning_event_increments_alert_count(
-        self, event_service, mock_room_repo
-    ):
+    def test_process_warning_event_increments_alert_count(self, event_service, mock_room_repo):
         existing_room = Room(
             room_id="room-1",
             name="Room 1",
@@ -117,9 +115,7 @@ class TestEventServiceProcessEvent:
         saved_room = mock_room_repo.save_room.call_args[0][0]
         assert saved_room.alert_count_24h == 1
 
-    def test_process_humidity_event_updates_room_state(
-        self, event_service, mock_room_repo
-    ):
+    def test_process_humidity_event_updates_room_state(self, event_service, mock_room_repo):
         mock_room_repo.get_room.return_value = None
         event_service.process_event(
             {
@@ -132,9 +128,7 @@ class TestEventServiceProcessEvent:
         saved_room = mock_room_repo.save_room.call_args[0][0]
         assert saved_room.current_state.humidity == 65.0
 
-    def test_process_occupancy_event_updates_room_state(
-        self, event_service, mock_room_repo
-    ):
+    def test_process_occupancy_event_updates_room_state(self, event_service, mock_room_repo):
         mock_room_repo.get_room.return_value = None
         event_service.process_event(
             {
@@ -147,9 +141,7 @@ class TestEventServiceProcessEvent:
         saved_room = mock_room_repo.save_room.call_args[0][0]
         assert saved_room.current_state.occupancy == 8
 
-    def test_process_motion_event_updates_room_state(
-        self, event_service, mock_room_repo
-    ):
+    def test_process_motion_event_updates_room_state(self, event_service, mock_room_repo):
         mock_room_repo.get_room.return_value = None
         event_service.process_event(
             {

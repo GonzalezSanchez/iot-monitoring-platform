@@ -2,6 +2,7 @@
 Room Model
 Represents a monitored room with current state
 """
+
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, Optional
@@ -51,8 +52,7 @@ class Room(BaseModel):
         state_dict: Dict[str, Any] = self.current_state.model_dump(exclude_none=True)
         # DynamoDB does not accept Python float — convert to Decimal
         converted_state: Dict[str, Any] = {
-            k: Decimal(str(v)) if isinstance(v, float) else v
-            for k, v in state_dict.items()
+            k: Decimal(str(v)) if isinstance(v, float) else v for k, v in state_dict.items()
         }
         return {
             "room_id": self.room_id,

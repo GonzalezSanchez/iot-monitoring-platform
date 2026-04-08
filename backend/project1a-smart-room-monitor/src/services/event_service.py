@@ -2,19 +2,21 @@
 Event Service
 Business logic for processing sensor events with error handling
 """
+
 import logging
 import os
 from datetime import datetime
 from typing import Dict, Optional
 
 from botocore.exceptions import ClientError
+from pydantic import ValidationError
+from ulid import ULID
+
 from models.room import Room, RoomState
 from models.sensor_event import SensorEvent
-from pydantic import ValidationError
 from repositories.event_repository import EventRepository
 from repositories.room_repository import RoomRepository
 from services.anomaly_detector import AnomalyDetector
-from ulid import ULID
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -159,9 +161,7 @@ class EventService:
             logger.debug(f"Event saved: {event.event_id}")
             return True
         except ClientError as e:
-            logger.error(
-                f"Failed to save event {getattr(event, 'event_id', 'unknown')}: {e}"
-            )
+            logger.error(f"Failed to save event {getattr(event, 'event_id', 'unknown')}: {e}")
             raise
         except Exception as e:
             logger.error(f"Unexpected error saving event: {e}")
