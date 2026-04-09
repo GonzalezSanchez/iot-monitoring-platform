@@ -83,7 +83,7 @@ containerised application. A deliberate choice to show infrastructure independen
 
 ---
 
-### Project 2a — Behavior Pattern Analyzer (AWS native) *(in progress)*
+### Project 2a — Behavior Pattern Analyzer (AWS native)
 
 ETL pipeline that reads historical sensor data from Project 1a (DynamoDB) and detects
 behavioral patterns across rooms over time — occupancy schedules, temperature trends,
@@ -92,7 +92,9 @@ stored in Aurora Serverless v2 and exposed via REST API.
 
 **Stack:** Python, AWS Lambda, Step Functions, EventBridge, Aurora Serverless v2, Terraform, Docker
 **Infrastructure:** Provisioned via Terraform (VPC, Aurora, IAM, Secrets Manager)
+**CI:** GitHub Actions — mypy, ruff, pytest (unit + integration + regression), terraform validate
 **Deploy:** On-demand for demos (`./scripts/deploy.sh`) — destroyed after to minimise costs
+**Tests:** Unit (mocked AWS), integration (real PostgreSQL via Docker), regression (documented production bugs)
 
 [View project](backend/project2a-behavior-analyzer/)
 
@@ -104,6 +106,7 @@ Same analytics goal as Project 2a, re-implemented with a data engineering stack.
 A deliberate choice to demonstrate the same problem solved with different tools.
 
 **Stack:** Python, Apache Airflow, PySpark, RDS PostgreSQL, Power BI
+**CI/CD:** GitHub Actions (CI) + Jenkins (CD) — deployment pipeline with environment promotion (dev → staging → prod)
 
 ---
 
