@@ -90,8 +90,8 @@ behavioral patterns across rooms over time — occupancy schedules, temperature 
 unusual activity. Scheduled batch processing via EventBridge + Step Functions, results
 stored in Aurora Serverless v2 and exposed via REST API.
 
-**Stack:** Python, AWS Lambda, Step Functions, EventBridge, Aurora Serverless v2, CloudFormation, Docker
-**Infrastructure:** Provisioned via CloudFormation (VPC, Aurora, IAM, Secrets Manager)
+**Stack:** Python, AWS Lambda, Step Functions, EventBridge, Aurora Serverless v2, Terraform, Docker
+**Infrastructure:** Provisioned via Terraform (VPC, Aurora, IAM, Secrets Manager)
 **Deploy:** On-demand for demos (`./scripts/deploy.sh`) — destroyed after to minimise costs
 
 [View project](backend/project2a-behavior-analyzer/)
@@ -135,6 +135,7 @@ Real-time dashboard for visualising sensor data and room states.
 | AWS serverless (Lambda, API Gateway, CloudWatch) | project 1 |
 | DynamoDB data modelling | project 1, 1b |
 | Infrastructure as Code (CloudFormation) | project 1, 1b |
+| Infrastructure as Code (Terraform) | project 2a |
 | Docker + multi-stage builds + nginx | project 1b, frontend |
 | CI/CD with GitHub Actions | project 1, 1b |
 | Pydantic v2 models + validation | project 1, 1b |

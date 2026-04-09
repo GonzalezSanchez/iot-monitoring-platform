@@ -4,23 +4,23 @@
 
 | Script | Purpose | When to run |
 |--------|---------|-------------|
-| `deploy.sh` | Deploys all CloudFormation stacks in the correct order (vpc → database → iam → secrets) | Before a demo or when infrastructure changes are needed |
-| `destroy.sh` | Destroys all CloudFormation stacks in reverse order | After a demo to stop AWS costs (~$15/month) |
+| `deploy.sh` | Runs `terraform init/plan/apply` to provision all infrastructure | Before a demo or when infrastructure changes are needed |
+| `destroy.sh` | Runs `terraform destroy` to tear down all resources | After a demo to stop AWS costs (~$15/month) |
 | `migrate.py` | Creates/updates all database tables and indexes | Once before first run, and after every schema change |
 | `seed.py` | Seeds test sensor data into DynamoDB for local development | Optional — only for local testing with real DynamoDB |
 
 ## Deploy infrastructure (AWS)
 
 ```bash
-# Deploy all stacks to prod (default)
+# Deploy to prod (default)
 ./scripts/deploy.sh prod
 
 # Deploy to dev
 ./scripts/deploy.sh dev
 ```
 
-The script deploys stacks in dependency order: vpc → database → iam → secrets.
-After running, update the `p2a-prod-db-credentials` secret with the real Aurora endpoint and password (the script prints the exact command).
+On first run the script creates `infrastructure/terraform.tfvars` and prompts for the DynamoDB table ARN (from project 1a).
+Aurora endpoint is wired directly into the Secrets Manager secret by Terraform — no manual update needed.
 
 ## Demo workflow
 
@@ -35,7 +35,7 @@ python scripts/migrate.py
 ./scripts/destroy.sh prod
 ```
 
-Estimated cost while deployed: ~$15/month (VPC endpoints only; Aurora auto-pauses after 5 min).
+Estimated cost while deployed: ~$15/month (VPC endpoints ~$14, Aurora serverless ~$1 when idle).
 
 ## Local development
 
@@ -50,6 +50,19 @@ python scripts/migrate.py
 
 # 3. (Optional) seed test data
 python scripts/seed.py
+```
+
+## Terraform state
+
+State is stored locally in `infrastructure/terraform.tfstate` (git-ignored).
+For team use, configure an S3 backend in `infrastructure/providers.tf`:
+
+```hcl
+backend "s3" {
+  bucket = "my-terraform-state"
+  key    = "p2a/terraform.tfstate"
+  region = "eu-central-1"
+}
 ```
 
 ## Notes

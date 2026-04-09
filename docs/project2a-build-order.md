@@ -13,7 +13,7 @@ Phase 1: Foundation
        ├── tests/
        └── scripts/
 
-  [2] Infrastructure — CloudFormation
+  [2] Infrastructure — Terraform
        ├── VPC + subnets + security groups
        ├── Aurora Serverless v2 cluster
        ├── Lambda execution role (IAM)
