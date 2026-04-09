@@ -1,6 +1,8 @@
 {
-  "pythonVersion": "3.12",
-  "venvPath": ".",
-  "venv": ".venv",
-  "extraPaths": ["lambdas"]
+    "pythonVersion": "3.12",
+    "venvPath": ".",
+    "venv": ".venv",
+    "extraPaths": [
+        "lambdas"
+    ]
 }
