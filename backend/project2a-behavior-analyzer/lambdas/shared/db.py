@@ -9,18 +9,21 @@ opens and closes its own connection.
 import json
 import logging
 import os
+from typing import Any
 
 import boto3
 import psycopg2
+import psycopg2.extensions
 from botocore.exceptions import ClientError
 
 log = logging.getLogger(__name__)
 
 
-def _get_secret(secret_id: str, region: str) -> dict:
+def _get_secret(secret_id: str, region: str) -> dict[str, Any]:
     client = boto3.client("secretsmanager", region_name=region)
     response = client.get_secret_value(SecretId=secret_id)
-    return json.loads(response["SecretString"])
+    result: dict[str, Any] = json.loads(response["SecretString"])
+    return result
 
 
 def _connection_params() -> dict:

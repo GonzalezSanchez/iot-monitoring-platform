@@ -38,7 +38,9 @@ import os
 import statistics
 from collections import defaultdict
 from datetime import datetime
+from typing import Any
 
+import psycopg2.extensions
 from shared.db import get_connection
 
 log = logging.getLogger(__name__)
@@ -52,7 +54,7 @@ SPIKE_STDDEV_THRESHOLD = 3.0
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def _load_rows(conn, start_date: str, end_date: str) -> list[dict]:
+def _load_rows(conn: psycopg2.extensions.connection, start_date: str, end_date: str) -> list[dict]:
     sql = """
         SELECT room_id, device_id, ts, temperature, humidity, motion, occupancy
         FROM   raw_sensor_data
@@ -268,7 +270,11 @@ def detect_unusual_activity(rows: list[dict], occupancy_patterns: list[dict]) ->
 
 
 def _insert_patterns(
-    conn, job_id: str, start_date: str, end_date: str, patterns: list[dict]
+    conn: psycopg2.extensions.connection,
+    job_id: str,
+    start_date: str,
+    end_date: str,
+    patterns: list[dict],
 ) -> int:
     if not patterns:
         return 0
@@ -294,7 +300,9 @@ def _insert_patterns(
     return len(patterns)
 
 
-def _insert_anomalies(conn, job_id: str, anomalies: list[dict]) -> int:
+def _insert_anomalies(
+    conn: psycopg2.extensions.connection, job_id: str, anomalies: list[dict]
+) -> int:
     if not anomalies:
         return 0
     sql = """
@@ -316,7 +324,7 @@ def _insert_anomalies(conn, job_id: str, anomalies: list[dict]) -> int:
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def handler(event: dict, context) -> dict:
+def handler(event: dict, context: Any) -> dict:
     job_id = event["job_id"]
     start_date = event["start_date"]
     end_date = event["end_date"]

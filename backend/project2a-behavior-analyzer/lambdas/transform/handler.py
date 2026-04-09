@@ -28,7 +28,9 @@ Output:
 import logging
 import os
 from dataclasses import dataclass
+from typing import Any
 
+import psycopg2.extensions
 from shared.db import get_connection
 
 log = logging.getLogger(__name__)
@@ -52,7 +54,9 @@ class RawRow:
     occupancy: bool | None
 
 
-def _fetch_unprocessed(conn, start_date: str, end_date: str) -> list[RawRow]:
+def _fetch_unprocessed(
+    conn: psycopg2.extensions.connection, start_date: str, end_date: str
+) -> list[RawRow]:
     sql = """
         SELECT id, event_id, device_id, room_id, ts,
                temperature, humidity, motion, occupancy
@@ -75,13 +79,13 @@ def _is_valid(row: RawRow) -> bool:
     return True
 
 
-def _mark_processed(conn, ids: list[int]) -> None:
+def _mark_processed(conn: psycopg2.extensions.connection, ids: list[int]) -> None:
     # No-op: rows are not re-selected because Analyze filters by job window.
     # A future migration can add a processed boolean column if needed.
     pass
 
 
-def _delete_invalid(conn, ids: list[int]) -> None:
+def _delete_invalid(conn: psycopg2.extensions.connection, ids: list[int]) -> None:
     if not ids:
         return
     with conn.cursor() as cur:
@@ -89,7 +93,7 @@ def _delete_invalid(conn, ids: list[int]) -> None:
     conn.commit()
 
 
-def handler(event: dict, context) -> dict:
+def handler(event: dict, context: Any) -> dict:
     job_id = event["job_id"]
     start_date = event["start_date"]
     end_date = event["end_date"]

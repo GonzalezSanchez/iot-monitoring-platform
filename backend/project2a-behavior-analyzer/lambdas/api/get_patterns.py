@@ -10,6 +10,7 @@ Response 200:
 import json
 import logging
 import os
+from typing import Any
 
 from shared.db import get_connection
 
@@ -24,7 +25,7 @@ _SQL = """
 """
 
 
-def handler(event: dict, context) -> dict:
+def handler(event: dict, context: Any) -> dict:
     job_id = event["pathParameters"]["job_id"]
     log.info("GET patterns job_id=%s", job_id)
 
