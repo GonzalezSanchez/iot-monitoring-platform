@@ -9,7 +9,7 @@ opens and closes its own connection.
 import json
 import logging
 import os
-from typing import Any
+from typing import Any, cast
 
 import boto3
 import psycopg2
@@ -64,4 +64,4 @@ def _connection_params() -> dict:
 def get_connection() -> psycopg2.extensions.connection:
     params = _connection_params()
     log.debug("Connecting to %s:%s/%s", params["host"], params["port"], params["dbname"])
-    return psycopg2.connect(**params)
+    return cast(psycopg2.extensions.connection, psycopg2.connect(**params))

@@ -63,7 +63,7 @@ def _load_rows(conn: psycopg2.extensions.connection, start_date: str, end_date: 
     """
     with conn.cursor() as cur:
         cur.execute(sql, (f"{start_date}T00:00:00Z", f"{end_date}T23:59:59Z"))
-        cols = [d[0] for d in cur.description]
+        cols = [d[0] for d in (cur.description or [])]
         return [dict(zip(cols, row)) for row in cur.fetchall()]
 
 
