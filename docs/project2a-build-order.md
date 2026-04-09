@@ -59,8 +59,14 @@ Phase 4: Orchestration
 ───────────────────────
   [7] Step Functions state machine + Terraform (lambdas.tf, stepfunctions.tf)
        Extract → Transform → Analyze (sequential)
+  [7t] Tests: Terraform + Lambda wiring
+       ├── terraform validate  (CI: lambdas.tf, stepfunctions.tf)
+       └── test_computes_window_from_days_back  (al in [4t]: handler pakt days_back uit event)
+
   [8] EventBridge rule (eventbridge.tf)
        └── triggers Step Functions wekelijks
+  [8t] Tests: EventBridge → Step Functions input
+       └── terraform validate  (CI: eventbridge.tf — input {days_back:7} gevalideerd)
 
 Phase 5: REST API
 ─────────────────

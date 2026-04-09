@@ -29,17 +29,21 @@ fi
 
 cd infrastructure
 
-echo "[1/3] Initialising Terraform..."
+echo "[0/4] Building Lambda packages..."
+./scripts/build.sh
+
+echo "[1/4] Initialising Terraform..."
 terraform init
 
-echo "[2/3] Planning..."
+echo "[2/4] Planning..."
 terraform plan -var-file=terraform.tfvars
 
-echo "[3/3] Applying..."
+echo "[3/4] Applying..."
 terraform apply -var-file=terraform.tfvars -auto-approve
 
 echo ""
-echo "Done. Aurora endpoint:"
+echo "[4/4] Outputs:"
 terraform output aurora_endpoint
+terraform output etl_state_machine_arn
 echo ""
 echo "All infrastructure deployed successfully."

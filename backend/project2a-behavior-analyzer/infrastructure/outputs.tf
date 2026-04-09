@@ -42,3 +42,23 @@ output "private_subnet_ids" {
   description = "IDs of the private subnets"
   value       = [aws_subnet.private_1.id, aws_subnet.private_2.id]
 }
+
+output "etl_state_machine_arn" {
+  description = "ARN of the ETL Step Functions state machine"
+  value       = aws_sfn_state_machine.etl_pipeline.arn
+}
+
+output "extract_lambda_arn" {
+  description = "ARN of the Extract Lambda function"
+  value       = aws_lambda_function.extract.arn
+}
+
+output "transform_lambda_arn" {
+  description = "ARN of the Transform Lambda function"
+  value       = aws_lambda_function.transform.arn
+}
+
+output "analyze_lambda_arn" {
+  description = "ARN of the Analyze Lambda function"
+  value       = aws_lambda_function.analyze.arn
+}
