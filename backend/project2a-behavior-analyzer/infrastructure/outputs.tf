@@ -38,6 +38,11 @@ output "lambda_security_group_id" {
   value       = aws_security_group.lambda.id
 }
 
+output "api_gateway_url" {
+  description = "Base URL of the HTTP API Gateway"
+  value       = aws_apigatewayv2_stage.default.invoke_url
+}
+
 output "private_subnet_ids" {
   description = "IDs of the private subnets"
   value       = [aws_subnet.private_1.id, aws_subnet.private_2.id]
