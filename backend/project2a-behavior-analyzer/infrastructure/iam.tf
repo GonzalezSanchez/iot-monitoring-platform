@@ -37,11 +37,19 @@ resource "aws_iam_role_policy" "lambda_secrets" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["secretsmanager:GetSecretValue"]
-      Resource = "arn:aws:secretsmanager:${var.region}:*:secret:p2a-${var.environment}-db-credentials*"
-    }]
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["secretsmanager:GetSecretValue"]
+        Resource = "arn:aws:secretsmanager:${var.region}:*:secret:p2a-${var.environment}-db-credentials*"
+      },
+      {
+        # Aurora manages its own secret for the master password
+        Effect   = "Allow"
+        Action   = ["secretsmanager:GetSecretValue"]
+        Resource = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
+      }
+    ]
   })
 }
 

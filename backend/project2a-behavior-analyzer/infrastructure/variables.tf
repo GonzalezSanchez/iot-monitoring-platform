@@ -32,3 +32,9 @@ variable "db_username" {
   sensitive   = true
   description = "Aurora master username"
 }
+
+variable "source_dynamodb_table_name" {
+  type        = string
+  default     = "prod-SensorEvents"
+  description = "Name of the source DynamoDB SensorEvents table (from project 1a)"
+}

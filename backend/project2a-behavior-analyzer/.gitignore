@@ -31,3 +31,6 @@ temp/
 *.tfstate.backup
 *.tfplan
 infrastructure/terraform.tfvars
+
+# Lambda build artifacts
+dist/

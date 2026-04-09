@@ -4,12 +4,14 @@ Extract Lambda — project 2a Behavior Pattern Analyzer.
 Reads sensor events from DynamoDB (project 1a: prod-SensorEvents) for a given
 time window, deduplicates against raw_sensor_data, and inserts new rows.
 
-Step Functions input:
-{
-    "job_id":    "uuid",
-    "start_date": "2026-01-01",   # ISO date, inclusive
-    "end_date":   "2026-01-07"    # ISO date, inclusive
-}
+Step Functions input — two supported formats:
+
+  Scheduled (EventBridge → Step Functions):
+    { "job_id": "<sfn-execution-name>", "days_back": 7 }
+    → window is computed as [today - days_back, yesterday]
+
+  Manual (ad-hoc trigger):
+    { "job_id": "uuid", "start_date": "2026-01-01", "end_date": "2026-01-07" }
 
 Output (passed to next state):
 {
@@ -23,6 +25,7 @@ Output (passed to next state):
 import json
 import logging
 import os
+from datetime import UTC, datetime, timedelta
 
 import boto3
 from shared.db import get_connection
@@ -104,8 +107,16 @@ def _map_item(item: dict) -> dict:
 
 def handler(event: dict, context) -> dict:
     job_id = event["job_id"]
-    start_date = event["start_date"]
-    end_date = event["end_date"]
+
+    # Resolve time window: explicit dates take priority, fall back to days_back
+    if "start_date" in event and "end_date" in event:
+        start_date = event["start_date"]
+        end_date = event["end_date"]
+    else:
+        days_back = int(event.get("days_back", 7))
+        today = datetime.now(tz=UTC).date()
+        end_date = (today - timedelta(days=1)).isoformat()
+        start_date = (today - timedelta(days=days_back)).isoformat()
 
     log.info("Extract job_id=%s  window=%s → %s", job_id, start_date, end_date)
 
