@@ -23,7 +23,7 @@ Resources:
     Properties:
       DBClusterIdentifier: !Sub "p2a-${Environment}-aurora"
       Engine: aurora-postgresql
-      EngineVersion: "15.4"
+      EngineVersion: "15.10"
       DatabaseName: !Ref DBName
       MasterUsername: !Ref DBUsername
       # Password managed via Secrets Manager rotation — not set here
@@ -36,11 +36,10 @@ Resources:
       EnableHttpEndpoint: false
       StorageEncrypted: true
       DeletionProtection: !If [IsProd, true, false]
-      DBSubnetGroupName: !ImportValue
-        Fn::Sub: "p2a-${Environment}-DBSubnetGroupName"
+      DBSubnetGroupName:
+        Fn::ImportValue: !Sub "p2a-${Environment}-DBSubnetGroupName"
       VpcSecurityGroupIds:
-        - !ImportValue
-          Fn::Sub: "p2a-${Environment}-AuroraSecurityGroupId"
+        - Fn::ImportValue: !Sub "p2a-${Environment}-AuroraSecurityGroupId"
       Tags:
         - Key: Name
           Value: !Sub "p2a-${Environment}-aurora"
