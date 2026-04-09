@@ -2,15 +2,21 @@
 Unit tests for lambdas/analyze/handler.py
 
 Tests pure detection functions — no DB connection needed.
+DB-touching functions are tested with a mocked psycopg2 connection.
 """
 
 import json
+from unittest.mock import MagicMock, patch
 
 from analyze.handler import (
+    _insert_anomalies,
+    _insert_patterns,
+    _load_rows,
     detect_occupancy_schedule,
     detect_temperature_spikes,
     detect_temperature_trend,
     detect_unusual_activity,
+    handler,
 )
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -210,3 +216,168 @@ class TestDetectUnusualActivity:
         rows = [_row(room_id="room-unknown", ts="2026-01-05T03:00:00Z", motion=True)]
         patterns = [self._schedule_pattern(room_id="room-a")]
         assert detect_unusual_activity(rows, patterns) == []
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# _load_rows
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestLoadRows:
+    def test_returns_list_of_dicts(self) -> None:
+        cur = MagicMock()
+        cur.description = [("room_id",), ("ts",), ("temperature",)]
+        cur.fetchall.return_value = [("room-a", "2026-01-01T09:00:00Z", 21.0)]
+        conn = MagicMock()
+        conn.cursor.return_value.__enter__ = lambda s: cur
+        conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+        result = _load_rows(conn, "2026-01-01", "2026-01-07")
+
+        assert result == [{"room_id": "room-a", "ts": "2026-01-01T09:00:00Z", "temperature": 21.0}]
+
+    def test_returns_empty_list_when_no_rows(self) -> None:
+        cur = MagicMock()
+        cur.description = [("room_id",)]
+        cur.fetchall.return_value = []
+        conn = MagicMock()
+        conn.cursor.return_value.__enter__ = lambda s: cur
+        conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+        assert _load_rows(conn, "2026-01-01", "2026-01-07") == []
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# _insert_patterns / _insert_anomalies
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestInsertPatterns:
+    def _conn(self) -> MagicMock:
+        cur = MagicMock()
+        conn = MagicMock()
+        conn.cursor.return_value.__enter__ = lambda s: cur
+        conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        return conn
+
+    def test_returns_zero_for_empty_list(self) -> None:
+        assert _insert_patterns(self._conn(), "job-1", "2026-01-01", "2026-01-07", []) == 0
+
+    def test_returns_count_of_inserted_patterns(self) -> None:
+        patterns = [
+            {
+                "entity_type": "room",
+                "entity_id": "room-a",
+                "pattern_type": "occupancy_schedule",
+                "data": "{}",
+            }
+        ]
+        assert _insert_patterns(self._conn(), "job-1", "2026-01-01", "2026-01-07", patterns) == 1
+
+    def test_commits_after_insert(self) -> None:
+        conn = self._conn()
+        _insert_patterns(
+            conn,
+            "job-1",
+            "2026-01-01",
+            "2026-01-07",
+            [{"entity_type": "room", "entity_id": "r", "pattern_type": "t", "data": "{}"}],
+        )
+        conn.commit.assert_called_once()
+
+
+class TestInsertAnomalies:
+    def _conn(self) -> MagicMock:
+        cur = MagicMock()
+        conn = MagicMock()
+        conn.cursor.return_value.__enter__ = lambda s: cur
+        conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        return conn
+
+    def test_returns_zero_for_empty_list(self) -> None:
+        assert _insert_anomalies(self._conn(), "job-1", []) == 0
+
+    def test_returns_count_of_inserted_anomalies(self) -> None:
+        anomalies = [
+            {
+                "entity_type": "room",
+                "entity_id": "room-a",
+                "anomaly_type": "temperature_spike",
+                "detected_at": "2026-01-01T09:00:00+00:00",
+                "severity": "medium",
+                "data": "{}",
+            }
+        ]
+        assert _insert_anomalies(self._conn(), "job-1", anomalies) == 1
+
+    def test_commits_after_insert(self) -> None:
+        conn = self._conn()
+        anomalies = [
+            {
+                "entity_type": "room",
+                "entity_id": "r",
+                "anomaly_type": "t",
+                "detected_at": "2026-01-01T09:00:00+00:00",
+                "severity": "low",
+                "data": "{}",
+            }
+        ]
+        _insert_anomalies(conn, "job-1", anomalies)
+        conn.commit.assert_called_once()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# handler
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestAnalyzeHandler:
+    def _event(self) -> dict:
+        return {"job_id": "job-1", "start_date": "2026-01-01", "end_date": "2026-01-07"}
+
+    def _conn(self) -> MagicMock:
+        cur = MagicMock()
+        cur.description = []
+        cur.fetchall.return_value = []
+        conn = MagicMock()
+        conn.cursor.return_value.__enter__ = lambda s: cur
+        conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        return conn
+
+    def test_returns_job_fields(self) -> None:
+        with (
+            patch("analyze.handler.get_connection", return_value=self._conn()),
+            patch("analyze.handler._load_rows", return_value=[]),
+            patch("analyze.handler._insert_patterns", return_value=0),
+            patch("analyze.handler._insert_anomalies", return_value=0),
+        ):
+            result = handler(self._event(), None)
+
+        assert result["job_id"] == "job-1"
+        assert result["patterns_count"] == 0
+        assert result["anomalies_count"] == 0
+
+    def test_closes_connection_on_success(self) -> None:
+        conn = self._conn()
+        with (
+            patch("analyze.handler.get_connection", return_value=conn),
+            patch("analyze.handler._load_rows", return_value=[]),
+            patch("analyze.handler._insert_patterns", return_value=0),
+            patch("analyze.handler._insert_anomalies", return_value=0),
+        ):
+            handler(self._event(), None)
+
+        conn.close.assert_called_once()
+
+    def test_closes_connection_on_error(self) -> None:
+        conn = self._conn()
+        with (
+            patch("analyze.handler.get_connection", return_value=conn),
+            patch("analyze.handler._load_rows", side_effect=RuntimeError("db error")),
+        ):
+            try:
+                handler(self._event(), None)
+            except RuntimeError:
+                pass
+
+        conn.close.assert_called_once()

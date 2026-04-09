@@ -4,7 +4,7 @@ Unit tests for lambdas/transform/handler.py
 
 from unittest.mock import MagicMock, patch
 
-from transform.handler import RawRow, _delete_invalid, _is_valid, handler
+from transform.handler import RawRow, _delete_invalid, _fetch_unprocessed, _is_valid, handler
 
 # ──────────────────────────────────────────────────────────────────────────────
 # _is_valid
@@ -175,3 +175,29 @@ class TestTransformHandler:
             handler(self._event(), None)
 
         conn.close.assert_called_once()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# _fetch_unprocessed
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestFetchUnprocessed:
+    def _conn(self, rows: list) -> MagicMock:
+        cur = MagicMock()
+        cur.fetchall.return_value = rows
+        conn = MagicMock()
+        conn.cursor.return_value.__enter__ = lambda s: cur
+        conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        return conn
+
+    def test_returns_rawrow_list(self) -> None:
+        db_row = (1, "e1", "dev-1", "room-a", "2026-01-01T09:00:00Z", 21.0, 55.0, True, True)
+        result = _fetch_unprocessed(self._conn([db_row]), "2026-01-01", "2026-01-07")
+        assert len(result) == 1
+        assert isinstance(result[0], RawRow)
+        assert result[0].event_id == "e1"
+        assert result[0].temperature == 21.0
+
+    def test_returns_empty_list_when_no_rows(self) -> None:
+        assert _fetch_unprocessed(self._conn([]), "2026-01-01", "2026-01-07") == []
