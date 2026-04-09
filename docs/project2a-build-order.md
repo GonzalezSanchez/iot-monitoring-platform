@@ -25,35 +25,35 @@ Phase 1: Foundation
 
 Phase 2: Database
 ─────────────────
-  [3] DB migration script (Python)
-       └── creates: raw_sensor_data, patterns, anomalies
   [3t] Tests: migrate.py
        ├── tabellen bestaan na run (local Docker PostgreSQL)
        └── tweede run gooit geen error (idempotent)
+  [3] DB migration script (Python)
+       └── creates: raw_sensor_data, patterns, anomalies
 
 Phase 3: ETL Lambdas
 ────────────────────
-  [4] Lambda: Extract
-       └── DynamoDB prod-SensorEvents → raw_sensor_data
   [4t] Tests: extract
        ├── DynamoDB scan gemocked (moto)
        ├── correcte rows geïnsert
        └── duplicaten geskipt (ON CONFLICT DO NOTHING)
+  [4] Lambda: Extract
+       └── DynamoDB prod-SensorEvents → raw_sensor_data
 
-  [5] Lambda: Transform
-       └── normalize + clean raw_sensor_data
   [5t] Tests: transform
        ├── ongeldige temperaturen verwijderd
        └── valide rijen blijven
+  [5] Lambda: Transform
+       └── normalize + clean raw_sensor_data
 
-  [6] Lambda: Analyze
-       └── pattern detection + anomaly detection
-       └── writes → patterns, anomalies
   [6t] Tests: analyze
        ├── detect_occupancy_schedule: bekende input → verwachte schedule
        ├── detect_temperature_trend: stijgende reeks → 'rising'
        ├── detect_temperature_spikes: z-score ≥ 3 → anomalie
        └── detect_unusual_activity: motion buiten schedule → anomalie
+  [6] Lambda: Analyze
+       └── pattern detection + anomaly detection
+       └── writes → patterns, anomalies
 
 Phase 4: Orchestration
 ───────────────────────
@@ -70,11 +70,11 @@ Phase 4: Orchestration
 
 Phase 5: REST API
 ─────────────────
+  [9t] Tests: API handlers (mocked DB)
   [9] API Lambdas
        ├── POST /analyze/patterns
        ├── GET  /analyze/patterns/{job_id}
        └── GET  /insights/{entity_type}/{entity_id}
-  [9t] Tests: API handlers (mocked DB)
 
   [10] API Gateway Terraform resource
         └── routes → Lambda handlers
