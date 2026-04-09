@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import uuid
+from typing import Any
 
 import boto3
 
@@ -24,7 +25,7 @@ log = logging.getLogger(__name__)
 log.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
 
-def handler(event: dict, context) -> dict:
+def handler(event: dict, context: Any) -> dict:
     raw_body = event.get("body")
     if not raw_body:
         return {"statusCode": 400, "body": json.dumps({"error": "request body is required"})}

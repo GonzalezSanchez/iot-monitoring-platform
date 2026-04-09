@@ -15,6 +15,7 @@ Response 200:
 import json
 import logging
 import os
+from typing import Any
 
 from shared.db import get_connection
 
@@ -36,7 +37,7 @@ _SQL_ANOMALIES = """
 """
 
 
-def handler(event: dict, context) -> dict:
+def handler(event: dict, context: Any) -> dict:
     entity_type = event["pathParameters"]["entity_type"]
     entity_id = event["pathParameters"]["entity_id"]
     log.info("GET insights entity_type=%s entity_id=%s", entity_type, entity_id)

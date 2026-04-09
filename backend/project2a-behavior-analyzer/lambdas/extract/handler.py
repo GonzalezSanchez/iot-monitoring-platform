@@ -26,15 +26,17 @@ import json
 import logging
 import os
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import boto3
+import psycopg2.extensions
 from shared.db import get_connection
 
 log = logging.getLogger(__name__)
 log.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
 
-def _scan_events(table, start_iso: str, end_iso: str) -> list[dict]:
+def _scan_events(table: Any, start_iso: str, end_iso: str) -> list[dict]:
     """
     Scan DynamoDB for sensor events within [start_iso, end_iso] (date strings).
     Uses a FilterExpression on the 'timestamp' attribute.
@@ -60,7 +62,7 @@ def _scan_events(table, start_iso: str, end_iso: str) -> list[dict]:
     return items
 
 
-def _upsert_batch(conn, rows: list[dict]) -> int:
+def _upsert_batch(conn: psycopg2.extensions.connection, rows: list[dict]) -> int:
     """
     Insert rows into raw_sensor_data, skipping duplicates (ON CONFLICT DO NOTHING).
     Returns the number of newly inserted rows.
@@ -105,7 +107,7 @@ def _map_item(item: dict) -> dict:
     }
 
 
-def handler(event: dict, context) -> dict:
+def handler(event: dict, context: Any) -> dict:
     job_id = event["job_id"]
 
     # Resolve time window: explicit dates take priority, fall back to days_back
