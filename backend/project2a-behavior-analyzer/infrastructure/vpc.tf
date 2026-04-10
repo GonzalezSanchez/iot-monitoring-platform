@@ -126,7 +126,17 @@ resource "aws_db_subnet_group" "main" {
   }
 }
 
-# --- VPC Endpoints (no NAT Gateway — ~$14/month vs ~$32/month) ---
+# --- VPC Endpoints (no NAT Gateway) ---
+# Deliberate choice: Lambda in private subnets reaches AWS APIs via VPC endpoints.
+# Benefits:
+#   - Traffic stays within the AWS network (no public internet exposure)
+#   - Lower latency than routing via NAT Gateway
+#   - Cheaper: ~$14/month vs ~$32/month for a NAT Gateway
+# Three endpoints are required:
+#   - DynamoDB  : Gateway Endpoint (free)
+#   - Secrets Manager : Interface Endpoint (~$7/month)
+#   - CloudWatch Logs : Interface Endpoint (~$7/month) — mandatory for Lambda
+#                       in a private subnet to emit logs
 
 # DynamoDB Gateway Endpoint — FREE
 resource "aws_vpc_endpoint" "dynamodb" {
