@@ -47,15 +47,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             logger.error(f"Invalid JSON in request body: {e}")
             return error_response("Invalid JSON format", 400)
 
-        # Validate required fields
-        required_fields = ["room_id", "sensor_type", "value", "timestamp"]
-        missing_fields = [field for field in required_fields if field not in event_data]
-
-        if missing_fields:
-            logger.warning(f"Missing required fields: {missing_fields}")
-            return error_response(f"Missing required fields: {', '.join(missing_fields)}", 400)
-
-        # Process event through EventService
+        # Process event through EventService (Pydantic validation happens inside)
         result = event_service.process_event(event_data)
 
         logger.info(f"Event processed successfully: {result.get('event_id')}")
