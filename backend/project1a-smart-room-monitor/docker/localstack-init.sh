@@ -9,7 +9,7 @@ echo "Starting LocalStack initialization..."
 sleep 5
 
 # AWS configuration for LocalStack
-export AWS_DEFAULT_REGION=eu-west-1
+export AWS_DEFAULT_REGION=eu-central-1
 export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
 ENDPOINT="http://localhost:4566"
@@ -24,7 +24,7 @@ awslocal dynamodb create-table \
     --key-schema \
         AttributeName=room_id,KeyType=HASH \
     --billing-mode PAY_PER_REQUEST \
-    --region eu-west-1 \
+    --region eu-central-1 \
     || echo "Table 'rooms' may already exist"
 
 # Create sensor_events table with GSI
@@ -51,7 +51,7 @@ awslocal dynamodb create-table \
         }]" \
     --billing-mode PROVISIONED \
     --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 \
-    --region eu-west-1 \
+    --region eu-central-1 \
     || echo "Table 'sensor_events' may already exist"
 
 echo "Waiting for tables to be active..."
@@ -59,7 +59,7 @@ sleep 3
 
 # Verify tables were created
 echo "Listing DynamoDB tables:"
-awslocal dynamodb list-tables --region eu-west-1
+awslocal dynamodb list-tables --region eu-central-1
 
 # Insert sample data for testing
 echo "Inserting sample room data..."
@@ -75,7 +75,7 @@ awslocal dynamodb put-item \
         "current_occupancy": {"N": "0"},
         "last_updated": {"S": "2026-01-09T12:00:00Z"}
     }' \
-    --region eu-west-1 \
+    --region eu-central-1 \
     || echo "Sample data insertion failed"
 
 awslocal dynamodb put-item \
@@ -90,7 +90,7 @@ awslocal dynamodb put-item \
         "current_occupancy": {"N": "2"},
         "last_updated": {"S": "2026-01-09T12:00:00Z"}
     }' \
-    --region eu-west-1 \
+    --region eu-central-1 \
     || echo "Sample data insertion failed"
 
 echo "LocalStack initialization completed successfully!"
