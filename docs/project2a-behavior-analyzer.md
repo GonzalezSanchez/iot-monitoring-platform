@@ -162,11 +162,14 @@ Provisioned via Terraform in `infrastructure/`:
 ```bash
 cd backend/project2a-behavior-analyzer
 
-# Deploy infrastructure
-./scripts/deploy.sh prod
+# Start lokale PostgreSQL database
+docker compose -f docker/docker-compose.yml up -d
 
 # Run DB migrations (once after deploy)
 python scripts/migrate.py
+
+# Deploy infrastructure
+./scripts/deploy.sh prod
 
 # Tear down after demo
 ./scripts/destroy.sh prod
