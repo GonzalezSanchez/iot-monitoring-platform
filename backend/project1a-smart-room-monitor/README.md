@@ -1,162 +1,146 @@
+# Smart Room Monitor — AWS Lambda (Project 1a)
 
-Laatste update: 15 januari 2026
+Real-time IoT sensor monitoring API for conference rooms, built with AWS Lambda and API Gateway.
 
-© 2026 Álvaro González Sánchez. Alle rechten voorbehouden. Gebruik of verspreiding zonder toestemming is niet toegestaan.
+This is the serverless counterpart to [Project 1b](../project1b-smart-room-monitor-fastapi/) (FastAPI + Docker). Same domain logic and clean architecture, different infrastructure layer.
 
-# Smart Room Monitor
+**Status:** Tested with AWS (Lambda, DynamoDB, API Gateway, CloudWatch)
 
+---
 
-Real-time IoT monitoring system for conference rooms using AWS serverless architecture.
+## Tech Stack
 
-**Status:** Getest met AWS (Lambda, DynamoDB, API Gateway, CloudWatch)
+- **Python 3.11** — Pydantic v2, boto3
+- **AWS:** Lambda, API Gateway, DynamoDB, CloudWatch
+- **LocalStack** — full AWS simulation for local development
+- **pytest + moto** — unit tests with mocked DynamoDB (80%+ coverage)
+- **mypy + ruff** — static type checking and linting
 
-## 🎯 Overview
+---
 
-This project demonstrates:
-- ✅ Python OOP with clean architecture
-- ✅ AWS Lambda + API Gateway + DynamoDB
-- ✅ Docker containerization
-- ✅ Unit testing with pytest (80%+ coverage)
-- ✅ IoT sensor simulation
-
-## 🏗️ Architecture
+## Architecture
 
 ```
-IoT Sensors → API Gateway → Lambda Handlers → DynamoDB
-                                ↓
-                          Anomaly Detection
-                                ↓
-                          Room State Update
+POST /events
+    └── EventService.process_event()
+            ├── AnomalyDetector   → sets status: normal / warning / alert
+            ├── EventRepository   → persists event to DynamoDB (SensorEvents table)
+            └── RoomRepository    → upserts room state (RoomStatus table)
 ```
 
-## 🚀 Quick Start
+Clean layered architecture:
+
+```
+handlers/       Lambda entry points (API Gateway events)
+    └── services/       application logic, anomaly detection
+        └── repositories/   DynamoDB access
+            └── models/     Pydantic domain models
+```
+
+---
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check |
+| POST | `/events` | Ingest a sensor event — runs anomaly detection |
+| GET | `/rooms` | List all rooms with current state |
+| GET | `/rooms/{room_id}` | Get current state of a specific room |
+
+### Sensor Types
+
+`temperature`, `humidity`, `occupancy`, `motion`
+
+### Anomaly Detection Thresholds
+
+| Sensor | Warning | Alert |
+|--------|---------|-------|
+| Temperature | > 26°C or < 18°C | >= 30°C or <= 10°C |
+| Humidity | > 70% or < 30% | >= 80% or <= 20% |
+| Occupancy | > 20 people | >= 30 people |
+
+---
+
+## Local Setup
 
 ### Prerequisites
-- Docker & Docker Compose
+
 - Python 3.11+
-- AWS CLI (for deployment)
+- Docker
 
-### Local Development
+### 1. Start LocalStack
 
-1. **Clone repository**
-```bash
-git clone <repo-url>
-cd backend/project1a-smart-room-monitor
-```
-
-2. **Start LocalStack**
 ```bash
 docker-compose -f docker/docker-compose.yml up -d
 ```
 
-3. **Run tests**
+LocalStack will be available at `http://localhost:4566` and auto-creates DynamoDB tables on startup.
+
+### 2. Install dependencies and run tests
+
 ```bash
 pip install -r requirements-dev.txt
 pytest tests/ --cov=src
 ```
 
-4. **Simulate sensors**
-```bash
-python scripts/sensor_simulator.py --duration 300
-```
-
-## 📡 API Endpoints
-
-### POST /events
-Ingest sensor event
-```bash
-curl -X POST http://localhost:8080/events \
-  -H "Content-Type: application/json" \
-  -d '{
-    "room_id": "room-a",
-    "sensor_type": "temperature",
-    "value": 22.5,
-    "timestamp": "2026-01-07T12:00:00Z"
-  }'
-```
-
-### GET /rooms
-Get all rooms
-```bash
-curl http://localhost:8080/rooms
-```
-
-### GET /rooms/{room_id}
-Get room details
-```bash
-curl http://localhost:8080/rooms/room-a
-```
-
-## 🧪 Testing
+### 3. Simulate sensors (optional)
 
 ```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=src --cov-report=html
-
-# Run specific test file
-pytest tests/unit/test_services.py -v
+python scripts/sensor_simulator.py --api-url http://localhost:8080
 ```
 
-## 🎨 Project Structure
+---
 
-```
-src/
-├── handlers/          # Lambda handlers
-├── models/            # Data models
-├── repositories/      # Data access layer
-├── services/          # Business logic
-└── utils/             # Utilities
+## Running Tests
 
-tests/
-├── unit/              # Unit tests
-├── integration/       # Integration tests
-└── fixtures/          # Test data
+Tests use `moto` to mock DynamoDB — no Docker or AWS needed.
+
+```bash
+pytest tests/ -v
 ```
 
-## 📊 Database Schema
+Coverage: 80%+ across all source modules.
 
-**SensorEvents Table (DynamoDB)**
-- PK: room_id
-- SK: timestamp
-- Attributes: event_id, sensor_type, value, unit, status
+---
 
-**RoomStatus Table (DynamoDB)**
-- PK: room_id
-- Attributes: name, status, last_update, current_state, alert_count_24h
+## Project Structure
 
-## 🔧 Configuration
-
-Environment variables (see `.env.example`):
 ```
-AWS_REGION=eu-west-1
-DYNAMODB_TABLE_EVENTS=SensorEvents
-DYNAMODB_TABLE_ROOMS=RoomStatus
+project1a-smart-room-monitor/
+├── src/
+│   ├── handlers/          # Lambda entry points
+│   ├── models/            # Pydantic domain models
+│   ├── repositories/      # DynamoDB access layer
+│   ├── services/          # Business logic + anomaly detection
+│   └── utils/             # HTTP response helpers
+├── tests/
+│   └── unit/              # pytest + moto tests
+├── infrastructure/
+│   ├── cloudformation.yaml         # Lambda + API Gateway + DynamoDB + IAM
+│   └── github-actions-iam.yml      # CI/CD IAM user (least-privilege)
+├── docker/
+│   ├── docker-compose.yml          # LocalStack
+│   ├── Dockerfile                  # Lambda runtime image
+│   └── localstack-init.sh          # Auto-creates tables on startup
+└── scripts/
+    ├── add_test_room.py            # Seed demo room data
+    └── sensor_simulator.py         # Simulate IoT sensor events
 ```
 
-## 🛳️ Deployment
+---
+
+## Deployment
 
 Deploy to AWS using CloudFormation:
+
 ```bash
 aws cloudformation deploy \
   --template-file infrastructure/cloudformation.yaml \
-  --stack-name smart-room-monitor \
+  --stack-name smart-room-monitor-prod \
   --capabilities CAPABILITY_IAM
 ```
 
+---
 
-## 🔒 Licentie
-
-Deze code is uitsluitend bedoeld voor gebruik door het projectteam Smart Room Monitor. Gebruik, verspreiding of kopiëren door derden is niet toegestaan zonder expliciete toestemming.
-
-## 🔒 Git & Deployment Best Practices
-
-- Commit en push alleen broncode, scripts en configuratiebestanden.
-- Voeg alle Lambda zip-bestanden (zoals lambda_package.zip, lambda_room_detail.zip, lambda_ingest_event.zip) toe aan .gitignore. Deze build-artifacts horen niet in git.
-- Voeg testdata en coverage output (zoals htmlcov/, scripts/test-events/*.json) ook toe aan .gitignore.
-- Herhaal dit voor elke nieuwe Lambda-functie (zoals room details, ingest event, etc).
-- Frontend-bestanden en build-artifacts van de backend mogen niet naar elkaar gekopieerd of gecommit worden.
-
-Zie .gitignore voor voorbeelden.
+© 2026 Álvaro González Sánchez
