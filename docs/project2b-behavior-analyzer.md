@@ -14,15 +14,17 @@ herhaling om te demonstreren dat dezelfde businesslogica met andere tools oplosb
 | Processing | Python (pandas) | PySpark (gedistribueerd) |
 | Infra | Terraform + Aurora Serverless v2 | Terraform + RDS PostgreSQL |
 | Visualisatie | REST API | Power BI rapport |
+| AI interface | — | RAG bot (LLM + pgvector) |
 | CD | — | Jenkins (dev → staging → prod) |
 
 ## Tech Stack
 
 - **Orkestratie:** Apache Airflow 2.x (Docker via officieel `apache/airflow` image)
 - **Processing:** PySpark 3.x (Spark SQL + MLlib voor patroondetectie)
-- **Database:** RDS PostgreSQL (`db.t3.micro` op AWS; lokaal via Docker)
+- **Database:** RDS PostgreSQL (`db.t3.micro` op AWS; lokaal via Docker) + pgvector extensie
 - **Opslag:** S3 (ruwe sensor events als Parquet bestanden)
 - **Visualisatie:** Power BI Desktop (DirectQuery op PostgreSQL)
+- **LLM / RAG:** OpenAI API (of Ollama lokaal) + pgvector voor semantisch zoeken over patronen en anomalieën
 - **Infra:** Terraform
 - **CI:** GitHub Actions (ruff, mypy, pytest, terraform validate)
 - **CD:** Jenkins (declaratief, lokaal via Docker — zie [docs/jenkins-cd-pipeline.md](jenkins-cd-pipeline.md))
@@ -151,6 +153,67 @@ with DAG(
 
     extract >> transform >> analyze
 ```
+
+## RAG Interface (LLM + Semantic Search)
+
+Na afloop van het data engineering gedeelte wordt een RAG (Retrieval-Augmented Generation)
+interface toegevoegd die natuurlijke taal queries mogelijk maakt over de gedetecteerde
+patronen en anomalieën in PostgreSQL.
+
+**Waarom hier?** De patterns en anomalies tabellen bevatten beschrijvende tekst
+(`pattern_type`, `anomaly_type`, `details`). Dat is een natuurlijke kandidaat voor
+semantisch zoeken: een gebruiker vraagt *"Welke anomalieën waren er vorige week in kamer A?"*
+en het systeem zoekt via embeddings in plaats van exacte SQL-match.
+
+**Architectuur:**
+```
+Gebruiker (vraag in natuurlijke taal)
+        │
+        ▼
+  RAG bot (Python)
+        │
+        ├── 1. Embed de vraag (OpenAI text-embedding of Ollama lokaal)
+        ├── 2. Semantisch zoeken in pgvector (cosine similarity op pattern/anomaly beschrijvingen)
+        ├── 3. Top-k resultaten als context meegeven aan LLM
+        └── 4. LLM genereert antwoord (GPT-4 of open source via Ollama)
+```
+
+**Componenten:**
+- `pgvector` PostgreSQL extensie — opslaan van embedding vectoren naast bestaande data
+- `jobs/embed_patterns.py` — Airflow task die na Analyze draait: embeds `pattern_data` en `details`
+  kolommen en schrijft vectoren naar PostgreSQL via pgvector
+- `rag/bot.py` — RAG query interface:
+  ```python
+  from openai import OpenAI
+  import psycopg2
+
+  def query(question: str) -> str:
+      embedding = client.embeddings.create(input=question, model="text-embedding-3-small")
+      # pgvector nearest neighbour
+      rows = db.execute(
+          "SELECT details FROM anomalies ORDER BY embedding <=> %s LIMIT 5",
+          (embedding.data[0].embedding,)
+      )
+      context = "\n".join(r[0] for r in rows)
+      return client.chat.completions.create(
+          model="gpt-4o-mini",
+          messages=[
+              {"role": "system", "content": "Je bent een IoT data analist."},
+              {"role": "user", "content": f"Context:\n{context}\n\nVraag: {question}"}
+          ]
+      ).choices[0].message.content
+  ```
+- Prompt injection preventie: context wordt gesaniteerd voor het aan de LLM meegegeven wordt
+- Lokaal alternatief: Ollama (`ollama run llama3`) — geen API kosten
+
+**Technieken uit de LinkedIn Learning cursus (LLMs + Prompt Engineering):**
+- Semantic search met cross-encoders
+- RAG bot bouwen
+- Prompt chaining + input/output validatie
+- Prompt injection attacks voorkomen
+- Chain-of-thought prompting voor anomalie uitleg
+
+---
 
 ## Power BI Rapport
 
