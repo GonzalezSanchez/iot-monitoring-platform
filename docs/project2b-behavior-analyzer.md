@@ -62,53 +62,84 @@ S3 (sensor events als Parquet)
 
 Zelfde schema als Project 2a — opzettelijk, om portabiliteit te demonstreren.
 
-**raw_sensor_data:**
+De maandelijkse partitionering van `raw_sensor_data` is geïnspireerd op het
+[fastapi-dbuploader](https://gitlab.com/dmorel69/fastapi-dbuploader) project
+(gebruikt met toestemming — zie LinkedIn conversatie april 2026).
+
+**raw_sensor_data** (maandelijks gepartitioneerd op `ts`):
 ```sql
-CREATE TABLE raw_sensor_data (
-    id UUID PRIMARY KEY,
-    entity_id VARCHAR(100) NOT NULL,
-    entity_type VARCHAR(50) NOT NULL,
-    timestamp TIMESTAMPTZ NOT NULL,
-    data JSONB NOT NULL,
-    processed BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-CREATE INDEX idx_rsd_entity_timestamp ON raw_sensor_data (entity_id, timestamp);
-CREATE INDEX idx_rsd_processed ON raw_sensor_data (processed);
+-- Partitioned table — inspired by https://gitlab.com/dmorel69/fastapi-dbuploader
+CREATE TABLE IF NOT EXISTS raw_sensor_data (
+    id            BIGSERIAL,
+    event_id      TEXT          NOT NULL,
+    device_id     TEXT          NOT NULL,
+    room_id       TEXT          NOT NULL,
+    ts            TIMESTAMPTZ   NOT NULL,
+    temperature   DOUBLE PRECISION,
+    humidity      DOUBLE PRECISION,
+    motion        BOOLEAN,
+    occupancy     BOOLEAN,
+    raw_payload   JSONB         NOT NULL,
+    ingested_at   TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id, ts)
+) PARTITION BY RANGE (ts);
+
+-- Monthly partitions created automatically by scripts/manage_partitions.py
+-- Example: raw_sensor_data_2026_01, raw_sensor_data_2026_02, ...
+CREATE INDEX IF NOT EXISTS idx_raw_sensor_data_room_id ON raw_sensor_data (room_id);
+CREATE INDEX IF NOT EXISTS idx_raw_sensor_data_event_id ON raw_sensor_data (event_id);
 ```
 
 **patterns:**
 ```sql
 CREATE TABLE patterns (
-    id UUID PRIMARY KEY,
-    entity_id VARCHAR(100) NOT NULL,
-    entity_type VARCHAR(50) NOT NULL,
-    pattern_type VARCHAR(100) NOT NULL,
-    confidence DECIMAL(3,2) NOT NULL,
-    pattern_data JSONB NOT NULL,
-    detected_at TIMESTAMPTZ NOT NULL,
-    valid_from TIMESTAMPTZ NOT NULL,
-    valid_until TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    id            BIGSERIAL     PRIMARY KEY,
+    job_id        TEXT          NOT NULL,
+    entity_type   TEXT          NOT NULL,
+    entity_id     TEXT          NOT NULL,
+    pattern_type  TEXT          NOT NULL,
+    period_start  TIMESTAMPTZ   NOT NULL,
+    period_end    TIMESTAMPTZ   NOT NULL,
+    data          JSONB         NOT NULL,
+    created_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_patterns_entity ON patterns (entity_id, entity_type);
+CREATE INDEX idx_patterns_entity ON patterns (entity_type, entity_id);
+CREATE INDEX idx_patterns_job_id ON patterns (job_id);
 ```
 
 **anomalies:**
 ```sql
 CREATE TABLE anomalies (
-    id UUID PRIMARY KEY,
-    entity_id VARCHAR(100) NOT NULL,
-    anomaly_type VARCHAR(100) NOT NULL,
-    severity VARCHAR(20) NOT NULL,
-    timestamp TIMESTAMPTZ NOT NULL,
-    details JSONB NOT NULL,
-    resolved BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    id            BIGSERIAL     PRIMARY KEY,
+    job_id        TEXT          NOT NULL,
+    entity_type   TEXT          NOT NULL,
+    entity_id     TEXT          NOT NULL,
+    anomaly_type  TEXT          NOT NULL,
+    detected_at   TIMESTAMPTZ   NOT NULL,
+    severity      TEXT          NOT NULL,
+    data          JSONB         NOT NULL,
+    created_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_anomalies_entity_timestamp ON anomalies (entity_id, timestamp);
-CREATE INDEX idx_anomalies_resolved ON anomalies (resolved);
+CREATE INDEX idx_anomalies_entity ON anomalies (entity_type, entity_id);
+CREATE INDEX idx_anomalies_job_id ON anomalies (job_id);
 ```
+
+## Partition Management
+
+Maandelijkse partities voor `raw_sensor_data` worden beheerd door `scripts/manage_partitions.py`.
+Dit script is geïnspireerd op `fastapi-dbuploader/src/common/partitions.py`
+(gebruikt met toestemming — zie LinkedIn conversatie april 2026).
+
+```bash
+# Maak partities aan voor de komende 3 maanden
+python scripts/manage_partitions.py --months-ahead 3
+
+# Dry run — print SQL zonder uit te voeren
+python scripts/manage_partitions.py --months-ahead 3 --dry-run
+```
+
+Het script draait ook als Airflow task aan het begin van elke DAG run zodat
+partities altijd bestaan voor de huidige en volgende maand.
 
 ## PySpark Jobs
 
@@ -290,7 +321,10 @@ backend/project2b-behavior-analyzer/
 │   └── outputs.tf
 ├── scripts/
 │   ├── migrate.py               ← DB schema aanmaken
+│   ├── manage_partitions.py     ← maandelijkse partities aanmaken (geïnspireerd op fastapi-dbuploader)
 │   └── seed_data.py             ← testdata genereren (Parquet naar MinIO)
+├── rag/
+│   └── bot.py                   ← RAG query interface (pgvector + LLM)
 ├── tests/
 │   ├── unit/
 │   │   ├── test_extract.py
