@@ -100,11 +100,31 @@ Phase 6: Power BI rapport
         │   └── Trend: temperatuur trend over tijd (line chart)
         └── .pbix bestand → reports/ (gitignored, screenshot in README)
 
-Phase 7: CI/CD + Documentatie
+Phase 7: RAG interface (LLM + pgvector)
+────────────────────────────────────────
+  [11t] Tests: embed job
+        ├── bekende pattern_data string → embedding vector opgeslagen in pgvector
+        └── cosine similarity query → meest relevante rij bovenaan
+  [11] pgvector extensie + embed_patterns Airflow task
+        ├── `CREATE EXTENSION IF NOT EXISTS vector` in migrate.py
+        ├── Nieuw veld: `embedding vector(1536)` op patterns + anomalies tabellen
+        └── jobs/embed_patterns.py: Airflow task na analyze_task
+            leest patterns/anomalies → OpenAI embeddings → schrijft vectoren
+
+  [12t] Tests: RAG bot
+        ├── query() returnt een string (niet leeg)
+        └── prompt injection check: kwaadaardige input escapet correct
+  [12] RAG bot (`rag/bot.py`)
+        ├── embed_question() → OpenAI text-embedding-3-small (of Ollama lokaal)
+        ├── semantic_search() → pgvector cosine similarity top-5
+        ├── generate_answer() → GPT-4o-mini met context + chain-of-thought prompt
+        └── Lokaal alternatief: Ollama llama3 (geen API kosten)
+
+Phase 8: CI/CD + Documentatie
 ──────────────────────────────
-  [11] CI uitbreiden
+  [13] CI uitbreiden
         ├── Voeg project2b toe aan .github/workflows/ci.yml
-        ├── ruff + mypy op dags/ en jobs/
+        ├── ruff + mypy op dags/, jobs/, rag/
         ├── pytest tests/unit/ --cov-fail-under=80
         └── terraform validate
 
