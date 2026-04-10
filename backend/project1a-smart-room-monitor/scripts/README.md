@@ -8,6 +8,7 @@ Utility scripts for local development, testing, and demo data management.
 
 | Script | Purpose | When to use |
 |--------|---------|-------------|
+| `build.sh` | Build Lambda deployment package (deps to `dist/`, never `src/`) | Before deploying to AWS |
 | `add_test_room.py` | Insert a demo room directly into DynamoDB | Once, after deploying infrastructure |
 | `sensor_simulator.py` | Simulate IoT sensors sending events to the API | Local development and demos |
 | `test-lambda-local.sh` | Invoke a Lambda handler locally in Docker | Local development with LocalStack |
@@ -17,13 +18,25 @@ Utility scripts for local development, testing, and demo data management.
 
 ## Execution Order (first-time setup)
 
-1. **Deploy infrastructure** (CloudFormation stack) — creates DynamoDB tables and Lambda functions
-2. **`add_test_room.py`** — seed initial room data so the dashboard is not empty
-3. **`sensor_simulator.py`** — send live events to demonstrate the full pipeline
+1. **`build.sh`** — build the Lambda deployment package
+2. **Deploy infrastructure** (CloudFormation stack) — creates DynamoDB tables and Lambda functions
+3. **`add_test_room.py`** — seed initial room data so the dashboard is not empty
+4. **`sensor_simulator.py`** — send live events to demonstrate the full pipeline
 
 ---
 
 ## Scripts
+
+### `build.sh`
+
+Builds the Lambda deployment package. Installs dependencies into `dist/python/` (never into `src/`) and zips everything into `dist/lambda_package.zip`.
+
+```bash
+cd backend/project1a-smart-room-monitor
+./scripts/build.sh
+```
+
+---
 
 ### `add_test_room.py`
 
