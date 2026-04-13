@@ -1,190 +1,220 @@
-# Project 2a — Behavior Pattern Analyzer
+# Project 2a — Behavior Pattern Analyzer (AWS native)
 
-ETL pipeline that reads historical sensor data from Project 1a (DynamoDB) and detects behavioral patterns and anomalies across rooms over time. Scheduled batch processing via EventBridge + Step Functions, results stored in Aurora Serverless v2 and exposed via REST API.
+## Beschrijving
 
-## Stack
+ETL pipeline die historische sensor data uit project 1a (DynamoDB) leest, gedragspatronen en anomalieën detecteert per kamer, en de resultaten opslaat in Aurora PostgreSQL. Resultaten zijn opvraagbaar via een REST API.
 
-- **Runtime:** Python 3.11
-- **Infrastructure:** Terraform
-- **AWS Services:** Lambda, Step Functions, EventBridge Scheduler, Aurora Serverless v2, API Gateway (HTTP), Secrets Manager, VPC Endpoints
-- **Database:** Aurora PostgreSQL 15.10 (Serverless v2 — scales to zero when idle)
-- **Testing:** pytest (unit + integration + regression), moto for DynamoDB mocking
+## Tech Stack
 
-## Architecture
+- **Runtime:** Python 3.13
+- **Cloud Services:** AWS Lambda, Step Functions, EventBridge, Aurora Serverless v2 (PostgreSQL), Secrets Manager, API Gateway
+- **Database:** Aurora Serverless v2 (PostgreSQL — scales to zero when idle)
+- **IaC:** Terraform
+- **Containerization:** Docker (lokale ontwikkeling + CI)
+- **Testing:** pytest (unit, integration, regression)
+- **CI/CD:** GitHub Actions
 
-```
-EventBridge Scheduler (weekly)
-        │
-        ▼
-Step Functions — ETL Pipeline
-        │
-        ├── Extract Lambda   → reads DynamoDB SensorEvents (project 1a)
-        │                      deduplicates, inserts into raw_sensor_data
-        │
-        ├── Transform Lambda → validates readings (temp range, null checks)
-        │                      deletes invalid rows
-        │
-        └── Analyze Lambda   → detects patterns + anomalies
-                               writes to patterns / anomalies tables
+## Features
 
-API Gateway (HTTP)
-        ├── POST /analyze/patterns              → starts ETL execution
-        ├── GET  /analyze/patterns/{job_id}     → returns patterns for a job
-        └── GET  /insights/{entity_type}/{id}   → returns patterns + anomalies per entity
-```
-
-## Key Design Decisions
-
-**No NAT Gateway** — Lambda functions reach AWS APIs via VPC Endpoints instead of a NAT Gateway. Three endpoints are used: DynamoDB (Gateway, free), Secrets Manager (Interface), and CloudWatch Logs (Interface). The CloudWatch Logs endpoint is required — Lambda inside a private subnet cannot reach CloudWatch without it. Traffic stays within the AWS network (security + lower latency) and costs ~$14/month vs ~$32/month for a NAT Gateway.
-
-**Aurora Serverless v2 with auto-pause** — scales between 0.5–2 ACU, pauses after inactivity. Cold start ~5 seconds, acceptable for a scheduled batch pipeline.
-
-**Deploy/destroy strategy** — infrastructure is provisioned on demand for demos and destroyed afterwards. Cost while deployed: ~$15/month. Cost while destroyed: $0.
-
-**Least-privilege IAM** — Lambda role has read-only access to DynamoDB, read-only access to its specific Secrets Manager secret, and scoped Step Functions permissions.
-
-## Patterns Detected
-
-- `occupancy_schedule` — typical occupied hours per room per weekday
-- `temperature_trend` — rising / falling / stable mean temperature over the window
-
-## Anomalies Detected
-
-- `temperature_spike` — reading > mean + 3σ for that room
-- `unusual_activity` — motion detected outside the typical occupancy schedule
-
-## Database Schema
-
-```sql
--- Raw readings ingested from DynamoDB
-CREATE TABLE raw_sensor_data (
-    id            BIGSERIAL     PRIMARY KEY,
-    event_id      TEXT          NOT NULL UNIQUE,
-    device_id     TEXT          NOT NULL,
-    room_id       TEXT          NOT NULL,
-    ts            TIMESTAMPTZ   NOT NULL,
-    temperature   DOUBLE PRECISION,
-    humidity      DOUBLE PRECISION,
-    motion        BOOLEAN,
-    occupancy     BOOLEAN,
-    raw_payload   JSONB         NOT NULL,
-    ingested_at   TIMESTAMPTZ   NOT NULL DEFAULT NOW()
-);
-
--- Behavioral patterns per entity (room / device)
-CREATE TABLE patterns (
-    id            BIGSERIAL     PRIMARY KEY,
-    job_id        TEXT          NOT NULL,
-    entity_type   TEXT          NOT NULL,
-    entity_id     TEXT          NOT NULL,
-    pattern_type  TEXT          NOT NULL,
-    period_start  TIMESTAMPTZ   NOT NULL,
-    period_end    TIMESTAMPTZ   NOT NULL,
-    data          JSONB         NOT NULL,
-    created_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW()
-);
-
--- Anomalies per entity
-CREATE TABLE anomalies (
-    id            BIGSERIAL     PRIMARY KEY,
-    job_id        TEXT          NOT NULL,
-    entity_type   TEXT          NOT NULL,
-    entity_id     TEXT          NOT NULL,
-    anomaly_type  TEXT          NOT NULL,
-    detected_at   TIMESTAMPTZ   NOT NULL,
-    severity      TEXT          NOT NULL,  -- low | medium | high
-    data          JSONB         NOT NULL,
-    created_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW()
-);
-```
+- ETL pipeline: Extract (DynamoDB → Aurora) → Transform (validatie + normalisatie) → Analyze (pattern + anomaly detection)
+- Pattern detection: `occupancy_schedule`, `temperature_trend`
+- Anomaly detection: `temperature_spike` (> mean + 3σ), `unusual_activity` (beweging buiten typische bezettingsuren)
+- Scheduled batch processing via EventBridge + Step Functions
+- REST API voor het ophalen van resultaten per entity
 
 ## API Endpoints
 
 ### POST /analyze/patterns
-Starts a new ETL execution for a given time window.
+Start een nieuwe ETL-job voor een tijdvenster.
 
-```json
-// Request
-{ "days_back": 7 }
-
-// Response 202
-{ "job_id": "uuid", "execution_arn": "arn:aws:states:..." }
-```
-
-### GET /analyze/patterns/{job_id}
-Returns all patterns detected for a given ETL job.
-
+**Request:**
 ```json
 {
-  "job_id": "uuid",
+  "days_back": 7
+}
+```
+
+`days_back` is optioneel (default: 7).
+
+**Response (202):**
+```json
+{
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "execution_arn": "arn:aws:states:eu-central-1:123456789:execution:..."
+}
+```
+
+---
+
+### GET /analyze/patterns/{job_id}
+Haal alle gedetecteerde patterns op voor een specifieke job.
+
+**Response (200):**
+```json
+{
+  "job_id": "550e8400-...",
   "patterns": [
     {
+      "job_id": "550e8400-...",
       "entity_type": "room",
-      "entity_id": "room-a",
+      "entity_id": "conference-a1",
       "pattern_type": "occupancy_schedule",
-      "data": { "schedule": { "0": [9, 10, 11] } },
-      "period_start": "2026-01-01T00:00:00Z",
-      "period_end": "2026-01-07T23:59:59Z"
+      "data": { "typical_hours": { "Monday": [9, 17] } },
+      "period_start": "2026-01-06T00:00:00Z",
+      "period_end": "2026-01-13T00:00:00Z"
     }
   ]
 }
 ```
 
-### GET /insights/{entity_type}/{entity_id}
-Returns all patterns and anomalies for a room or device.
+---
 
+### GET /insights/{entity_type}/{entity_id}
+Haal alle patterns en anomalieën op voor één entity (kamer of device).
+
+**Response (200):**
 ```json
 {
   "entity_type": "room",
-  "entity_id": "room-a",
-  "patterns": [ ... ],
-  "anomalies": [ ... ]
+  "entity_id": "conference-a1",
+  "patterns": [
+    {
+      "job_id": "...",
+      "entity_type": "room",
+      "entity_id": "conference-a1",
+      "pattern_type": "occupancy_schedule",
+      "data": { ... },
+      "period_start": "2026-01-06T00:00:00Z",
+      "period_end": "2026-01-13T00:00:00Z"
+    }
+  ],
+  "anomalies": [
+    {
+      "job_id": "...",
+      "entity_type": "room",
+      "entity_id": "conference-a1",
+      "anomaly_type": "temperature_spike",
+      "detected_at": "2026-01-10T14:00:00Z",
+      "severity": "high",
+      "data": { "value": 38.2, "mean": 22.1, "stddev": 1.8 }
+    }
+  ]
 }
 ```
 
-## Infrastructure
+## Database Schema (Aurora PostgreSQL)
 
-Provisioned via Terraform in `infrastructure/`:
+**Table:** `raw_sensor_data`
+```sql
+CREATE TABLE raw_sensor_data (
+    id          BIGSERIAL    PRIMARY KEY,
+    event_id    TEXT         NOT NULL UNIQUE,
+    device_id   TEXT         NOT NULL,
+    room_id     TEXT         NOT NULL,
+    ts          TIMESTAMPTZ  NOT NULL,
+    temperature DOUBLE PRECISION,
+    humidity    DOUBLE PRECISION,
+    motion      BOOLEAN,
+    occupancy   BOOLEAN,
+    raw_payload JSONB        NOT NULL,
+    ingested_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+```
 
-| File | What it creates |
-|---|---|
-| `vpc.tf` | VPC, private subnets, security groups, VPC endpoints |
-| `database.tf` | Aurora Serverless v2 cluster + instance |
-| `iam.tf` | Lambda, Step Functions, EventBridge roles |
-| `secrets.tf` | Secrets Manager secret for DB credentials |
-| `lambdas.tf` | 6 Lambda functions + dependency layer |
-| `stepfunctions.tf` | ETL state machine (Extract → Transform → Analyze) |
-| `apigateway.tf` | HTTP API with 3 routes |
-| `eventbridge.tf` | Weekly scheduler (Sunday 02:00 UTC) |
+**Table:** `patterns`
+```sql
+CREATE TABLE patterns (
+    id           BIGSERIAL   PRIMARY KEY,
+    job_id       TEXT        NOT NULL,
+    entity_type  TEXT        NOT NULL,  -- 'room' | 'device'
+    entity_id    TEXT        NOT NULL,
+    pattern_type TEXT        NOT NULL,  -- 'occupancy_schedule' | 'temperature_trend'
+    period_start TIMESTAMPTZ NOT NULL,
+    period_end   TIMESTAMPTZ NOT NULL,
+    data         JSONB       NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
 
-## Usage
+**Table:** `anomalies`
+```sql
+CREATE TABLE anomalies (
+    id           BIGSERIAL   PRIMARY KEY,
+    job_id       TEXT        NOT NULL,
+    entity_type  TEXT        NOT NULL,  -- 'room' | 'device'
+    entity_id    TEXT        NOT NULL,
+    anomaly_type TEXT        NOT NULL,  -- 'temperature_spike' | 'unusual_activity'
+    detected_at  TIMESTAMPTZ NOT NULL,
+    severity     TEXT        NOT NULL,  -- 'low' | 'medium' | 'high'
+    data         JSONB       NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+## Architectuur
+
+```
+EventBridge (Scheduled) ──► Step Functions
+                                  │
+                    ┌─────────────┼─────────────┐
+                    ▼             ▼             ▼
+             Lambda (Extract) → Lambda (Transform) → Lambda (Analyze)
+                    │                                      │
+                    ▼                                      ▼
+             DynamoDB                              Aurora PostgreSQL
+             (project 1a)                         (patterns, anomalies)
+
+API Gateway ──► Lambda (POST /analyze/patterns)  → Step Functions (start execution)
+            ──► Lambda (GET  /analyze/patterns/{job_id}) → Aurora PostgreSQL
+            ──► Lambda (GET  /insights/{entity_type}/{entity_id}) → Aurora PostgreSQL
+```
+
+**ETL stappen:**
+
+1. **Extract** — leest SensorEvents uit DynamoDB (project 1a) voor het opgegeven tijdvenster, schrijft naar `raw_sensor_data`
+2. **Transform** — valideert en normaliseert de ruwe data (deduplicatie, type casting)
+3. **Analyze** — detecteert patterns en anomalieën per kamer, schrijft naar `patterns` en `anomalies`
+
+## Security
+
+Intentionally excluded from this project — see [Project 3: IoT Device Gateway](project3-iot-gateway.md) for authentication with JWT via Cognito.
+
+Aurora credentials worden beheerd via AWS Secrets Manager (productie) of `.env` (lokaal).
+
+## Installatie & Gebruik
 
 ```bash
 cd backend/project2a-behavior-analyzer
 
-# Start lokale PostgreSQL database
-docker compose -f docker/docker-compose.yml up -d
+# Lokale database opzetten (PostgreSQL via Docker)
+docker-compose up -d db
 
-# Run DB migrations (once after deploy)
+# Database migraties uitvoeren
 python scripts/migrate.py
 
-# Deploy infrastructure
-./scripts/deploy.sh prod
+# Deploy naar AWS (Terraform)
+cd infrastructure
+terraform init
+terraform apply
 
-# Tear down after demo
-./scripts/destroy.sh prod
+# Handmatig een analyse starten
+curl -X POST https://<api-gateway-url>/analyze/patterns \
+  -H "Content-Type: application/json" \
+  -d '{"days_back": 7}'
 ```
 
 ## Testing
 
 ```bash
-# Unit tests (no AWS needed)
+# Unit tests (gemockte AWS + DB)
 pytest tests/unit/
 
-# Integration tests (requires Docker PostgreSQL)
-docker-compose up -d
+# Integration tests (vereist lokale PostgreSQL)
 pytest tests/integration/
 
+# Regression tests
+pytest tests/regression/
+
 # Coverage
-pytest --cov=lambdas tests/unit/
+pytest --cov=lambdas tests/
 ```
