@@ -1,0 +1,10 @@
+{
+  "httpMethod": "POST",
+  "path": "/events",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "queryStringParameters": null,
+  "pathParameters": null,
+  "body": "{\"room_id\": \"room-001\", \"sensor_type\": \"temperature\", \"value\": 25.5, \"timestamp\": \"2026-01-09T14:30:00Z\"}"
+}
