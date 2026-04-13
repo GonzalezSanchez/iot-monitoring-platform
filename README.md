@@ -65,6 +65,7 @@ processed through anomaly detection, and stored in DynamoDB.
 **Infrastructure:** Provisioned via CloudFormation (tables + IAM — least-privilege)
 **CI/CD:** GitHub Actions — tests on every push, deploy to AWS on merge to main
 **Tests:** 108 unit tests, 82% coverage (pytest + moto for DynamoDB mocking)
+**Auth:** Intentionally excluded — device authentication (JWT via Cognito) is covered in Project 3
 
 [View project](backend/project1a-smart-room-monitor/)
 
@@ -78,6 +79,7 @@ containerised application. A deliberate choice to show infrastructure independen
 **Stack:** Python, FastAPI, DynamoDB (AWS), Docker, nginx, Cloudflare tunnel
 **Live:** [iot.gonzalezsanchez.dev](https://iot.gonzalezsanchez.dev)
 **API docs:** [iot.gonzalezsanchez.dev/docs](https://iot.gonzalezsanchez.dev/docs)
+**Auth:** Intentionally excluded — device authentication (JWT via Cognito) is covered in Project 3
 
 [View project](backend/project1b-smart-room-monitor-fastapi/)
 
@@ -90,10 +92,10 @@ behavioral patterns across rooms over time — occupancy schedules, temperature 
 unusual activity. Scheduled batch processing via EventBridge + Step Functions, results
 stored in Aurora Serverless v2 and exposed via REST API.
 
-**Stack:** Python, AWS Lambda, Step Functions, EventBridge, Aurora Serverless v2, Terraform, Docker
+**Stack:** Python 3.13, AWS Lambda, Step Functions, EventBridge, Aurora Serverless v2, Terraform, Docker
 **Infrastructure:** Provisioned via Terraform (VPC, Aurora, IAM, Secrets Manager)
 **CI:** GitHub Actions — mypy, ruff, pytest (unit + integration + regression), terraform validate
-**Deploy:** On-demand for demos (`./scripts/deploy.sh`) — destroyed after to minimise costs
+**Deploy:** On-demand for demos — destroyed after to minimise costs
 **Tests:** Unit (mocked AWS), integration (real PostgreSQL via Docker), regression (documented production bugs)
 
 [View project](backend/project2a-behavior-analyzer/)
