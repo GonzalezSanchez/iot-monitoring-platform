@@ -165,13 +165,31 @@ pip install -r requirements.txt
 uvicorn src.main:app --reload
 ```
 
-## 8. Security
+## 8. Deployment (server)
+
+The application runs as Docker containers on a home server, exposed via Cloudflare Tunnel.
+CI builds and pushes images to GitHub Container Registry (`ghcr.io`) automatically on every push to `develop` or `main`.
+
+**To update the server after a push:**
+
+```bash
+git pull                                            # sync docker-compose.prod.yml and config changes
+docker compose -f docker-compose.prod.yml pull      # pull the new images from ghcr.io
+docker compose -f docker-compose.prod.yml up -d     # restart containers with the new images
+```
+
+**Infrastructure:**
+- Images: `ghcr.io/gonzalezsanchez/iot-backend:latest`, `ghcr.io/gonzalezsanchez/iot-frontend:latest`
+- Compose file: `docker-compose.prod.yml` at repo root
+- Tunnel: Cloudflare Tunnel proxies `iot.gonzalezsanchez.dev` → frontend container (port 3000)
+
+## 10. Security
 
 Authentication is intentionally excluded from this project. The API endpoints are public to keep the demo accessible without token management.
 
 For a security-focused implementation with device authentication (API keys, JWT via AWS Cognito) and rate limiting, see [Project 3: IoT Device Gateway](project3-iot-gateway.md).
 
-## 9. Testing
+## 11. Testing
 
 ```bash
 # Unit + integration tests
