@@ -1,110 +1,189 @@
-# Backend Developer Portfolio
+![CI](https://github.com/GonzalezSanchez/iot-monitoring-platform/actions/workflows/ci.yml/badge.svg)
 
-**Ontwikkelaar:** Álvaro González Sánchez
-**Datum:** Januari 2026
+# IoT Monitoring Platform
+
+Portfolio project demonstrating backend engineering skills in an IoT context.
+
+The platform ingests sensor data from conference rooms (temperature, humidity, occupancy, motion), runs anomaly detection, and tracks room state in real time.
+
+**Live demo:** [iot.gonzalezsanchez.dev](https://iot.gonzalezsanchez.dev)
+**API docs:** [iot.gonzalezsanchez.dev/docs](https://iot.gonzalezsanchez.dev/docs)
+**Developer:** Álvaro González Sánchez — [gonzalezsanchez.dev](https://gonzalezsanchez.dev) | [LinkedIn](https://www.linkedin.com/in/GonzalezSanchez)
 
 ---
 
-## 📁 Project Structuur
+## Architecture
 
 ```
-PortfolioSensoDos/
-├── backend/                              # Backend projecten
-│   ├── project1-smart-room-monitor/      # Project 1: IoT room monitoring
-│   ├── project2-behavior-analyzer/       # Project 2: Data analytics & ETL
-│   └── project3-iot-gateway/             # Project 3: Device gateway & security
-│
-├── frontend/                             # React dashboard
-│   └── src/
-│       ├── components/                   # React components
-│       ├── pages/                        # Page components
-│       ├── stores/                       # Zustand state management
-│       ├── hooks/                        # React Query custom hooks
-│       ├── services/                     # API calls
-│       ├── utils/                        # Helper functions
-│       ├── DASHBOARD_MOCKUP.jsx          # Main dashboard code
-│       └── DASHBOARD_STYLES.css          # Styling
-│
-└── docs/                                 # Documentatie
+IoT Sensor / API Client
+        │
+        ▼
+ API Gateway (REST)
+        │
+   ┌────┴────────────────┐
+   │                     │
+   ▼                     ▼
+POST /events          GET /rooms
+(ingest_event)        (get_rooms / get_room_detail)
+   │                     │
+   ▼                     ▼
+EventService         RoomRepository
+   │
+   ├── AnomalyDetector (threshold checks)
+   ├── EventRepository (DynamoDB)
+   └── RoomRepository  (DynamoDB — state update)
+
+DynamoDB
+├── SensorEvents  (room_id + timestamp)
+└── RoomStatus    (room_id)
 ```
 
 ---
 
-## 🚀 Projecten Overzicht
+## Platform Architecture
 
-### 1. Smart Room Monitor
-**Tech Stack:** AWS Lambda, DynamoDB, API Gateway, CloudWatch, Python, Docker
-**Status:** 🔜 Planning
-**Beschrijving:** Real-time monitoring van conferentiezalen met IoT sensoren
+A real IoT system has three distinct layers. This platform covers all three:
 
-### 2. Behavior Pattern Analyzer
-**Tech Stack:** AWS Lambda, RDS PostgreSQL, Step Functions, Python, Docker
-**Status:** 🔜 Planning
-**Beschrijving:** ETL pipeline voor detectie van gedragspatronen en anomalieën
+| Layer | Responsibility | Project |
+|-------|---------------|---------|
+| **Device layer** | How devices authenticate and send data securely | Project 3 |
+| **Ingestion layer** | How sensor events are processed and stored | Project 1 / 1b |
+| **Analytics layer** | What patterns emerge from the data over time | Project 2a / 2b |
 
-### 3. IoT Device Gateway Simulator
-**Tech Stack:** API Gateway, Cognito, DynamoDB, SQS, Python, Docker
-**Status:** 🔜 Planning
-**Beschrijving:** Secure gateway voor IoT devices met auth en rate limiting
-
-### 4. React Dashboard
-**Tech Stack:** React, TanStack Query (React Query), Zustand, Chart.js, TailwindCSS
-**Status:** 🔜 Planning
-**Beschrijving:** Dashboard voor visualisatie van alle 3 backend projecten
+Projects 1 and 2 are each implemented twice — deliberately — to demonstrate that the same business logic can be solved with different infrastructure choices.
 
 ---
 
-## 📚 Documentatie
+## Projects
 
-- **[Architectuur Overzicht](docs/architecture.md)** - Systeem architectuur en design principles
-- **[Project 1: Smart Room Monitor](docs/project1-smart-room-monitor.md)** - API endpoints, database schema
-- **[Project 2: Behavior Analyzer](docs/project2-behavior-analyzer.md)** - ETL pipeline, pattern detection
-- **[Project 3: IoT Gateway](docs/project3-iot-gateway.md)** - Device management, security
+### Project 1 — Smart Room Monitor (AWS Lambda + API Gateway)
 
----
+Serverless REST API deployed to AWS. Sensor events are ingested via API Gateway,
+processed through anomaly detection, and stored in DynamoDB.
 
-## 🎯 Competenties Gedemonstreerd
+**Stack:** Python, AWS Lambda, API Gateway, DynamoDB, CloudFormation, CloudWatch
+**Infrastructure:** Provisioned via CloudFormation (tables + IAM — least-privilege)
+**CI/CD:** GitHub Actions — tests on every push, deploy to AWS on merge to main
+**Tests:** 108 unit tests, 82% coverage (pytest + moto for DynamoDB mocking)
+**Auth:** Intentionally excluded — device authentication (JWT via Cognito) is covered in Project 3
 
-✅ **Python OOP** - Domain models, services, repositories
-✅ **RESTful APIs** - AWS API Gateway + Lambda
-✅ **Databases** - PostgreSQL (RDS) + DynamoDB
-✅ **Docker** - Containerization voor alle projecten
-✅ **Git** - Clean commit geschiedenis
-✅ **Distributed Systems** - Event-driven architectuur
-✅ **IoT Context** - Sensor simulaties, low-power thinking
-✅ **Testing** - Unit tests, integration tests (80%+ coverage)
-✅ **Security** - JWT auth, rate limiting, input validation
+[View project](backend/project1a-smart-room-monitor/)
 
 ---
 
-## 🚀 CI/CD Pipeline & Deployment
+### Project 1b — Smart Room Monitor (FastAPI + Docker)
 
-- Automatische deployment via GitHub Actions (zie `.github/workflows/deploy.yml`).
-- Testen worden automatisch uitgevoerd vóór deployment.
-- CloudFormation-template (`backend/project1-smart-room-monitor/infrastructure/cloudformation.yaml`) beheert alle AWS resources: DynamoDB, Lambda, API Gateway.
-- YAML-linting is uitgeschakeld voor CloudFormation-bestanden vanwege AWS-specifieke tags.
+Same domain logic as Project 1, re-implemented with FastAPI and deployed as a
+containerised application. A deliberate choice to show infrastructure independence.
 
-## 🗺️ Project Roadmap & Fases
+**Stack:** Python, FastAPI, DynamoDB (AWS), Docker, nginx, Cloudflare tunnel
+**Live:** [iot.gonzalezsanchez.dev](https://iot.gonzalezsanchez.dev)
+**API docs:** [iot.gonzalezsanchez.dev/docs](https://iot.gonzalezsanchez.dev/docs)
+**Auth:** Intentionally excluded — device authentication (JWT via Cognito) is covered in Project 3
 
-1. Setup & documentatie
-2. CI/CD pipeline
-3. Infrastructure as Code (CloudFormation)
-4. API development
-5. Testing & coverage
-6. Deployment
-7. Monitoring & logging
-8. Security & compliance
-9. Demo & evaluatie
+[View project](backend/project1b-smart-room-monitor-fastapi/)
 
 ---
 
-##  Contact
+### Project 2a — Behavior Pattern Analyzer (AWS native)
 
-**Email:** a.gonzalez.sanchez@gmail.com
-**LinkedIn:** https://www.linkedin.com/in/GonzalezSanchez
-**GitHub:** https://github.com/GonzalezSanchez
+ETL pipeline that reads historical sensor data from Project 1a (DynamoDB) and detects
+behavioral patterns across rooms over time — occupancy schedules, temperature trends,
+unusual activity. Scheduled batch processing via EventBridge + Step Functions, results
+stored in Aurora Serverless v2 and exposed via REST API.
+
+**Stack:** Python 3.13, AWS Lambda, Step Functions, EventBridge, Aurora Serverless v2, Terraform, Docker
+**Infrastructure:** Provisioned via Terraform (VPC, Aurora, IAM, Secrets Manager)
+**CI:** GitHub Actions — mypy, ruff, pytest (unit + integration + regression), terraform validate
+**Deploy:** On-demand for demos — destroyed after to minimise costs
+**Tests:** Unit (mocked AWS), integration (real PostgreSQL via Docker), regression (documented production bugs)
+
+[View project](backend/project2a-behavior-analyzer/)
 
 ---
 
-**Last Updated:** 7 januari 2026
-**Status:** Project setup & planning fase
+### Project 2b — Behavior Pattern Analyzer (Data Engineering stack) *(planned)*
+
+Same analytics goal as Project 2a, re-implemented with a data engineering stack.
+A deliberate choice to demonstrate the same problem solved with different tools.
+
+**Stack:** Python, Apache Airflow, PySpark, RDS PostgreSQL, Power BI
+**CI/CD:** GitHub Actions (CI) + Jenkins (CD) — deployment pipeline with environment promotion (dev → staging → prod)
+
+---
+
+### Project 3 — IoT Device Gateway Simulator *(planned)*
+
+Secure gateway for IoT device registration, authentication (JWT via Cognito), and
+rate limiting. Simulates how a production IoT platform manages devices — registration,
+command & control, reliable message delivery via SQS, and device status monitoring.
+
+**Stack:** Python, AWS API Gateway, Lambda, Cognito, DynamoDB, SQS, Docker
+
+---
+
+### Frontend — React Dashboard
+
+Real-time dashboard for visualising sensor data and room states.
+
+**Stack:** React, Vite, nginx
+**Live:** [iot.gonzalezsanchez.dev](https://iot.gonzalezsanchez.dev)
+
+---
+
+## Skills Demonstrated
+
+| Skill | Where |
+|-------|-------|
+| Python clean architecture (models → services → repositories) | project 1, 1b |
+| RESTful API design | project 1 (Lambda handlers), 1b (FastAPI) |
+| AWS serverless (Lambda, API Gateway, CloudWatch) | project 1 |
+| DynamoDB data modelling | project 1, 1b |
+| Infrastructure as Code (CloudFormation) | project 1, 1b |
+| Infrastructure as Code (Terraform) | project 2a |
+| Docker + multi-stage builds + nginx | project 1b, frontend |
+| CI/CD with GitHub Actions | project 1, 1b |
+| Pydantic v2 models + validation | project 1, 1b |
+| Anomaly detection logic | project 1, 1b |
+| pytest + moto (DynamoDB mocking), 82% coverage | project 1 |
+| mypy + pre-commit hooks | project 1, 1b |
+| Cloudflare tunnel + production deployment | project 1b |
+
+---
+
+## Repository Structure
+
+```
+iot-monitoring-platform/
+├── backend/
+│   ├── project1a-smart-room-monitor/          # AWS Lambda + API Gateway (live)
+│   ├── project1b-smart-room-monitor-fastapi/ # FastAPI + Docker (live)
+│   ├── project2a-behavior-analyzer/          # AWS native ETL pipeline (planned)
+│   ├── project2b-behavior-analyzer/          # Airflow + PySpark (planned)
+│   └── project3-iot-gateway/                 # Device gateway (planned)
+├── docs/                                      # Project specs and architecture
+├── frontend/                                  # React dashboard
+├── docker-compose.prod.yml                    # Production deployment
+└── .github/workflows/                         # CI + deploy pipelines
+```
+
+---
+
+## Running Locally
+
+```bash
+# Backend (FastAPI)
+cd backend/project1b-smart-room-monitor-fastapi
+cp .env.example .env        # fill in your AWS credentials
+pip install -r requirements.txt
+uvicorn main:app --reload
+
+# Frontend
+cd frontend
+npm install
+npm run dev
+```
+
+---
+
+© 2026 Álvaro González Sánchez. All rights reserved.
