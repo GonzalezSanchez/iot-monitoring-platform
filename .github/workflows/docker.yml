@@ -2,7 +2,7 @@ name: Build and Push Docker Images
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
 
 jobs:
   build-and-push:
@@ -34,13 +34,3 @@ jobs:
           context: ./frontend
           push: true
           tags: ghcr.io/gonzalezsanchez/iot-frontend:latest
-
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            docker compose -f ~/iot-monitoring-platform/docker-compose.prod.yml pull
-            docker compose -f ~/iot-monitoring-platform/docker-compose.prod.yml up -d
