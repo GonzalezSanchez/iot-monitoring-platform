@@ -71,7 +71,7 @@ app.add_middleware(
 
 room_repo = RoomRepository()
 event_repo = EventRepository()
-event_service = EventService(event_repo=event_repo, room_repo=room_repo)
+event_service = EventService(event_repo, room_repo)
 
 
 # ---------------------------------------------------------------------------
@@ -79,7 +79,7 @@ event_service = EventService(event_repo=event_repo, room_repo=room_repo)
 # ---------------------------------------------------------------------------
 
 
-@app.get("/health", tags=["Health"])
+@app.get("/health", response_model=Dict[str, Any], tags=["Health"])
 def health_check() -> Dict[str, Any]:
     """Returns API health status. Useful for load balancers and monitoring."""
     return {"status": "ok", "service": "smart-room-monitor"}
