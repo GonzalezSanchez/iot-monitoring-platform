@@ -79,12 +79,6 @@ def _is_valid(row: RawRow) -> bool:
     return True
 
 
-def _mark_processed(conn: psycopg2.extensions.connection, ids: list[int]) -> None:
-    # No-op: rows are not re-selected because Analyze filters by job window.
-    # A future migration can add a processed boolean column if needed.
-    pass
-
-
 def _delete_invalid(conn: psycopg2.extensions.connection, ids: list[int]) -> None:
     if not ids:
         return
