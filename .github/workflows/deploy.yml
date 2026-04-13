@@ -64,12 +64,18 @@ jobs:
         aws lambda update-function-code \
           --function-name ${ENV}-IngestEvent \
           --zip-file fileb://lambda-deployment.zip
+        aws lambda wait function-updated \
+          --function-name ${ENV}-IngestEvent
         aws lambda update-function-code \
           --function-name ${ENV}-GetRooms \
           --zip-file fileb://lambda-deployment.zip
+        aws lambda wait function-updated \
+          --function-name ${ENV}-GetRooms
         aws lambda update-function-code \
           --function-name ${ENV}-GetRoomDetail \
           --zip-file fileb://lambda-deployment.zip
+        aws lambda wait function-updated \
+          --function-name ${ENV}-GetRoomDetail
 
     - name: Get API Endpoint
       id: get_endpoint
