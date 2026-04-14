@@ -7,7 +7,7 @@
 | `deploy.sh` | Runs `terraform init/plan/apply` to provision all infrastructure | Before a demo or when infrastructure changes are needed |
 | `destroy.sh` | Runs `terraform destroy` to tear down all resources | After a demo to stop AWS costs (~$15/month) |
 | `migrate.py` | Creates/updates all database tables and indexes | Once before first run, and after every schema change |
-| `seed.py` | Seeds test sensor data into DynamoDB for local development | Optional — only for local testing with real DynamoDB |
+| `seed_dynamodb.py` | Populates `prod-SensorEvents` with 30 days of realistic historical data | Once before first ETL run — required for meaningful pattern detection |
 
 ## Deploy infrastructure (AWS)
 
@@ -30,6 +30,9 @@ This project is deployed on-demand for demos only, to keep AWS costs near zero.
 # Before demo: deploy everything (~5 min)
 ./scripts/deploy.sh prod
 python scripts/migrate.py
+
+# Seed historical data (required on first deploy — only needed once)
+python scripts/seed_dynamodb.py
 
 # After demo: destroy everything to stop costs
 ./scripts/destroy.sh prod
