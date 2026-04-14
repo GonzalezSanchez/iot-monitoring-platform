@@ -4,9 +4,24 @@
 
 Secure gateway voor IoT devices met authenticatie, rate limiting, en message queuing. Simuleert een production-ready IoT platform met device management.
 
+## Implementatievarianten
+
+Net als project 1/1b en 2a/2b wordt project 3 in twee varianten gebouwd — zelfde beveiligingsconcept, andere infrastructuur:
+
+| | AWS variant (3a) | FastAPI variant (3b) |
+|---|---|---|
+| Device auth | Cognito + API Gateway authorizer | Custom API keys — gehashed in DynamoDB, gevalideerd via FastAPI `Depends()` |
+| JWT | Cognito uitreikt | `python-jose` — zelf implementeren |
+| Message queue | SQS | Lokaal: Redis of simpele DB queue |
+| Rate limiting | API Gateway built-in | Custom middleware in FastAPI |
+
+**Gekozen aanpak voor 3b:** optie 1 — API keys per device. Device registreert, ontvangt een gegenereerde key, elke request valideert via `Depends()`. Toont security thinking (hashing, least-privilege, rate limiting) zonder een volledige auth server. Past bij de portfolio filosofie: niet overengineeren, maar het principe aantonen.
+
+---
+
 ## Tech Stack
 
-- **Runtime:** Python 3.11
+- **Runtime:** Python 3.12
 - **Cloud Services:** AWS API Gateway, Lambda, Cognito, DynamoDB, SQS
 - **Containerization:** Docker
 - **Testing:** pytest
