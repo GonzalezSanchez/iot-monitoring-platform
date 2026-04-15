@@ -70,3 +70,89 @@ fastapi-mcp server  ←── gemount op project 1b FastAPI
 ## Wanneer
 
 Na project 3. Dit is het finale sluitstuk van het platform.
+
+---
+
+## RAG Implementatienotes
+
+*Gebaseerd op referentiegids: "Build a RAG AI Agent From Scratch" (Akhila G, 2026)*
+
+### Onze bron vs PDFs
+
+Haar gids gebruikt PDF-bestanden als kennisbron. Onze bron is historische sensordata in Aurora PostgreSQL (`raw_sensor_data`, `patterns`, `anomalies`). Het principe is identiek — de data moet gechuunkt en geëmbed worden voor vectorzoekopdrachten.
+
+### Chunking strategie
+
+Gebruik `tiktoken` voor token-gebaseerde chunking met overlap:
+
+```python
+import tiktoken
+
+def chunk_sensor_data(text: str, chunk_tokens: int = 450,
+                      overlap_tokens: int = 80) -> list[str]:
+    enc = tiktoken.get_encoding("cl100k_base")
+    tokens = enc.encode(text)
+    chunks = []
+    start = 0
+    while start < len(tokens):
+        end = start + chunk_tokens
+        chunk = enc.decode(tokens[start:end])
+        chunks.append(chunk)
+        start = end - overlap_tokens
+    return chunks
+```
+
+**Vuistregels:**
+- 450 tokens per chunk, 80 overlap — goed startpunt
+- Te groot → ongerichte antwoorden
+- Te klein → verlies van context
+
+### Vector store: pgvector (Aurora)
+
+Geen aparte FAISS service nodig — pgvector is een PostgreSQL extensie die al op Aurora draait:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE sensor_embeddings (
+    id UUID PRIMARY KEY,
+    chunk_text TEXT NOT NULL,
+    embedding VECTOR(1536),
+    source_table VARCHAR(50),  -- 'raw_sensor_data', 'patterns', 'anomalies'
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX ON sensor_embeddings
+    USING ivfflat (embedding vector_cosine_ops);
+```
+
+### RAG flow
+
+```
+Gebruikersvraag
+    │
+    ▼
+Embed query (Claude embeddings of open model)
+    │
+    ▼
+pgvector cosine search → top-k relevante chunks
+    │
+    ▼
+Context opbouwen (chunks samenvoegen)
+    │
+    ▼
+Claude API — antwoord genereren op basis van context
+    │
+    ▼
+Gegrond antwoord (geen hallucinaties)
+```
+
+### Verschil met haar aanpak
+
+| Aspect | Referentie (Akhila G) | Project 4 |
+|---|---|---|
+| Bron | PDF bestanden | Aurora PostgreSQL |
+| Vector store | FAISS (lokaal) | pgvector (Aurora — al aanwezig) |
+| Embeddings | OpenAI text-embedding-3-small | Claude of open model |
+| Generatie | GPT-4o | Claude API (Anthropic) |
+| Extra laag | — | MCP via fastapi-mcp |

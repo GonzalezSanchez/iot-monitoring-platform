@@ -227,3 +227,20 @@ locust -f tests/load/locustfile.py
 - **Burst:** Max 100 requests/minute
 
 Configureerbaar per device type.
+
+---
+
+## Load Testing (locust)
+
+Rate limiting is alleen geloofwaardig als je het kunt bewijzen. Loadtesting met locust toont aan dat:
+- Device X geblokkeerd wordt na X requests/minuut (429 Too Many Requests)
+- Andere devices niet geraakt worden door het gedrag van één device
+- De gateway stabiel blijft onder burst traffic
+
+### Scenario's
+
+1. **Normal load** — 10 devices, elk 1 request/seconde → alles 200
+2. **Rate limit hit** — 1 device stuurt 200 requests/minuut → 429 na de drempel
+3. **Burst isolation** — 1 device bombarded, 9 andere ongestoord → bewijst per-device isolatie
+
+Dit is het sterkste argument voor loadtesting in project 3 — niet performance, maar correctheid van de rate limiting logica.
