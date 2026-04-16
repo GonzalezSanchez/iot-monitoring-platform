@@ -131,7 +131,7 @@ def _make_event(room_id: str, room: dict, dt: datetime, spike: bool = False) -> 
         "event_id": str(uuid.uuid4()),
         "device_id": room["device_id"],
         "room_id": room_id,
-        "ts": dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "timestamp": dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "payload": json.dumps(
             {
                 "temperature": _temperature(room, dt, spike=spike),
@@ -158,7 +158,7 @@ def _inject_spikes(
         indices = random.sample(range(len(events)), min(spikes_per_room, len(events)))
         for i in indices:
             ev = events[i]
-            ts = datetime.strptime(ev["ts"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+            ts = datetime.strptime(ev["timestamp"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
             payload = json.loads(ev["payload"])
             payload["temperature"] = _temperature(rooms[room_id], ts, spike=True)
             ev["payload"] = json.dumps(payload)
@@ -176,9 +176,10 @@ def _inject_unusual_activity(
             i
             for i, ev in enumerate(events)
             if not (
-                datetime.strptime(ev["ts"], "%Y-%m-%dT%H:%M:%SZ").weekday()
+                datetime.strptime(ev["timestamp"], "%Y-%m-%dT%H:%M:%SZ").weekday()
                 in room["occupied_weekdays"]
-                and datetime.strptime(ev["ts"], "%Y-%m-%dT%H:%M:%SZ").hour in room["occupied_hours"]
+                and datetime.strptime(ev["timestamp"], "%Y-%m-%dT%H:%M:%SZ").hour
+                in room["occupied_hours"]
             )
         ]
         if not outside:
@@ -258,7 +259,7 @@ def main() -> None:
     for room_id, evs in events_by_room.items():
         print(f"  {room_id}: {len(evs)} events")
     print(f"  Total: {total} events")
-    print(f"  Date range: {all_events[0]['ts']} → {all_events[-1]['ts']}")
+    print(f"  Date range: {all_events[0]['timestamp']} → {all_events[-1]['timestamp']}")
 
     if args.dry_run:
         print("\nDry run — nothing written to DynamoDB.")
