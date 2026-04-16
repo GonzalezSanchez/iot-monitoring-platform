@@ -27,10 +27,10 @@ EOF
   echo "Created ${TFVARS}"
 fi
 
-cd infrastructure
-
 echo "[0/4] Building Lambda packages..."
 ./scripts/build.sh
+
+cd infrastructure
 
 echo "[1/4] Initialising Terraform..."
 terraform init
