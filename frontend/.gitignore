@@ -1,8 +1,6 @@
-# Ignore environment variables and sensitive files
+# Ignore all environment files — production vars are injected via Docker build args
 .env
 .env.*
-# Exception: .env.production has no secrets (only public API URL)
-!.env.production
 # Node modules
 node_modules/
 # Build output
