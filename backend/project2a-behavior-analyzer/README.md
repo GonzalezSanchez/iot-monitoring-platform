@@ -4,6 +4,13 @@
 
 ETL pipeline die historische sensor data uit project 1a (DynamoDB) leest, gedragspatronen en anomalieën detecteert per kamer, en de resultaten opslaat in Aurora PostgreSQL. Resultaten zijn opvraagbaar via een REST API.
 
+## Deployment
+
+Deployed on-demand for demos — infrastructure is destroyed after each session to minimise AWS costs (Aurora Serverless v2 has a minimum cost even when idle).
+
+To deploy: `cd infrastructure && terraform apply`
+To destroy: `cd infrastructure && terraform destroy`
+
 ## Tech Stack
 
 - **Runtime:** Python 3.13

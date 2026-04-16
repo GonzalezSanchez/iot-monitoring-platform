@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import RoomDashboard from './pages/RoomDashboard';
+import BehaviorDashboard from './pages/BehaviorDashboard';
 import ProjectTabs from './components/ProjectTabs';
 
 function ComingSoon({ title, description }) {
   return (
-    <div style={{ padding: '48px 24px', textAlign: 'center', color: '#6b7280', fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🚧</div>
-      <h2 style={{ margin: '0 0 8px', color: '#374151' }}>{title}</h2>
-      <p style={{ margin: 0, fontSize: '0.875rem' }}>{description}</p>
+    <div className="py-12 px-6 text-center font-sans">
+      <div className="text-4xl mb-3">🚧</div>
+      <h2 className="text-xl font-semibold text-gray-700 mb-2">{title}</h2>
+      <p className="text-sm text-gray-500">{description}</p>
     </div>
   );
 }
@@ -16,15 +17,10 @@ function App() {
   const [activeTab, setActiveTab] = useState('room');
 
   return (
-    <div className="App">
+    <div>
       <ProjectTabs active={activeTab} onChange={setActiveTab} />
       {activeTab === 'room' && <RoomDashboard />}
-      {activeTab === 'behavior' && (
-        <ComingSoon
-          title="Behavior Pattern Analyzer"
-          description="ETL pipeline for detecting behavioral patterns — planned next phase"
-        />
-      )}
+      {activeTab === 'behavior' && <BehaviorDashboard />}
       {activeTab === 'gateway' && (
         <ComingSoon
           title="IoT Device Gateway"
