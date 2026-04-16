@@ -34,6 +34,20 @@ for FUNC in extract transform analyze; do
   echo "  staged: ${FUNC}"
 done
 
+# API lambdas — individual files in lambdas/api/
+for FUNC in post_analyze get_patterns get_insights; do
+  STAGING="${DIST}/staging/${FUNC}"
+  rm -rf "${STAGING}"
+  mkdir -p "${STAGING}"
+
+  cp "${ROOT}/lambdas/api/${FUNC}.py" "${STAGING}/"
+
+  # Shared module
+  cp -r "${ROOT}/lambdas/shared" "${STAGING}/"
+
+  echo "  staged: ${FUNC}"
+done
+
 echo ""
 echo "[build] Building dependency layer (psycopg2-binary, python-dotenv)..."
 echo "        Target platform: manylinux2014_x86_64 (Amazon Linux 2 compatible)"
