@@ -64,7 +64,19 @@ terraform -chdir=infrastructure output -raw api_gateway_url
 # Then trigger the ETL via the API or the frontend Behavior Analyzer tab.
 
 # After demo: destroy everything to stop costs
+# ⚠️  BEFORE running destroy, disable deletion protection first:
+#   In infrastructure/database.tf, change:
+#     deletion_protection = var.environment == "prod"
+#   to:
+#     deletion_protection = false
+#   Then: terraform apply -var-file=terraform.tfvars -target=aws_rds_cluster.aurora -auto-approve
+#   Then run destroy. Revert database.tf afterwards (do NOT commit the change).
 ./scripts/destroy.sh prod
+
+# ⚠️  AFTER destroy: clear the GitHub secret to show "not deployed" in the frontend
+#   GitHub → Settings → Secrets → Actions → VITE_P2A_API_ENDPOINT → set to empty string
+#   Then trigger a rebuild: git commit --allow-empty -m "chore: rebuild frontend — p2a not deployed" && git push origin main
+#   On the server: docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d
 ```
 
 Estimated cost while deployed: ~$15/month (VPC endpoints ~$14, Aurora serverless ~$1 when idle).
@@ -97,9 +109,28 @@ backend "s3" {
 }
 ```
 
+## After redeploy: update GitHub secret and frontend
+
+The API Gateway URL changes every `destroy` + `deploy`. After each redeploy:
+
+```bash
+# 1. Get the new URL
+terraform -chdir=infrastructure output -raw api_gateway_url
+```
+
+Then update **two places**:
+
+**GitHub secret** (used by CI to bake the URL into the Docker image):
+- Go to GitHub → Settings → Secrets → Actions
+- Update `VITE_P2A_API_ENDPOINT` with the new URL
+- Trigger a new Docker build: `git commit --allow-empty -m "chore: rebuild frontend image" && git push`
+- On the server: `docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d`
+
+**Local `.env`** (for local development):
+- Update `VITE_P2A_API_ENDPOINT` in `frontend/.env`
+
 ## Notes
 
 - `migrate.py` is idempotent — safe to run multiple times (`CREATE TABLE IF NOT EXISTS`)
 - In production (AWS): `migrate.py` runs once manually after infrastructure is provisioned
 - Never run `seed_dynamodb.py` against production data
-- The API Gateway URL changes every time you `destroy` + `deploy` — update `VITE_P2A_API_ENDPOINT` in `frontend/.env` after each redeploy

@@ -63,6 +63,8 @@ Open [http://localhost:5173](http://localhost:5173).
 
 > Project 2a is deployed on-demand. If `VITE_P2A_API_ENDPOINT` is not set, the Behavior Analyzer tab shows a "not deployed" message.
 
+All `.env` files are gitignored. In production, variables are injected as Docker build args via GitHub Actions secrets (`VITE_API_ENDPOINT`, `VITE_P2A_API_ENDPOINT`). After each `terraform destroy` + `deploy`, update the `VITE_P2A_API_ENDPOINT` secret in GitHub with the new API Gateway URL and trigger a new Docker build.
+
 ## Project Structure
 
 ```
