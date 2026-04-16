@@ -64,6 +64,13 @@ terraform -chdir=infrastructure output -raw api_gateway_url
 # Then trigger the ETL via the API or the frontend Behavior Analyzer tab.
 
 # After demo: destroy everything to stop costs
+# ⚠️  BEFORE running destroy, disable deletion protection first:
+#   In infrastructure/database.tf, change:
+#     deletion_protection = var.environment == "prod"
+#   to:
+#     deletion_protection = false
+#   Then: terraform apply -var-file=terraform.tfvars -target=aws_rds_cluster.aurora -auto-approve
+#   Then run destroy. Revert database.tf afterwards (do NOT commit the change).
 ./scripts/destroy.sh prod
 ```
 
