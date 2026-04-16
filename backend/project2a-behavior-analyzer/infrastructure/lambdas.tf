@@ -48,7 +48,6 @@ resource "aws_lambda_layer_version" "python_deps" {
 locals {
   lambda_env = {
     SECRETS_MANAGER_SECRET_NAME = aws_secretsmanager_secret.db_credentials.name
-    AWS_REGION                  = var.region
     LOG_LEVEL                   = "INFO"
     DYNAMODB_TABLE_EVENTS       = var.source_dynamodb_table_name
   }
