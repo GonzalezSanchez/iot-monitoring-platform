@@ -47,7 +47,8 @@ def _scan_events(table: Any, start_iso: str, end_iso: str) -> list[dict]:
 
     items: list[dict] = []
     kwargs: dict = {
-        "FilterExpression": "ts BETWEEN :s AND :e",
+        "FilterExpression": "#ts BETWEEN :s AND :e",
+        "ExpressionAttributeNames": {"#ts": "timestamp"},
         "ExpressionAttributeValues": {":s": start_dt, ":e": end_dt},
     }
 
@@ -98,7 +99,7 @@ def _map_item(item: dict) -> dict:
         "event_id": item["event_id"],
         "device_id": item.get("device_id", "unknown"),
         "room_id": item.get("room_id", "unknown"),
-        "ts": item["ts"],
+        "ts": item.get("timestamp", item.get("ts")),  # Support both 'timestamp' and 'ts' keys
         "temperature": payload.get("temperature"),
         "humidity": payload.get("humidity"),
         "motion": payload.get("motion"),
