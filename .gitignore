@@ -16,7 +16,6 @@ build/
 
 # Environment variables
 .env
-.env.*
 .env.local
 .env.*.local
 .env.prod
@@ -41,9 +40,6 @@ __pycache__/
 venv/
 env/
 ENV/
-.venv/
-.mypy_cache/
-.ruff_cache/
 
 # Borrar files (if any remain outside temp)
 borrar*
@@ -60,3 +56,4 @@ htmlcov/
 *.tfstate
 *.tfstate.backup
 .terraform.lock.hcl
+terraform.tfvars
