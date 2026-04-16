@@ -17,7 +17,7 @@ DIST="${ROOT}/dist"
 
 echo "[build] Staging Lambda source files..."
 
-for FUNC in extract transform analyze; do
+for FUNC in extract transform analyze migrate; do
   STAGING="${DIST}/staging/${FUNC}"
   rm -rf "${STAGING}"
   mkdir -p "${STAGING}"
