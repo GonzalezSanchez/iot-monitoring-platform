@@ -24,7 +24,10 @@ cd backend/project2a-behavior-analyzer
 ./scripts/deploy.sh prod
 
 # 2. Run database migrations (once after first deploy)
-python scripts/migrate.py
+aws lambda invoke --function-name p2a-prod-migrate \
+  --region eu-central-1 --log-type Tail /tmp/migrate-output.json
+cat /tmp/migrate-output.json
+# Expected: {"status": "ok", "statements_executed": 9}
 ```
 
 `deploy.sh` will:
@@ -33,6 +36,10 @@ python scripts/migrate.py
 3. Run `terraform plan`
 4. Run `terraform apply`
 
+> **Why a Lambda for migrations?** Aurora runs in a private VPC — no public access.
+> The migrate Lambda runs inside the VPC and can reach Aurora directly.
+> `scripts/migrate.py` is kept for local development only (connects via `.env`).
+
 ## Demo workflow
 
 This project is deployed on-demand for demos only, to keep AWS costs near zero.
@@ -40,7 +47,12 @@ This project is deployed on-demand for demos only, to keep AWS costs near zero.
 ```bash
 # Before demo (~10 min total)
 ./scripts/deploy.sh prod        # 1. provision infrastructure
-python scripts/migrate.py       # 2. create database tables
+
+# 2. create database tables (Lambda runs inside VPC, reaches Aurora)
+aws lambda invoke --function-name p2a-prod-migrate \
+  --region eu-central-1 --log-type Tail /tmp/migrate-output.json
+cat /tmp/migrate-output.json    # expected: {"status": "ok", ...}
+
 python scripts/seed_dynamodb.py # 3. seed 30 days of test data into DynamoDB
 
 # Then trigger the ETL via the API or the frontend Behavior Analyzer tab.
