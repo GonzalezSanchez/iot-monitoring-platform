@@ -52,6 +52,15 @@ A real IoT system has three distinct layers. This platform covers all three:
 
 Projects 1 and 2 are each implemented twice — deliberately — to demonstrate that the same business logic can be solved with different infrastructure choices.
 
+### Shared data contract — `prod-SensorEvents`
+
+Projects 1b and 2a share the same DynamoDB table (`prod-SensorEvents`, partition key: `room_id`, sort key: `timestamp`). In this portfolio setup each project writes its own format:
+
+- **Project 1b** writes individual sensor readings: `{ sensor_type, value, unit, status }`
+- **Project 2a seed** writes combined readings: `{ payload: { temperature, humidity, motion, occupancy } }`
+
+In a real production system, **Project 3 (IoT Gateway)** would own this contract. All devices authenticate through the gateway, which validates and normalises every event before writing to `prod-SensorEvents`. Projects 1b and 2a would then consume a single, consistent format — no per-project adaptation needed.
+
 ---
 
 ## Projects

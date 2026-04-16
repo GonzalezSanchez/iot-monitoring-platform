@@ -17,7 +17,7 @@ DIST="${ROOT}/dist"
 
 echo "[build] Staging Lambda source files..."
 
-for FUNC in extract transform analyze; do
+for FUNC in extract transform analyze migrate; do
   STAGING="${DIST}/staging/${FUNC}"
   rm -rf "${STAGING}"
   mkdir -p "${STAGING}"
@@ -27,6 +27,20 @@ for FUNC in extract transform analyze; do
   # __init__.py (may not exist in all lambdas)
   [[ -f "${ROOT}/lambdas/${FUNC}/__init__.py" ]] && \
     cp "${ROOT}/lambdas/${FUNC}/__init__.py" "${STAGING}/"
+
+  # Shared module
+  cp -r "${ROOT}/lambdas/shared" "${STAGING}/"
+
+  echo "  staged: ${FUNC}"
+done
+
+# API lambdas — individual files in lambdas/api/
+for FUNC in post_analyze get_patterns get_insights; do
+  STAGING="${DIST}/staging/${FUNC}"
+  rm -rf "${STAGING}"
+  mkdir -p "${STAGING}"
+
+  cp "${ROOT}/lambdas/api/${FUNC}.py" "${STAGING}/"
 
   # Shared module
   cp -r "${ROOT}/lambdas/shared" "${STAGING}/"
