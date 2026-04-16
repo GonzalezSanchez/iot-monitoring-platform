@@ -95,11 +95,14 @@ function PatternCard({ pattern }) {
 
   const renderData = () => {
     if (pattern.pattern_type === 'occupancy_schedule') {
+      const schedule = data.schedule || {};
+      const DAY = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
       return (
         <div className="mt-2 space-y-0.5">
-          {Object.entries(data).map(([day, hours]) => (
+          {Object.entries(schedule).map(([day, hours]) => (
             <div key={day} className="text-xs text-gray-600">
-              <span className="font-medium w-24 inline-block capitalize">{day}:</span> {hours}
+              <span className="font-medium w-10 inline-block">{DAY[day] || `Day ${day}`}:</span>{' '}
+              {Array.isArray(hours) ? hours.map(h => `${h}:00`).join(', ') : String(hours)}
             </div>
           ))}
         </div>
@@ -108,9 +111,11 @@ function PatternCard({ pattern }) {
     if (pattern.pattern_type === 'temperature_trend') {
       return (
         <div className="mt-2 text-xs text-gray-600 space-y-0.5">
-          {data.trend     && <div><span className="font-medium">Trend:</span> {data.trend}</div>}
-          {data.slope     != null && <div><span className="font-medium">Slope:</span> {data.slope}</div>}
-          {data.r_squared != null && <div><span className="font-medium">R²:</span> {data.r_squared}</div>}
+          {data.trend        && <div><span className="font-medium">Trend:</span> {data.trend}</div>}
+          {data.delta_celsius != null && <div><span className="font-medium">Δ temp:</span> {data.delta_celsius > 0 ? '+' : ''}{data.delta_celsius}°C</div>}
+          {data.mean_start   != null && <div><span className="font-medium">Start avg:</span> {data.mean_start}°C → <b>{data.mean_end}°C</b></div>}
+          {data.slope        != null && <div><span className="font-medium">Slope:</span> {data.slope}</div>}
+          {data.r_squared    != null && <div><span className="font-medium">R²:</span> {data.r_squared}</div>}
         </div>
       );
     }
