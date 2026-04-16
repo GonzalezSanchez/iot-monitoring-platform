@@ -55,6 +55,12 @@ cat /tmp/migrate-output.json    # expected: {"status": "ok", ...}
 
 python scripts/seed_dynamodb.py # 3. seed 30 days of test data into DynamoDB
 
+# 4. Get the API Gateway URL and update the frontend
+terraform -chdir=infrastructure output -raw api_gateway_url
+# → copy this URL into frontend/.env:
+#   VITE_P2A_API_ENDPOINT=https://<id>.execute-api.eu-central-1.amazonaws.com
+# Note: this URL changes every time you destroy + redeploy
+
 # Then trigger the ETL via the API or the frontend Behavior Analyzer tab.
 
 # After demo: destroy everything to stop costs
@@ -96,3 +102,4 @@ backend "s3" {
 - `migrate.py` is idempotent — safe to run multiple times (`CREATE TABLE IF NOT EXISTS`)
 - In production (AWS): `migrate.py` runs once manually after infrastructure is provisioned
 - Never run `seed_dynamodb.py` against production data
+- The API Gateway URL changes every time you `destroy` + `deploy` — update `VITE_P2A_API_ENDPOINT` in `frontend/.env` after each redeploy
