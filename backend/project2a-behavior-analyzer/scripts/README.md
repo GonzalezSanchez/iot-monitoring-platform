@@ -4,35 +4,46 @@
 
 | Script | Purpose | When to run |
 |--------|---------|-------------|
-| `deploy.sh` | Runs `terraform init/plan/apply` to provision all infrastructure | Before a demo or when infrastructure changes are needed |
+| `build.sh` | Packages Lambda source files into `dist/staging/` | Automatically called by `deploy.sh` |
+| `deploy.sh` | Builds packages + runs `terraform init/plan/apply` | Before a demo or when infrastructure changes are needed |
 | `destroy.sh` | Runs `terraform destroy` to tear down all resources | After a demo to stop AWS costs (~$15/month) |
-| `migrate.py` | Creates/updates all database tables and indexes | Once before first run, and after every schema change |
-| `seed_dynamodb.py` | Populates `prod-SensorEvents` with 30 days of realistic historical data | Once before first ETL run — required for meaningful pattern detection |
+| `migrate.py` | Creates/updates all database tables and indexes | Once after first deploy, and after every schema change |
+| `seed_dynamodb.py` | Seeds 30 days of test sensor data into DynamoDB (prod-SensorEvents) | Once before first ETL run — gives the pipeline data to process |
 
 ## Deploy infrastructure (AWS)
 
+Prerequisites:
+- `infrastructure/terraform.tfvars` must exist (copy from `terraform.tfvars.example` and fill in your values)
+- AWS credentials configured (`aws sts get-caller-identity` must succeed)
+
 ```bash
-# Deploy to prod (default)
+# From project root:
+cd backend/project2a-behavior-analyzer
+
+# 1. Deploy infrastructure (~5 min)
 ./scripts/deploy.sh prod
 
-# Deploy to dev
-./scripts/deploy.sh dev
+# 2. Run database migrations (once after first deploy)
+python scripts/migrate.py
 ```
 
-On first run the script creates `infrastructure/terraform.tfvars` and prompts for the DynamoDB table ARN (from project 1a).
-Aurora endpoint is wired directly into the Secrets Manager secret by Terraform — no manual update needed.
+`deploy.sh` will:
+1. Build Lambda packages into `dist/staging/`
+2. Run `terraform init`
+3. Run `terraform plan`
+4. Run `terraform apply`
 
 ## Demo workflow
 
 This project is deployed on-demand for demos only, to keep AWS costs near zero.
 
 ```bash
-# Before demo: deploy everything (~5 min)
-./scripts/deploy.sh prod
-python scripts/migrate.py
+# Before demo (~10 min total)
+./scripts/deploy.sh prod        # 1. provision infrastructure
+python scripts/migrate.py       # 2. create database tables
+python scripts/seed_dynamodb.py # 3. seed 30 days of test data into DynamoDB
 
-# Seed historical data (required on first deploy — only needed once)
-python scripts/seed_dynamodb.py
+# Then trigger the ETL via the API or the frontend Behavior Analyzer tab.
 
 # After demo: destroy everything to stop costs
 ./scripts/destroy.sh prod
@@ -52,7 +63,7 @@ docker compose -f docker/docker-compose.yml up -d
 python scripts/migrate.py
 
 # 3. (Optional) seed test data
-python scripts/seed.py
+python scripts/seed_dynamodb.py
 ```
 
 ## Terraform state
@@ -72,4 +83,4 @@ backend "s3" {
 
 - `migrate.py` is idempotent — safe to run multiple times (`CREATE TABLE IF NOT EXISTS`)
 - In production (AWS): `migrate.py` runs once manually after infrastructure is provisioned
-- Never run `seed.py` against production data
+- Never run `seed_dynamodb.py` against production data

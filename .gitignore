@@ -50,3 +50,10 @@ borrar*
 coverage.xml
 htmlcov/
 .pytest_cache/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+terraform.tfvars
