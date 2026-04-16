@@ -73,8 +73,9 @@ terraform -chdir=infrastructure output -raw api_gateway_url
 #   Then run destroy. Revert database.tf afterwards (do NOT commit the change).
 ./scripts/destroy.sh prod
 
-# ⚠️  AFTER destroy: clear the GitHub secret to show "not deployed" in the frontend
-#   GitHub → Settings → Secrets → Actions → VITE_P2A_API_ENDPOINT → set to empty string
+# ⚠️  AFTER destroy: delete the GitHub secret to show "not deployed" in the frontend
+#   GitHub → Settings → Secrets → Actions → VITE_P2A_API_ENDPOINT → Delete
+#   (do NOT set to empty string — GitHub ignores empty secrets, old value stays baked in)
 #   Then trigger a rebuild: git commit --allow-empty -m "chore: rebuild frontend — p2a not deployed" && git push origin main
 #   On the server: docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d
 ```
@@ -122,7 +123,8 @@ Then update **two places**:
 
 **GitHub secret** (used by CI to bake the URL into the Docker image):
 - Go to GitHub → Settings → Secrets → Actions
-- Update `VITE_P2A_API_ENDPOINT` with the new URL
+- Create or update `VITE_P2A_API_ENDPOINT` with the new URL
+- Note: setting to empty string does NOT work — delete the secret instead when not deployed
 - Trigger a new Docker build: `git commit --allow-empty -m "chore: rebuild frontend image" && git push`
 - On the server: `docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d`
 
