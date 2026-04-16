@@ -2,35 +2,34 @@ import { useEffect, useState } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_ENDPOINT || '';
 
-const STATUS_COLOR = {
-  normal: '#16a34a',
-  active: '#16a34a',
-  warning: '#d97706',
-  alert: '#dc2626',
-  offline: '#6b7280',
+const STATUS_BADGE = {
+  normal:  'text-green-700 bg-green-50 border-green-600',
+  active:  'text-green-700 bg-green-50 border-green-600',
+  warning: 'text-amber-700 bg-amber-50 border-amber-600',
+  alert:   'text-red-700 bg-red-50 border-red-600',
+  offline: 'text-gray-500 bg-gray-50 border-gray-400',
 };
 
-const STATUS_BG = {
-  normal: '#f0fdf4',
-  active: '#f0fdf4',
-  warning: '#fffbeb',
-  alert: '#fef2f2',
-  offline: '#f9fafb',
+const STATUS_CARD_BORDER = {
+  normal:  'border-green-600',
+  active:  'border-green-600',
+  warning: 'border-amber-600',
+  alert:   'border-red-600',
+  offline: 'border-gray-400',
+};
+
+const STATUS_CARD_BG = {
+  normal:  'bg-green-50',
+  active:  'bg-green-50',
+  warning: 'bg-amber-50',
+  alert:   'bg-red-50',
+  offline: 'bg-gray-50',
 };
 
 function StatusBadge({ status }) {
+  const cls = STATUS_BADGE[status] || 'text-gray-700 bg-gray-100 border-gray-400';
   return (
-    <span style={{
-      background: STATUS_BG[status] || '#f3f4f6',
-      color: STATUS_COLOR[status] || '#374151',
-      border: `1px solid ${STATUS_COLOR[status] || '#d1d5db'}`,
-      borderRadius: '9999px',
-      padding: '2px 10px',
-      fontSize: '0.75rem',
-      fontWeight: 600,
-      textTransform: 'uppercase',
-      letterSpacing: '0.05em',
-    }}>
+    <span className={`${cls} border rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide`}>
       {status}
     </span>
   );
@@ -39,68 +38,51 @@ function StatusBadge({ status }) {
 function RoomCard({ room, selected, onClick }) {
   const state = room.current_state || {};
   const isSelected = selected === room.room_id;
+  const border = isSelected ? 'border-blue-600' : (STATUS_CARD_BORDER[room.status] || 'border-gray-300');
+  const bg    = isSelected ? 'bg-blue-50'    : (STATUS_CARD_BG[room.status]    || 'bg-white');
 
   return (
-    <div
-      onClick={onClick}
-      style={{
-        border: `2px solid ${isSelected ? '#2563eb' : STATUS_COLOR[room.status] || '#d1d5db'}`,
-        borderRadius: '10px',
-        padding: '16px',
-        background: isSelected ? '#eff6ff' : (STATUS_BG[room.status] || '#fff'),
-        cursor: 'pointer',
-        minWidth: '180px',
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-        <strong style={{ fontSize: '1rem' }}>{room.name || room.room_id}</strong>
+    <div onClick={onClick} className={`${border} ${bg} border-2 rounded-xl p-4 cursor-pointer min-w-[180px]`}>
+      <div className="flex justify-between items-center mb-2.5">
+        <strong className="text-base">{room.name || room.room_id}</strong>
         <StatusBadge status={room.status} />
       </div>
-      <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: '1.8' }}>
+      <div className="text-sm text-gray-700 leading-loose">
         {state.temperature != null && <div>Temperature: <b>{state.temperature} °C</b></div>}
-        {state.humidity != null && <div>Humidity: <b>{state.humidity} %</b></div>}
-        {state.occupancy != null && <div>Occupancy: <b>{state.occupancy} people</b></div>}
-        {state.motion != null && <div>Motion: <b>{state.motion ? 'Yes' : 'No'}</b></div>}
-        {Object.keys(state).length === 0 && <div style={{ color: '#9ca3af' }}>No sensor data yet</div>}
+        {state.humidity    != null && <div>Humidity: <b>{state.humidity} %</b></div>}
+        {state.occupancy   != null && <div>Occupancy: <b>{state.occupancy} people</b></div>}
+        {state.motion      != null && <div>Motion: <b>{state.motion ? 'Yes' : 'No'}</b></div>}
+        {Object.keys(state).length === 0 && <div className="text-gray-400">No sensor data yet</div>}
       </div>
-      <div style={{ marginTop: '8px', fontSize: '0.75rem', color: '#6b7280' }}>
-        {room.alert_count_24h > 0 && <span style={{ color: '#dc2626' }}>⚠ {room.alert_count_24h} alert(s) today</span>}
-      </div>
+      {room.alert_count_24h > 0 && (
+        <div className="mt-2 text-xs text-red-600">⚠ {room.alert_count_24h} alert(s) today</div>
+      )}
     </div>
   );
 }
 
 function EventRow({ event }) {
   return (
-    <tr>
-      <td style={{ padding: '6px 12px', fontSize: '0.8rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
+    <>
+      <td className="px-3 py-1.5 text-xs text-gray-500 whitespace-nowrap">
         {new Date(event.timestamp).toLocaleTimeString()}
       </td>
-      <td style={{ padding: '6px 12px', fontSize: '0.8rem' }}>{event.sensor_type}</td>
-      <td style={{ padding: '6px 12px', fontSize: '0.8rem', fontWeight: 600 }}>
-        {event.value} {event.unit}
-      </td>
-      <td style={{ padding: '6px 12px' }}>
-        <StatusBadge status={event.status} />
-      </td>
-    </tr>
+      <td className="px-3 py-1.5 text-xs">{event.sensor_type}</td>
+      <td className="px-3 py-1.5 text-xs font-semibold">{event.value} {event.unit}</td>
+      <td className="px-3 py-1.5"><StatusBadge status={event.status} /></td>
+    </>
   );
 }
 
-const SENSOR_DEFAULTS = {
-  temperature: 22.5,
-  humidity: 55,
-  occupancy: 5,
-  motion: 1,
-};
+const SENSOR_DEFAULTS = { temperature: 22.5, humidity: 55, occupancy: 5, motion: 1 };
 
 function SendEventForm({ onEventSent }) {
-  const [roomId, setRoomId] = useState('room-1');
+  const [roomId, setRoomId]       = useState('room-1');
   const [sensorType, setSensorType] = useState('temperature');
-  const [value, setValue] = useState(SENSOR_DEFAULTS.temperature);
+  const [value, setValue]         = useState(SENSOR_DEFAULTS.temperature);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState(null);
-  const [open, setOpen] = useState(false);
+  const [result, setResult]       = useState(null);
+  const [open, setOpen]           = useState(false);
 
   const handleSensorChange = (type) => {
     setSensorType(type);
@@ -135,30 +117,30 @@ function SendEventForm({ onEventSent }) {
   };
 
   return (
-    <div style={{ marginBottom: '24px', border: '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
+    <div className="mb-6 border border-gray-200 rounded-xl overflow-hidden">
       <button
         onClick={() => setOpen(o => !o)}
-        style={{ width: '100%', padding: '12px 16px', background: '#f9fafb', border: 'none', borderBottom: open ? '1px solid #e5e7eb' : 'none', cursor: 'pointer', textAlign: 'left', fontWeight: 600, fontSize: '0.9rem', color: '#374151' }}
+        className={`w-full px-4 py-3 bg-gray-50 text-left font-semibold text-sm text-gray-700 cursor-pointer border-none ${open ? 'border-b border-gray-200' : ''}`}
       >
         {open ? '▾' : '▸'} Send Sensor Event
       </button>
       {open && (
-        <form onSubmit={handleSubmit} style={{ padding: '16px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-end' }}>
+        <form onSubmit={handleSubmit} className="p-4 flex flex-wrap gap-3 items-end">
           <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginBottom: '4px' }}>Room ID</label>
+            <label className="block text-xs text-gray-500 mb-1">Room ID</label>
             <input
               value={roomId}
               onChange={e => setRoomId(e.target.value)}
               required
-              style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem', width: '120px' }}
+              className="px-2.5 py-1.5 border border-gray-300 rounded-md text-sm w-28"
             />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginBottom: '4px' }}>Sensor Type</label>
+            <label className="block text-xs text-gray-500 mb-1">Sensor Type</label>
             <select
               value={sensorType}
               onChange={e => handleSensorChange(e.target.value)}
-              style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem' }}
+              className="px-2.5 py-1.5 border border-gray-300 rounded-md text-sm"
             >
               <option value="temperature">temperature</option>
               <option value="humidity">humidity</option>
@@ -167,25 +149,25 @@ function SendEventForm({ onEventSent }) {
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginBottom: '4px' }}>Value</label>
+            <label className="block text-xs text-gray-500 mb-1">Value</label>
             <input
               type="number"
               value={value}
               onChange={e => setValue(e.target.value)}
               required
               step="0.1"
-              style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem', width: '80px' }}
+              className="px-2.5 py-1.5 border border-gray-300 rounded-md text-sm w-20"
             />
           </div>
           <button
             type="submit"
             disabled={submitting}
-            style={{ padding: '7px 18px', background: submitting ? '#93c5fd' : '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 600, fontSize: '0.875rem', cursor: submitting ? 'not-allowed' : 'pointer' }}
+            className={`px-4 py-1.5 text-white border-none rounded-md font-semibold text-sm ${submitting ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 cursor-pointer'}`}
           >
             {submitting ? 'Sending…' : 'Send'}
           </button>
           {result && (
-            <div style={{ width: '100%', marginTop: '4px', padding: '8px 12px', background: result.ok ? '#f0fdf4' : '#fef2f2', border: `1px solid ${result.ok ? '#86efac' : '#fca5a5'}`, borderRadius: '6px', fontSize: '0.8rem', color: result.ok ? '#15803d' : '#dc2626' }}>
+            <div className={`w-full mt-1 px-3 py-2 rounded-md text-xs ${result.ok ? 'bg-green-50 border border-green-300 text-green-700' : 'bg-red-50 border border-red-300 text-red-600'}`}>
               {result.ok
                 ? `Status: ${result.data.status} — event saved for ${result.data.room_id}`
                 : `Error: ${result.data.detail || 'Unknown error'}`}
@@ -198,11 +180,11 @@ function SendEventForm({ onEventSent }) {
 }
 
 function RoomDashboard() {
-  const [rooms, setRooms] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [rooms, setRooms]               = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState(null);
   const [selectedRoom, setSelectedRoom] = useState(null);
-  const [events, setEvents] = useState([]);
+  const [events, setEvents]             = useState([]);
   const [eventsLoading, setEventsLoading] = useState(false);
 
   const fetchRooms = () => {
@@ -229,10 +211,7 @@ function RoomDashboard() {
   }, []);
 
   useEffect(() => {
-    if (!selectedRoom) {
-      setEvents([]);
-      return;
-    }
+    if (!selectedRoom) { setEvents([]); return; }
 
     const fetchEvents = () => {
       setEventsLoading(true);
@@ -245,10 +224,7 @@ function RoomDashboard() {
           setEvents(Array.isArray(data) ? data.slice().reverse() : []);
           setEventsLoading(false);
         })
-        .catch(() => {
-          setEvents([]);
-          setEventsLoading(false);
-        });
+        .catch(() => { setEvents([]); setEventsLoading(false); });
     };
 
     fetchEvents();
@@ -256,39 +232,33 @@ function RoomDashboard() {
     return () => clearInterval(interval);
   }, [selectedRoom]);
 
-  if (loading) return <div style={{ padding: '2rem', color: '#6b7280' }}>Loading rooms...</div>;
+  if (loading) return <div className="p-8 text-gray-500">Loading rooms...</div>;
 
   if (error) return (
-    <div style={{ padding: '2rem' }}>
-      <p style={{ color: '#dc2626' }}>{error}</p>
-      <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-        Make sure the FastAPI backend is running at <code>{API_BASE}</code>
-      </p>
+    <div className="p-8">
+      <p className="text-red-600">{error}</p>
+      <p className="text-sm text-gray-500">Make sure the FastAPI backend is running at <code>{API_BASE}</code></p>
     </div>
   );
 
   return (
-    <div style={{ padding: '24px', fontFamily: 'system-ui, sans-serif', maxWidth: '900px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+    <div className="px-6 py-6 font-sans max-w-4xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 style={{ margin: 0, fontSize: '1.5rem' }}>Smart Room Monitor</h1>
-          <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: '0.875rem' }}>
-            FastAPI + DynamoDB — auto-refreshes every 30s
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900 m-0">Smart Room Monitor</h1>
+          <p className="mt-1 text-sm text-gray-500">FastAPI + DynamoDB — auto-refreshes every 30s</p>
         </div>
-        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-          {rooms.length} room{rooms.length !== 1 ? 's' : ''}
-        </span>
+        <span className="text-sm text-gray-500">{rooms.length} room{rooms.length !== 1 ? 's' : ''}</span>
       </div>
 
       <SendEventForm onEventSent={fetchRooms} />
 
       {rooms.length === 0 ? (
-        <div style={{ padding: '2rem', background: '#f9fafb', borderRadius: '8px', textAlign: 'center', color: '#6b7280' }}>
+        <div className="p-8 bg-gray-50 rounded-lg text-center text-gray-500">
           No rooms yet — use the form above to send a sensor event and create one.
         </div>
       ) : (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+        <div className="flex flex-wrap gap-4">
           {rooms.map(room => (
             <RoomCard
               key={room.room_id}
@@ -301,35 +271,31 @@ function RoomDashboard() {
       )}
 
       {selectedRoom && (
-        <div style={{ marginTop: '32px', border: '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
-          <div style={{ padding: '16px', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0, fontSize: '1rem' }}>Events — {selectedRoom}</h2>
-            <button
-              onClick={() => setSelectedRoom(null)}
-              style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '1.2rem' }}
-            >
+        <div className="mt-8 border border-gray-200 rounded-xl overflow-hidden">
+          <div className="px-4 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+            <h2 className="text-base font-semibold text-gray-800 m-0">Events — {selectedRoom}</h2>
+            <button onClick={() => setSelectedRoom(null)} className="border-none bg-transparent cursor-pointer text-gray-500 text-lg">
               ✕
             </button>
           </div>
-
           {eventsLoading ? (
-            <div style={{ padding: '16px', color: '#6b7280' }}>Loading events...</div>
+            <div className="p-4 text-gray-500">Loading events...</div>
           ) : events.length === 0 ? (
-            <div style={{ padding: '16px', color: '#6b7280' }}>No events for this room.</div>
+            <div className="p-4 text-gray-500">No events for this room.</div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
                 <thead>
-                  <tr style={{ background: '#f3f4f6', fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase' }}>
-                    <th style={{ padding: '8px 12px', textAlign: 'left' }}>Time</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'left' }}>Sensor</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'left' }}>Value</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'left' }}>Status</th>
+                  <tr className="bg-gray-100 text-xs text-gray-500 uppercase">
+                    <th className="px-3 py-2 text-left">Time</th>
+                    <th className="px-3 py-2 text-left">Sensor</th>
+                    <th className="px-3 py-2 text-left">Value</th>
+                    <th className="px-3 py-2 text-left">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {events.map((event, i) => (
-                    <tr key={i} style={{ borderTop: '1px solid #f3f4f6' }}>
+                    <tr key={i} className="border-t border-gray-100">
                       <EventRow event={event} />
                     </tr>
                   ))}
