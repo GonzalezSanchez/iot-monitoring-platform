@@ -99,7 +99,7 @@ def _map_item(item: dict) -> dict:
         "event_id": item["event_id"],
         "device_id": item.get("device_id", "unknown"),
         "room_id": item.get("room_id", "unknown"),
-        "ts": item["timestamp"],
+        "ts": item.get("timestamp", item.get("ts")),  # Support both 'timestamp' and 'ts' keys
         "temperature": payload.get("temperature"),
         "humidity": payload.get("humidity"),
         "motion": payload.get("motion"),
