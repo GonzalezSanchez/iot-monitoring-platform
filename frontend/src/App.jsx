@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import RoomDashboard from './pages/RoomDashboard';
+import BehaviorDashboard from './pages/BehaviorDashboard';
 import ProjectTabs from './components/ProjectTabs';
 
 function ComingSoon({ title, description }) {
@@ -19,12 +20,7 @@ function App() {
     <div>
       <ProjectTabs active={activeTab} onChange={setActiveTab} />
       {activeTab === 'room' && <RoomDashboard />}
-      {activeTab === 'behavior' && (
-        <ComingSoon
-          title="Behavior Pattern Analyzer"
-          description="ETL pipeline for detecting behavioral patterns — planned next phase"
-        />
-      )}
+      {activeTab === 'behavior' && <BehaviorDashboard />}
       {activeTab === 'gateway' && (
         <ComingSoon
           title="IoT Device Gateway"
