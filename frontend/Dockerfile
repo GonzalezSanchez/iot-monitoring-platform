@@ -7,6 +7,12 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
+
+ARG VITE_API_ENDPOINT
+ARG VITE_P2A_API_ENDPOINT
+ENV VITE_API_ENDPOINT=$VITE_API_ENDPOINT
+ENV VITE_P2A_API_ENDPOINT=$VITE_P2A_API_ENDPOINT
+
 RUN npm run build
 
 # Stage 2 — serve with nginx
