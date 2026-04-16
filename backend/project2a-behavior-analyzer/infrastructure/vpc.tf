@@ -177,18 +177,3 @@ resource "aws_vpc_endpoint" "cloudwatch_logs" {
     Name = "p2a-${var.environment}-logs-endpoint"
   }
 }
-
-# Step Functions Interface Endpoint — ~$7.20/month (1 AZ)
-# Required: post_analyze Lambda calls sfn.start_execution from the private subnet
-resource "aws_vpc_endpoint" "stepfunctions" {
-  vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${var.region}.states"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = [aws_subnet.private_1.id]
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name = "p2a-${var.environment}-stepfunctions-endpoint"
-  }
-}
