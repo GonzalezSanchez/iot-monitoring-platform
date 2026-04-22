@@ -134,4 +134,17 @@ Dependencies:
   6,8 → 10                              (Power BI, na data in DB)
   8,10 → 11                             (Datadog, na pipeline + data werkend)
   all → 12 → 13                         (CI + docs als laatste)
+
+───────────────────────────────────────────────────────────
+Uitbreidingen (na project 2b compleet)
+───────────────────────────────────────────────────────────
+
+  [U1] COPY binary writer — performance optimalisatie extract job
+        Huidig: df.write.jdbc(...)  — simpel, correct, maar trager
+        Doel:   vervang JDBC write door psycopg3 COPY FROM STDIN (FORMAT BINARY)
+                → geïnspireerd op fastapi-dbuploader/src/common/batch_writer.py
+                → 10-100x sneller voor bulk inserts (David Morel benchmarks)
+        Scope:  alleen jobs/extract.py — schema, partities, DAG blijven identiek
+        Verhaal: correctheid eerst (JDBC), daarna performance (COPY binary)
+                 — dezelfde iteratieve aanpak als fastapi-dbuploader project
 ```
