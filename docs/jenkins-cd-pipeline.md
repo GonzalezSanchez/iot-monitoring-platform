@@ -2,22 +2,22 @@
 
 ## Beschrijving
 
-Declaratieve Jenkins CD pipeline voor de volledige IoT monitoring platform. Automatiseert
-het verpakken van Lambda code, Terraform planning + deployment, en environment promotie
-(dev → staging → prod). Jenkins draait lokaal via Docker voor portfolio demonstratie.
+Declaratieve Jenkins CD pipeline voor project 2b (Behavior Pattern Analyzer). Automatiseert
+het deployen van PySpark jobs, Airflow DAGs, en Terraform infrastructure, met environment
+promotie (dev → staging → prod). Jenkins draait lokaal via Docker voor portfolio demonstratie.
 
 **CI/CD splitsing (bewuste architectuurkeuze):**
 - **CI** = GitHub Actions — linting, mypy, unit tests, terraform validate → snel, gratis,
   draait op elke push
-- **CD** = Jenkins — packaging, terraform apply, environment promotie → geeft controle over
+- **CD** = Jenkins — terraform apply, DAG deploy, environment promotie → geeft controle over
   deployment gates en rollback
 
 ## Tech Stack
 
 - **Orkestratie:** Jenkins LTS (declarative pipeline, Groovy DSL)
 - **Containerization:** Docker + Docker Compose (Jenkins + agent)
-- **Infra:** Terraform (reeds aanwezig in project 2a)
-- **Packaging:** Bash scripts (ZIP bundels voor Lambda functions)
+- **Infra:** Terraform (RDS PostgreSQL + S3 + IAM)
+- **Deploy:** Airflow CLI (DAG sync) + spark-submit (job validatie)
 - **Secrets:** Jenkins Credentials Store (AWS keys, DB passwords)
 - **Notificaties:** Jenkins e-mail + pipeline status badges
 
@@ -27,7 +27,7 @@ het verpakken van Lambda code, Terraform planning + deployment, en environment p
 Developer (git push)
         │
         ▼
-GitHub Actions CI  ─── ruff, mypy, pytest, terraform validate
+GitHub Actions CI  ─── ruff, mypy, pytest unit, terraform validate
         │ groen?
         ▼
 Jenkins CD Pipeline (lokaal via Docker)
@@ -38,26 +38,27 @@ Jenkins CD Pipeline (lokaal via Docker)
         ├── Stage 2: Unit Tests
         │   └── pytest tests/unit/ --cov-fail-under=80
         │
-        ├── Stage 3: Package Lambdas
-        │   ├── zip lambdas/extract/ → dist/extract.zip
-        │   ├── zip lambdas/transform/ → dist/transform.zip
-        │   ├── zip lambdas/analyze/ → dist/analyze.zip
-        │   └── zip lambdas/api/ → dist/api.zip
-        │
-        ├── Stage 4: Terraform Plan
+        ├── Stage 3: Terraform Plan
         │   ├── terraform init
         │   └── terraform plan -out=tfplan → opgeslagen als artifact
         │
-        ├── Stage 5: Approval Gate  ◀── handmatige bevestiging vereist
+        ├── Stage 4: Approval Gate  ◀── handmatige bevestiging vereist
         │   └── input("Deploy naar ${ENV}?")
         │
-        ├── Stage 6: Terraform Apply
-        │   └── terraform apply tfplan
+        ├── Stage 5: Terraform Apply
+        │   └── terraform apply tfplan  (RDS PostgreSQL + S3 + IAM)
         │
-        ├── Stage 7: Smoke Test
-        │   └── curl endpoints → status 200 verwacht
+        ├── Stage 6: DB Migratie
+        │   └── python scripts/migrate.py  (raw_sensor_data, patterns, anomalies)
         │
-        └── Stage 8: Notify
+        ├── Stage 7: Deploy Airflow DAGs
+        │   └── airflow dags sync → behavior_pipeline beschikbaar in Airflow UI
+        │
+        ├── Stage 8: Smoke Test
+        │   ├── airflow dags trigger behavior_pipeline --conf '{"days_back": 1}'
+        │   └── airflow dags state behavior_pipeline → verwacht: success
+        │
+        └── Stage 9: Notify
             └── e-mail / console output met deployment samenvatting
 ```
 
@@ -66,26 +67,30 @@ Jenkins CD Pipeline (lokaal via Docker)
 | Parameter | Default | Opties |
 |-----------|---------|--------|
 | `ENVIRONMENT` | `dev` | `dev`, `staging`, `prod` |
-| `PROJECT` | `all` | `all`, `project1a`, `project2a` |
+| `PIPELINE_ACTION` | `deploy` | `deploy`, `destroy` |
 | `SKIP_TESTS` | `false` | `true`, `false` |
 | `DRY_RUN` | `false` | `true`, `false` (plan alleen, geen apply) |
+| `MIGRATE_DB` | `true` | `true`, `false` |
+
+> **`destroy`** draait `terraform destroy` om RDS + S3 te verwijderen en kosten te stoppen.
+> Zelfde patroon als project 2a — deploy wanneer nodig, destroy daarna.
 
 ## Directory Structuur
 
 ```
-backend/project2b-jenkins-cd/
+backend/project2b-behavior-analyzer/
 ├── Jenkinsfile                  ← declaratieve pipeline (hoofd-entrypoint)
 ├── docker/
 │   └── docker-compose.yml       ← Jenkins LTS + Docker-in-Docker agent
 ├── scripts/
-│   ├── package_lambdas.sh       ← ZIP bundels bouwen voor alle Lambda's
-│   ├── run_smoke_tests.sh       ← basis health checks na deployment
+│   ├── migrate.py               ← DB schema aanmaken (idempotent)
+│   ├── run_smoke_tests.sh       ← DAG trigger + status check
 │   └── notify.sh                ← notificatie helperfunctie
 ├── shared-library/              ← Jenkins shared library (herbruikbare stappen)
 │   └── vars/
-│       ├── packageLambda.groovy
 │       ├── terraformPlan.groovy
-│       └── terraformApply.groovy
+│       ├── terraformApply.groovy
+│       └── airflowDagSync.groovy
 ├── requirements-dev.txt         ← pytest, ruff, mypy (voor test stage in pipeline)
 ├── README.md
 └── .env.example                 ← AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, etc.
@@ -104,19 +109,43 @@ pipeline {
 
     parameters {
         choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'])
+        choice(name: 'PIPELINE_ACTION', choices: ['deploy', 'destroy'])
         booleanParam(name: 'DRY_RUN', defaultValue: false)
+        booleanParam(name: 'MIGRATE_DB', defaultValue: true)
     }
 
     stages {
-        stage('Checkout')     { steps { checkout scm } }
-        stage('Unit Tests')   { steps { sh 'pytest tests/unit/ --cov-fail-under=80' } }
-        stage('Package')      { steps { sh 'scripts/package_lambdas.sh' } }
-        stage('TF Plan')      { steps { sh 'terraform plan -out=tfplan' } }
-        stage('Approval')     { steps { input "Deploy naar ${params.ENVIRONMENT}?" } }
-        stage('TF Apply')     { when { not { expression { params.DRY_RUN } } }
-                                steps { sh 'terraform apply tfplan' } }
-        stage('Smoke Tests')  { steps { sh 'scripts/run_smoke_tests.sh' } }
-        stage('Notify')       { steps { sh 'scripts/notify.sh' } }
+        stage('Checkout')       { steps { checkout scm } }
+
+        // --- DEPLOY path ---
+        stage('Unit Tests')     { when { expression { params.PIPELINE_ACTION == 'deploy' } }
+                                  steps { sh 'pytest tests/unit/ --cov-fail-under=80' } }
+        stage('TF Plan')        { when { expression { params.PIPELINE_ACTION == 'deploy' } }
+                                  steps { sh 'terraform plan -out=tfplan' } }
+        stage('Approval')       { steps { input "${params.PIPELINE_ACTION.capitalize()} naar ${params.ENVIRONMENT}?" } }
+        stage('TF Apply')       { when { allOf {
+                                      expression { params.PIPELINE_ACTION == 'deploy' }
+                                      not { expression { params.DRY_RUN } }
+                                  }}
+                                  steps { sh 'terraform apply tfplan' } }
+        stage('DB Migratie')    { when { allOf {
+                                      expression { params.PIPELINE_ACTION == 'deploy' }
+                                      expression { params.MIGRATE_DB }
+                                  }}
+                                  steps { sh 'python scripts/migrate.py' } }
+        stage('Deploy DAGs')    { when { expression { params.PIPELINE_ACTION == 'deploy' } }
+                                  steps { sh 'airflow dags sync' } }
+        stage('Smoke Tests')    { when { expression { params.PIPELINE_ACTION == 'deploy' } }
+                                  steps { sh 'scripts/run_smoke_tests.sh' } }
+
+        // --- DESTROY path ---
+        stage('TF Destroy')     { when { allOf {
+                                      expression { params.PIPELINE_ACTION == 'destroy' }
+                                      not { expression { params.DRY_RUN } }
+                                  }}
+                                  steps { sh 'terraform destroy -auto-approve' } }
+
+        stage('Notify')         { steps { sh 'scripts/notify.sh' } }
     }
 
     post {
@@ -131,7 +160,7 @@ pipeline {
 
 ```bash
 # Jenkins starten via Docker Compose
-cd backend/project2b-jenkins-cd/docker
+cd backend/project2b-behavior-analyzer/docker
 docker compose up -d
 
 # Jenkins bereikbaar via browser
@@ -165,7 +194,7 @@ staging → prod            (handmatige approval + second-pair sign-off)
 ## Installatie & Gebruik
 
 ```bash
-cd backend/project2b-jenkins-cd
+cd backend/project2b-behavior-analyzer
 
 # 1. Jenkins starten
 docker compose -f docker/docker-compose.yml up -d
@@ -179,20 +208,21 @@ docker compose -f docker/docker-compose.yml up -d
 #    Jenkins UI → Pipeline → Build with Parameters
 
 # 4. Pipeline lokaal debuggen (zonder Jenkins)
-bash scripts/package_lambdas.sh
 terraform plan -out=tfplan
 terraform apply tfplan
+python scripts/migrate.py
+airflow dags sync
+bash scripts/run_smoke_tests.sh
 ```
 
 ## Testing
 
 ```bash
 # Shared library Groovy stappen testen (unit)
-# (Groovy unit tests via JenkinsPipelineUnit library)
 cd shared-library
 ./gradlew test
 
 # Script testen (bash)
-bash -n scripts/package_lambdas.sh   # syntax check
-bash -n scripts/run_smoke_tests.sh
+bash -n scripts/run_smoke_tests.sh   # syntax check
+bash -n scripts/notify.sh
 ```
