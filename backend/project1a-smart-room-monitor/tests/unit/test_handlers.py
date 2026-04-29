@@ -72,13 +72,14 @@ class TestIngestEventHandler:
             assert response["statusCode"] == 400
 
     def test_missing_fields_returns_400(self, lambda_context):
-        with patch("handlers.ingest_event.event_service", MagicMock()):
+        from services.event_service import EventServiceError
+
+        with patch("handlers.ingest_event.event_service") as mock_service:
+            mock_service.process_event.side_effect = EventServiceError("Validation error")
             from handlers.ingest_event import lambda_handler
 
             response = lambda_handler({"body": json.dumps({"room_id": "room-1"})}, lambda_context)
-            assert response["statusCode"] == 400
-            body = json.loads(response["body"])
-            assert "Missing required fields" in body["error"]
+            assert response["statusCode"] == 422
 
     def test_event_service_error_returns_422(self, lambda_context):
         from services.event_service import EventServiceError

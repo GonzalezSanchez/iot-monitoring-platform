@@ -19,6 +19,12 @@ data "archive_file" "analyze" {
   output_path = "${path.module}/../dist/analyze.zip"
 }
 
+data "archive_file" "migrate" {
+  type        = "zip"
+  source_dir  = "${path.module}/../dist/staging/migrate"
+  output_path = "${path.module}/../dist/migrate.zip"
+}
+
 data "archive_file" "post_analyze" {
   type        = "zip"
   source_dir  = "${path.module}/../dist/staging/post_analyze"
@@ -48,7 +54,6 @@ resource "aws_lambda_layer_version" "python_deps" {
 locals {
   lambda_env = {
     SECRETS_MANAGER_SECRET_NAME = aws_secretsmanager_secret.db_credentials.name
-    AWS_REGION                  = var.region
     LOG_LEVEL                   = "INFO"
     DYNAMODB_TABLE_EVENTS       = var.source_dynamodb_table_name
   }
@@ -116,6 +121,33 @@ resource "aws_lambda_function" "analyze" {
   runtime          = "python3.11"
   role             = aws_iam_role.lambda.arn
   timeout          = 300
+  memory_size      = 256
+
+  layers = [aws_lambda_layer_version.python_deps.arn]
+
+  environment {
+    variables = local.lambda_env
+  }
+
+  vpc_config {
+    subnet_ids         = [aws_subnet.private_1.id, aws_subnet.private_2.id]
+    security_group_ids = [aws_security_group.lambda.id]
+  }
+
+  tags = {
+    Project     = "p2a-behavior-analyzer"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lambda_function" "migrate" {
+  function_name    = "p2a-${var.environment}-migrate"
+  filename         = data.archive_file.migrate.output_path
+  source_code_hash = data.archive_file.migrate.output_base64sha256
+  handler          = "handler.handler"
+  runtime          = "python3.11"
+  role             = aws_iam_role.lambda.arn
+  timeout          = 60
   memory_size      = 256
 
   layers = [aws_lambda_layer_version.python_deps.arn]

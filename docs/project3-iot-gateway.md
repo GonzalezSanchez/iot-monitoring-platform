@@ -4,9 +4,24 @@
 
 Secure gateway voor IoT devices met authenticatie, rate limiting, en message queuing. Simuleert een production-ready IoT platform met device management.
 
+## Implementatievarianten
+
+Net als project 1/1b en 2a/2b wordt project 3 in twee varianten gebouwd — zelfde beveiligingsconcept, andere infrastructuur:
+
+| | AWS variant (3a) | FastAPI variant (3b) |
+|---|---|---|
+| Device auth | Cognito + API Gateway authorizer | Custom API keys — gehashed in DynamoDB, gevalideerd via FastAPI `Depends()` |
+| JWT | Cognito uitreikt | `python-jose` — zelf implementeren |
+| Message queue | SQS | Lokaal: Redis of simpele DB queue |
+| Rate limiting | API Gateway built-in | Custom middleware in FastAPI |
+
+**Gekozen aanpak voor 3b:** optie 1 — API keys per device. Device registreert, ontvangt een gegenereerde key, elke request valideert via `Depends()`. Toont security thinking (hashing, least-privilege, rate limiting) zonder een volledige auth server. Past bij de portfolio filosofie: niet overengineeren, maar het principe aantonen.
+
+---
+
 ## Tech Stack
 
-- **Runtime:** Python 3.11
+- **Runtime:** Python 3.12
 - **Cloud Services:** AWS API Gateway, Lambda, Cognito, DynamoDB, SQS
 - **Containerization:** Docker
 - **Testing:** pytest
@@ -212,3 +227,20 @@ locust -f tests/load/locustfile.py
 - **Burst:** Max 100 requests/minute
 
 Configureerbaar per device type.
+
+---
+
+## Load Testing (locust)
+
+Rate limiting is alleen geloofwaardig als je het kunt bewijzen. Loadtesting met locust toont aan dat:
+- Device X geblokkeerd wordt na X requests/minuut (429 Too Many Requests)
+- Andere devices niet geraakt worden door het gedrag van één device
+- De gateway stabiel blijft onder burst traffic
+
+### Scenario's
+
+1. **Normal load** — 10 devices, elk 1 request/seconde → alles 200
+2. **Rate limit hit** — 1 device stuurt 200 requests/minuut → 429 na de drempel
+3. **Burst isolation** — 1 device bombarded, 9 andere ongestoord → bewijst per-device isolatie
+
+Dit is het sterkste argument voor loadtesting in project 3 — niet performance, maar correctheid van de rate limiting logica.
