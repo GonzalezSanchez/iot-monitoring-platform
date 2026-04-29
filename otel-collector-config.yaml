@@ -10,6 +10,9 @@ processors:
   batch:
     timeout: 10s
 
+connectors:
+  datadog/connector:
+
 exporters:
   datadog:
     api:
@@ -21,9 +24,9 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [datadog]
+      exporters: [datadog/connector, datadog]
     metrics:
-      receivers: [otlp]
+      receivers: [otlp, datadog/connector]
       processors: [batch]
       exporters: [datadog]
     logs:
