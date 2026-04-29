@@ -1,8 +1,21 @@
 services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    env_file:
+      - ./backend/project1b-smart-room-monitor-fastapi/.env.prod
+    expose:
+      - "4317"
+      - "4318"
+    restart: unless-stopped
+
   backend:
     image: ghcr.io/gonzalezsanchez/iot-backend:latest
     env_file:
       - ./backend/project1b-smart-room-monitor-fastapi/.env.prod
+    depends_on:
+      - otel-collector
     restart: unless-stopped
     expose:
       - "8000"
