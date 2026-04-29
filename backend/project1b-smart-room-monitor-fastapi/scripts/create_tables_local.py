@@ -8,7 +8,7 @@ from botocore.exceptions import ClientError
 
 dynamodb = boto3.resource(
     "dynamodb",
-    region_name="eu-north-1",
+    region_name="eu-central-1",
     endpoint_url="http://localhost:8001",
 )
 

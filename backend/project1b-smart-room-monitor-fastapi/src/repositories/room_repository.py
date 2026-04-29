@@ -33,7 +33,7 @@ class RoomRepository:
             self.dynamodb = boto3.resource(
                 "dynamodb",
                 endpoint_url=os.getenv("AWS_ENDPOINT_URL"),
-                region_name=os.getenv("AWS_REGION", "eu-west-1"),
+                region_name=os.getenv("AWS_REGION", "eu-central-1"),
             )
 
         self.table = self.dynamodb.Table(self.table_name)

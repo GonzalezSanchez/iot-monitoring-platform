@@ -39,7 +39,7 @@ def handler(event: dict, context: Any) -> dict:
     job_id = str(uuid.uuid4())
 
     state_machine_arn = os.environ["STATE_MACHINE_ARN"]
-    sfn = boto3.client("stepfunctions")
+    sfn = boto3.client("stepfunctions", region_name=os.getenv("AWS_REGION", "eu-central-1"))
 
     response = sfn.start_execution(
         stateMachineArn=state_machine_arn,

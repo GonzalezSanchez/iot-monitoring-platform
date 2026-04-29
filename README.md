@@ -52,6 +52,15 @@ A real IoT system has three distinct layers. This platform covers all three:
 
 Projects 1 and 2 are each implemented twice — deliberately — to demonstrate that the same business logic can be solved with different infrastructure choices.
 
+### Shared data contract — `prod-SensorEvents`
+
+Projects 1b and 2a share the same DynamoDB table (`prod-SensorEvents`, partition key: `room_id`, sort key: `timestamp`). In this portfolio setup each project writes its own format:
+
+- **Project 1b** writes individual sensor readings: `{ sensor_type, value, unit, status }`
+- **Project 2a seed** writes combined readings: `{ payload: { temperature, humidity, motion, occupancy } }`
+
+In a real production system, **Project 3 (IoT Gateway)** would own this contract. All devices authenticate through the gateway, which validates and normalises every event before writing to `prod-SensorEvents`. Projects 1b and 2a would then consume a single, consistent format — no per-project adaptation needed.
+
 ---
 
 ## Projects
@@ -64,7 +73,8 @@ processed through anomaly detection, and stored in DynamoDB.
 **Stack:** Python, AWS Lambda, API Gateway, DynamoDB, CloudFormation, CloudWatch
 **Infrastructure:** Provisioned via CloudFormation (tables + IAM — least-privilege)
 **CI/CD:** GitHub Actions — tests on every push, deploy to AWS on merge to main
-**Tests:** 108 unit tests, 82% coverage (pytest + moto for DynamoDB mocking)
+**Tests:** 105 unit tests, 84% coverage (pytest + moto for DynamoDB mocking)
+**Auth:** Intentionally excluded — device authentication is covered in Project 3
 
 [View project](backend/project1a-smart-room-monitor/)
 
@@ -78,6 +88,7 @@ containerised application. A deliberate choice to show infrastructure independen
 **Stack:** Python, FastAPI, DynamoDB (AWS), Docker, nginx, Cloudflare tunnel
 **Live:** [iot.gonzalezsanchez.dev](https://iot.gonzalezsanchez.dev)
 **API docs:** [iot.gonzalezsanchez.dev/docs](https://iot.gonzalezsanchez.dev/docs)
+**Auth:** Intentionally excluded — device authentication (JWT via Cognito) is covered in Project 3
 
 [View project](backend/project1b-smart-room-monitor-fastapi/)
 
@@ -90,10 +101,10 @@ behavioral patterns across rooms over time — occupancy schedules, temperature 
 unusual activity. Scheduled batch processing via EventBridge + Step Functions, results
 stored in Aurora Serverless v2 and exposed via REST API.
 
-**Stack:** Python, AWS Lambda, Step Functions, EventBridge, Aurora Serverless v2, Terraform, Docker
+**Stack:** Python 3.13, AWS Lambda, Step Functions, EventBridge, Aurora Serverless v2, Terraform, Docker
 **Infrastructure:** Provisioned via Terraform (VPC, Aurora, IAM, Secrets Manager)
 **CI:** GitHub Actions — mypy, ruff, pytest (unit + integration + regression), terraform validate
-**Deploy:** On-demand for demos (`./scripts/deploy.sh`) — destroyed after to minimise costs
+**Deploy:** On-demand for demos — destroyed after to minimise costs
 **Tests:** Unit (mocked AWS), integration (real PostgreSQL via Docker), regression (documented production bugs)
 
 [View project](backend/project2a-behavior-analyzer/)
@@ -112,11 +123,23 @@ A deliberate choice to demonstrate the same problem solved with different tools.
 
 ### Project 3 — IoT Device Gateway Simulator *(planned)*
 
-Secure gateway for IoT device registration, authentication (JWT via Cognito), and
-rate limiting. Simulates how a production IoT platform manages devices — registration,
-command & control, reliable message delivery via SQS, and device status monitoring.
+Secure gateway for IoT device registration, authentication, and rate limiting.
+Simulates how a production IoT platform manages devices — registration,
+command & control, reliable message delivery, and device status monitoring.
 
-**Stack:** Python, AWS API Gateway, Lambda, Cognito, DynamoDB, SQS, Docker
+**AWS variant (3a):** API Gateway, Lambda, Cognito, DynamoDB, SQS
+**FastAPI variant (3b):** FastAPI, API key auth (hashed, validated via Depends()), Docker
+
+---
+
+### Project 4 — LLM / MCP Layer *(planned)*
+
+AI integration layer on top of the existing platform. Exposes the FastAPI routes as MCP
+tools via `fastapi-mcp`, enabling natural language queries over live sensor data.
+
+*"Which rooms had anomalies this week?" → Claude queries the IoT platform directly.*
+
+**Stack:** Python, fastapi-mcp, Claude API (Anthropic), RAG, Docker
 
 ---
 
@@ -133,18 +156,23 @@ Real-time dashboard for visualising sensor data and room states.
 
 | Skill | Where |
 |-------|-------|
-| Python clean architecture (models → services → repositories) | project 1, 1b |
-| RESTful API design | project 1 (Lambda handlers), 1b (FastAPI) |
-| AWS serverless (Lambda, API Gateway, CloudWatch) | project 1 |
+| Python clean architecture (models → services → repositories) | project 1, 1b, 2a |
+| RESTful API design | project 1 (Lambda handlers), 1b (FastAPI), 2a |
+| AWS serverless (Lambda, API Gateway, CloudWatch) | project 1, 2a |
 | DynamoDB data modelling | project 1, 1b |
-| Infrastructure as Code (CloudFormation) | project 1, 1b |
+| ETL pipeline design (Extract → Transform → Analyze) | project 2a |
+| Step Functions orchestration | project 2a |
+| Aurora Serverless v2 + PostgreSQL schema design | project 2a |
+| Idempotent writes (ON CONFLICT DO NOTHING/UPDATE) | project 2a |
+| Regression testing (documented production bugs) | project 2a |
+| Infrastructure as Code (CloudFormation) | project 1 |
 | Infrastructure as Code (Terraform) | project 2a |
-| Docker + multi-stage builds + nginx | project 1b, frontend |
-| CI/CD with GitHub Actions | project 1, 1b |
-| Pydantic v2 models + validation | project 1, 1b |
-| Anomaly detection logic | project 1, 1b |
-| pytest + moto (DynamoDB mocking), 82% coverage | project 1 |
-| mypy + pre-commit hooks | project 1, 1b |
+| Docker + nginx | project 1b, frontend |
+| CI/CD with GitHub Actions | project 1, 1b, 2a |
+| Pydantic v2 models + validation | project 1, 1b, 2a |
+| Anomaly detection logic | project 1, 1b, 2a |
+| pytest + moto (DynamoDB mocking), 80%+ coverage | project 1, 1b, 2a |
+| mypy + pre-commit hooks | project 1, 1b, 2a |
 | Cloudflare tunnel + production deployment | project 1b |
 
 ---
@@ -156,7 +184,7 @@ iot-monitoring-platform/
 ├── backend/
 │   ├── project1a-smart-room-monitor/          # AWS Lambda + API Gateway (live)
 │   ├── project1b-smart-room-monitor-fastapi/ # FastAPI + Docker (live)
-│   ├── project2a-behavior-analyzer/          # AWS native ETL pipeline (planned)
+│   ├── project2a-behavior-analyzer/          # AWS native ETL pipeline (complete)
 │   ├── project2b-behavior-analyzer/          # Airflow + PySpark (planned)
 │   └── project3-iot-gateway/                 # Device gateway (planned)
 ├── docs/                                      # Project specs and architecture

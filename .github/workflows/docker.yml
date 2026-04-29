@@ -2,7 +2,7 @@ name: Build and Push Docker Images
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
 
 jobs:
   build-and-push:
@@ -34,3 +34,6 @@ jobs:
           context: ./frontend
           push: true
           tags: ghcr.io/gonzalezsanchez/iot-frontend:latest
+          build-args: |
+            VITE_API_ENDPOINT=${{ secrets.VITE_API_ENDPOINT }}
+            VITE_P2A_API_ENDPOINT=${{ secrets.VITE_P2A_API_ENDPOINT }}
