@@ -14,7 +14,7 @@ herhaling om te demonstreren dat dezelfde businesslogica met andere tools oplosb
 | Processing | Python (pandas) | PySpark (gedistribueerd) |
 | Infra | Terraform + Aurora Serverless v2 | Terraform + RDS PostgreSQL |
 | Visualisatie | REST API | Power BI rapport |
-| AI interface | — | RAG bot (LLM + pgvector) |
+| AI interface | — | — (zie Project 4) |
 | CD | — | Jenkins (dev → staging → prod) |
 
 ## Tech Stack
@@ -62,53 +62,84 @@ S3 (sensor events als Parquet)
 
 Zelfde schema als Project 2a — opzettelijk, om portabiliteit te demonstreren.
 
-**raw_sensor_data:**
+De maandelijkse partitionering van `raw_sensor_data` is geïnspireerd op het
+[fastapi-dbuploader](https://gitlab.com/dmorel69/fastapi-dbuploader) project
+(gebruikt met toestemming — zie LinkedIn conversatie april 2026).
+
+**raw_sensor_data** (maandelijks gepartitioneerd op `ts`):
 ```sql
-CREATE TABLE raw_sensor_data (
-    id UUID PRIMARY KEY,
-    entity_id VARCHAR(100) NOT NULL,
-    entity_type VARCHAR(50) NOT NULL,
-    timestamp TIMESTAMPTZ NOT NULL,
-    data JSONB NOT NULL,
-    processed BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-CREATE INDEX idx_rsd_entity_timestamp ON raw_sensor_data (entity_id, timestamp);
-CREATE INDEX idx_rsd_processed ON raw_sensor_data (processed);
+-- Partitioned table — inspired by https://gitlab.com/dmorel69/fastapi-dbuploader
+CREATE TABLE IF NOT EXISTS raw_sensor_data (
+    id            BIGSERIAL,
+    event_id      TEXT          NOT NULL,
+    device_id     TEXT          NOT NULL,
+    room_id       TEXT          NOT NULL,
+    ts            TIMESTAMPTZ   NOT NULL,
+    temperature   DOUBLE PRECISION,
+    humidity      DOUBLE PRECISION,
+    motion        BOOLEAN,
+    occupancy     BOOLEAN,
+    raw_payload   JSONB         NOT NULL,
+    ingested_at   TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id, ts)
+) PARTITION BY RANGE (ts);
+
+-- Monthly partitions created automatically by scripts/manage_partitions.py
+-- Example: raw_sensor_data_2026_01, raw_sensor_data_2026_02, ...
+CREATE INDEX IF NOT EXISTS idx_raw_sensor_data_room_id ON raw_sensor_data (room_id);
+CREATE INDEX IF NOT EXISTS idx_raw_sensor_data_event_id ON raw_sensor_data (event_id);
 ```
 
 **patterns:**
 ```sql
 CREATE TABLE patterns (
-    id UUID PRIMARY KEY,
-    entity_id VARCHAR(100) NOT NULL,
-    entity_type VARCHAR(50) NOT NULL,
-    pattern_type VARCHAR(100) NOT NULL,
-    confidence DECIMAL(3,2) NOT NULL,
-    pattern_data JSONB NOT NULL,
-    detected_at TIMESTAMPTZ NOT NULL,
-    valid_from TIMESTAMPTZ NOT NULL,
-    valid_until TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    id            BIGSERIAL     PRIMARY KEY,
+    job_id        TEXT          NOT NULL,
+    entity_type   TEXT          NOT NULL,
+    entity_id     TEXT          NOT NULL,
+    pattern_type  TEXT          NOT NULL,
+    period_start  TIMESTAMPTZ   NOT NULL,
+    period_end    TIMESTAMPTZ   NOT NULL,
+    data          JSONB         NOT NULL,
+    created_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_patterns_entity ON patterns (entity_id, entity_type);
+CREATE INDEX idx_patterns_entity ON patterns (entity_type, entity_id);
+CREATE INDEX idx_patterns_job_id ON patterns (job_id);
 ```
 
 **anomalies:**
 ```sql
 CREATE TABLE anomalies (
-    id UUID PRIMARY KEY,
-    entity_id VARCHAR(100) NOT NULL,
-    anomaly_type VARCHAR(100) NOT NULL,
-    severity VARCHAR(20) NOT NULL,
-    timestamp TIMESTAMPTZ NOT NULL,
-    details JSONB NOT NULL,
-    resolved BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    id            BIGSERIAL     PRIMARY KEY,
+    job_id        TEXT          NOT NULL,
+    entity_type   TEXT          NOT NULL,
+    entity_id     TEXT          NOT NULL,
+    anomaly_type  TEXT          NOT NULL,
+    detected_at   TIMESTAMPTZ   NOT NULL,
+    severity      TEXT          NOT NULL,
+    data          JSONB         NOT NULL,
+    created_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_anomalies_entity_timestamp ON anomalies (entity_id, timestamp);
-CREATE INDEX idx_anomalies_resolved ON anomalies (resolved);
+CREATE INDEX idx_anomalies_entity ON anomalies (entity_type, entity_id);
+CREATE INDEX idx_anomalies_job_id ON anomalies (job_id);
 ```
+
+## Partition Management
+
+Maandelijkse partities voor `raw_sensor_data` worden beheerd door `scripts/manage_partitions.py`.
+Dit script is geïnspireerd op `fastapi-dbuploader/src/common/partitions.py`
+(gebruikt met toestemming — zie LinkedIn conversatie april 2026).
+
+```bash
+# Maak partities aan voor de komende 3 maanden
+python scripts/manage_partitions.py --months-ahead 3
+
+# Dry run — print SQL zonder uit te voeren
+python scripts/manage_partitions.py --months-ahead 3 --dry-run
+```
+
+Het script draait ook als Airflow task aan het begin van elke DAG run zodat
+partities altijd bestaan voor de huidige en volgende maand.
 
 ## PySpark Jobs
 
@@ -154,64 +185,25 @@ with DAG(
     extract >> transform >> analyze
 ```
 
-## RAG Interface (LLM + Semantic Search)
+## Observability — Datadog
 
-Na afloop van het data engineering gedeelte wordt een RAG (Retrieval-Augmented Generation)
-interface toegevoegd die natuurlijke taal queries mogelijk maakt over de gedetecteerde
-patronen en anomalieën in PostgreSQL.
+Tijdens de actieve trial periode wordt Datadog ingezet voor operationele monitoring.
+Screenshots worden opgenomen in de README als portfolio bewijs.
 
-**Waarom hier?** De patterns en anomalies tabellen bevatten beschrijvende tekst
-(`pattern_type`, `anomaly_type`, `details`). Dat is een natuurlijke kandidaat voor
-semantisch zoeken: een gebruiker vraagt *"Welke anomalieën waren er vorige week in kamer A?"*
-en het systeem zoekt via embeddings in plaats van exacte SQL-match.
+**Wat wordt gemonitord:**
+- **Airflow** — DAG run durations, task success/failure rates
+- **PostgreSQL (RDS)** — query latency, connections, disk I/O
+- **Spark jobs** — job duration via Airflow task metrics
+- **Infrastructure** — Docker container CPU/memory
 
-**Architectuur:**
-```
-Gebruiker (vraag in natuurlijke taal)
-        │
-        ▼
-  RAG bot (Python)
-        │
-        ├── 1. Embed de vraag (OpenAI text-embedding of Ollama lokaal)
-        ├── 2. Semantisch zoeken in pgvector (cosine similarity op pattern/anomaly beschrijvingen)
-        ├── 3. Top-k resultaten als context meegeven aan LLM
-        └── 4. LLM genereert antwoord (GPT-4 of open source via Ollama)
-```
+**Aanpak (trial → screenshots → deactiveren):**
+1. Datadog agent draaien via Docker naast de bestaande stack
+2. Dashboards configureren voor Airflow + PostgreSQL
+3. DAG draaien met testdata → metrics zichtbaar in Datadog
+4. Screenshots opslaan in `docs/screenshots/`
+5. Trial laten expiren — geen doorlopende kosten
 
-**Componenten:**
-- `pgvector` PostgreSQL extensie — opslaan van embedding vectoren naast bestaande data
-- `jobs/embed_patterns.py` — Airflow task die na Analyze draait: embeds `pattern_data` en `details`
-  kolommen en schrijft vectoren naar PostgreSQL via pgvector
-- `rag/bot.py` — RAG query interface:
-  ```python
-  from openai import OpenAI
-  import psycopg2
-
-  def query(question: str) -> str:
-      embedding = client.embeddings.create(input=question, model="text-embedding-3-small")
-      # pgvector nearest neighbour
-      rows = db.execute(
-          "SELECT details FROM anomalies ORDER BY embedding <=> %s LIMIT 5",
-          (embedding.data[0].embedding,)
-      )
-      context = "\n".join(r[0] for r in rows)
-      return client.chat.completions.create(
-          model="gpt-4o-mini",
-          messages=[
-              {"role": "system", "content": "Je bent een IoT data analist."},
-              {"role": "user", "content": f"Context:\n{context}\n\nVraag: {question}"}
-          ]
-      ).choices[0].message.content
-  ```
-- Prompt injection preventie: context wordt gesaniteerd voor het aan de LLM meegegeven wordt
-- Lokaal alternatief: Ollama (`ollama run llama3`) — geen API kosten
-
-**Technieken uit de LinkedIn Learning cursus (LLMs + Prompt Engineering):**
-- Semantic search met cross-encoders
-- RAG bot bouwen
-- Prompt chaining + input/output validatie
-- Prompt injection attacks voorkomen
-- Chain-of-thought prompting voor anomalie uitleg
+> RAG interface (LLM + pgvector) is onderdeel van **Project 4**, niet 2b.
 
 ---
 
@@ -290,7 +282,10 @@ backend/project2b-behavior-analyzer/
 │   └── outputs.tf
 ├── scripts/
 │   ├── migrate.py               ← DB schema aanmaken
+│   ├── manage_partitions.py     ← maandelijkse partities aanmaken (geïnspireerd op fastapi-dbuploader)
 │   └── seed_data.py             ← testdata genereren (Parquet naar MinIO)
+├── rag/
+│   └── bot.py                   ← RAG query interface (pgvector + LLM)
 ├── tests/
 │   ├── unit/
 │   │   ├── test_extract.py

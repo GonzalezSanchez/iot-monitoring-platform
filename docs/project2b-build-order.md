@@ -100,38 +100,30 @@ Phase 6: Power BI rapport
         │   └── Trend: temperatuur trend over tijd (line chart)
         └── .pbix bestand → reports/ (gitignored, screenshot in README)
 
-Phase 7: RAG interface (LLM + pgvector)
-────────────────────────────────────────
-  [11t] Tests: embed job
-        ├── bekende pattern_data string → embedding vector opgeslagen in pgvector
-        └── cosine similarity query → meest relevante rij bovenaan
-  [11] pgvector extensie + embed_patterns Airflow task
-        ├── `CREATE EXTENSION IF NOT EXISTS vector` in migrate.py
-        ├── Nieuw veld: `embedding vector(1536)` op patterns + anomalies tabellen
-        └── jobs/embed_patterns.py: Airflow task na analyze_task
-            leest patterns/anomalies → OpenAI embeddings → schrijft vectoren
-
-  [12t] Tests: RAG bot
-        ├── query() returnt een string (niet leeg)
-        └── prompt injection check: kwaadaardige input escapet correct
-  [12] RAG bot (`rag/bot.py`)
-        ├── embed_question() → OpenAI text-embedding-3-small (of Ollama lokaal)
-        ├── semantic_search() → pgvector cosine similarity top-5
-        ├── generate_answer() → GPT-4o-mini met context + chain-of-thought prompt
-        └── Lokaal alternatief: Ollama llama3 (geen API kosten)
+Phase 7: Observability — Datadog (trial)
+─────────────────────────────────────────
+  [11] Datadog agent opstarten + dashboards configureren
+        ├── Datadog agent via Docker (naast bestaande stack)
+        ├── Airflow integratie: DAG run durations, task success/failure
+        ├── PostgreSQL integratie: query latency, connections
+        ├── DAG draaien met testdata → metrics zichtbaar in Datadog UI
+        ├── Screenshots opslaan in docs/screenshots/
+        └── Trial laten expiren na portfolio bewijs — geen doorlopende kosten
+        Zie: docs/project2b-behavior-analyzer.md → Observability sectie
 
 Phase 8: CI/CD + Documentatie
 ──────────────────────────────
-  [13] CI uitbreiden
+  [12] CI uitbreiden
         ├── Voeg project2b toe aan .github/workflows/ci.yml
-        ├── ruff + mypy op dags/, jobs/, rag/
+        ├── ruff + mypy op dags/, jobs/
         ├── pytest tests/unit/ --cov-fail-under=80
         └── terraform validate
 
-  [12] README + demo
+  [13] README + demo
         ├── Lokaal starten (Docker Compose: Airflow + Spark + PostgreSQL + MinIO)
         ├── DAG handmatig triggeren via Airflow UI
         ├── Power BI rapport screenshot
+        ├── Datadog dashboard screenshot
         └── Vergelijking tabel: project 2a vs 2b (zelfde doel, andere tools)
 
 ═══════════════════════════════════════════════════════════
@@ -140,5 +132,19 @@ Dependencies:
   3 → 7+7t → 8+8t                      (Airflow orkestratie, na DB schema)
   6,8 → 9                               (Jenkins CD, na pipeline werkend)
   6,8 → 10                              (Power BI, na data in DB)
-  all → 11 → 12                         (CI + docs als laatste)
+  8,10 → 11                             (Datadog, na pipeline + data werkend)
+  all → 12 → 13                         (CI + docs als laatste)
+
+───────────────────────────────────────────────────────────
+Uitbreidingen (na project 2b compleet)
+───────────────────────────────────────────────────────────
+
+  [U1] COPY binary writer — performance optimalisatie extract job
+        Huidig: df.write.jdbc(...)  — simpel, correct, maar trager
+        Doel:   vervang JDBC write door psycopg3 COPY FROM STDIN (FORMAT BINARY)
+                → geïnspireerd op fastapi-dbuploader/src/common/batch_writer.py
+                → 10-100x sneller voor bulk inserts (David Morel benchmarks)
+        Scope:  alleen jobs/extract.py — schema, partities, DAG blijven identiek
+        Verhaal: correctheid eerst (JDBC), daarna performance (COPY binary)
+                 — dezelfde iteratieve aanpak als fastapi-dbuploader project
 ```
