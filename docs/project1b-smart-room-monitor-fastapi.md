@@ -42,10 +42,24 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-## 7. Toekomstige uitbreidingen
+## 7. Observability
+
+Vendor-neutral observability pipeline via OpenTelemetry:
+
+```
+FastAPI (opentelemetry-instrument uvicorn)
+  → OTLP gRPC → OTel Collector → Datadog (datadoghq.eu)
+```
+
+- **Auto-instrumentatie:** `opentelemetry-instrument` wikkelt uvicorn in — geen code-wijzigingen in `main.py`
+- **Traces:** elke HTTP request + DynamoDB calls als child spans
+- **Metrics:** request latency, throughput, error rate
+- **Logs:** trace ID correlatie via `OTEL_PYTHON_LOG_CORRELATION=true`
+- **Vendor-neutral:** backend stuurt OTLP, alleen de Collector config wijzigt bij overstap naar Grafana Stack
+
+Zie [stappen_observability_project1b.md](stappen_observability_project1b.md) voor de volledige implementatie.
+
+## 8. Toekomstige uitbreidingen
 - Authenticatie/authorisatie
 - Meer endpoints (bijv. voor sensoren)
-- Integratie met frontend
-
----
-Zie ook het stappenplan in `docs/STAPPEN_PROJECT1B.md` voor een gedetailleerde ontwikkelroute.
+- Overstap observability naar Grafana Stack (Tempo + Loki + Prometheus) na Datadog trial
