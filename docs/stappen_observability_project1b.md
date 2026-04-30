@@ -113,7 +113,7 @@ Als spans in JSON formaat verschijnen in de eerste terminal → instrumentatie w
 ```bash
 git pull
 docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml up -d --force-recreate
 
 # Logs controleren
 docker compose -f docker-compose.prod.yml logs -f otel-collector
