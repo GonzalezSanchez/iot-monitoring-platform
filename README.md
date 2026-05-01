@@ -95,6 +95,19 @@ stored in Aurora Serverless v2 and exposed via REST API.
 **CI:** GitHub Actions — mypy, ruff, pytest (unit + integration + regression), terraform validate
 **Deploy:** On-demand for demos (`./scripts/deploy.sh`) — destroyed after to minimise costs
 **Tests:** Unit (mocked AWS), integration (real PostgreSQL via Docker), regression (documented production bugs)
+**LinkedIn post:** [Serverless ETL pipeline for behavioral pattern detection](https://www.linkedin.com/posts/activity-7450582273697026049-aOCE)
+
+#### Step Functions execution graph — Extract → Transform → Analyze pipeline
+
+![Step Functions graph](docs/screeenshots/project2-step-functions/project2a-step-functions-graph.png)
+
+#### Execution history — 7 runs, all Succeeded
+
+![Step Functions executions](docs/screeenshots/project2-step-functions/project2a-step-functions-executions.png)
+
+#### Behavior Pattern Analyzer dashboard — occupancy schedules and temperature trends per room
+
+![Behavior dashboard](docs/screeenshots/project2-step-functions/project2a-behavior-dashboard.png)
 
 [View project](backend/project2a-behavior-analyzer/)
 
