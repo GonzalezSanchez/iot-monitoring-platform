@@ -137,10 +137,12 @@ command & control, reliable message delivery, and device status monitoring.
 
 AI integration layer on top of the existing platform. Exposes the FastAPI routes as MCP
 tools via `fastapi-mcp`, enabling natural language queries over live sensor data.
+Uses `library-skills` to bundle FastAPI and Boto3 API knowledge directly into coding agents —
+so the agent understands the libraries the platform is built on without extra prompting.
 
 *"Which rooms had anomalies this week?" → Claude queries the IoT platform directly.*
 
-**Stack:** Python, fastapi-mcp, Claude API (Anthropic), RAG, Docker
+**Stack:** Python, fastapi-mcp, Claude API (Anthropic), library-skills, RAG, Docker
 
 ---
 
