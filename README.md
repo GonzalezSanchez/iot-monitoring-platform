@@ -167,7 +167,7 @@ End-to-end observability implemented with **zero manual instrumentation** — Op
 
 ---
 
-### APM Services — Watchdog auto-detected a 98.1% error rate spike and resolved it automatically
+### APM Services — Watchdog auto-detected a 98.1% error rate spike; distributed tracing pinpointed the fault to FastAPI, not DynamoDB (0% error)
 
 ![APM Services overview — Watchdog RESOLVED](docs/screeenshots/datadog-project1b/datadog-apm-services-watchdog-resolved.png)
 
