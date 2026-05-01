@@ -169,6 +169,8 @@ End-to-end observability implemented with **zero manual instrumentation** — Op
 
 ### APM Services — Watchdog auto-detected an error rate spike on GET /rooms/{room_id}/events
 
+> Distributed tracing pinpointed the fault to FastAPI (98.1% error), not DynamoDB (0% error) — see [LinkedIn post](https://www.linkedin.com/posts/activity-7455558039853645824-reu9) for the full trace analysis.
+
 ![APM Services overview — Watchdog RESOLVED](docs/screeenshots/datadog-project1b/datadog-apm-services-watchdog-resolved.png)
 
 ---
