@@ -146,13 +146,13 @@ End-to-end observability implemented with **zero manual instrumentation** — Op
 
 ---
 
-### APM Services — Watchdog auto-detected a 98.1% error rate spike; distributed tracing pinpointed the fault to FastAPI, not DynamoDB (0% error)
+### APM Services — Watchdog auto-detected an error rate spike on GET /rooms/{room_id}/events
 
 ![APM Services overview — Watchdog RESOLVED](docs/screeenshots/datadog-project1b/datadog-apm-services-watchdog-resolved.png)
 
 ---
 
-### Service map — `iot-smart-room-monitor → dynamodb` auto-detected from traces
+### Service map — `iot-smart-room-monitor → dynamodb` dependency auto-detected from traces
 
 ![Service map auto-detected from traces](docs/screeenshots/datadog-project1b/datadog-service-map.png)
 
@@ -164,7 +164,7 @@ End-to-end observability implemented with **zero manual instrumentation** — Op
 
 ---
 
-### Log patterns — business logic visible in Datadog (Pydantic error auto-grouped)
+### Log patterns — business logic visible in Datadog: anomaly detection, room state, event ingestion
 
 ![Log patterns](docs/screeenshots/datadog-project1b/datadog-log-patterns.png)
 
