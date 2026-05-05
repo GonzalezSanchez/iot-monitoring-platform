@@ -1,0 +1,3 @@
+environment               = "prod"
+region                    = "eu-central-1"
+source_dynamodb_table_arn = "arn:aws:dynamodb:eu-central-1:ACCOUNT_ID:table/prod-SensorEvents"
