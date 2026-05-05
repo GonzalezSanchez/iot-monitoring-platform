@@ -187,23 +187,36 @@ with DAG(
     extract >> transform >> analyze
 ```
 
-## Observability — Datadog
+## Observability — OpenTelemetry + Grafana Cloud
 
-Tijdens de actieve trial periode wordt Datadog ingezet voor operationele monitoring.
-Screenshots worden opgenomen in de README als portfolio bewijs.
+Zelfde OTel Collector laag als project 1b — alleen de backend wisselt van Datadog naar
+Grafana Cloud. Stack blijft altijd live (gratis tier, geen trial, geen destroy cyclus).
+
+**Stack:**
+```
+Airflow + PostgreSQL + Spark
+        ↓
+OTel Collector (vendor-neutraal — zelfde aanpak als project 1b)
+        ↓
+Grafana Cloud
+  ├── Mimir   (metrics)
+  ├── Loki    (logs)
+  └── Tempo   (traces)
+```
 
 **Wat wordt gemonitord:**
 - **Airflow** — DAG run durations, task success/failure rates
-- **PostgreSQL (RDS)** — query latency, connections, disk I/O
+- **PostgreSQL** — query latency, connections, disk I/O
 - **Spark jobs** — job duration via Airflow task metrics
 - **Infrastructure** — Docker container CPU/memory
 
-**Aanpak (trial → screenshots → deactiveren):**
-1. Datadog agent draaien via Docker naast de bestaande stack
-2. Dashboards configureren voor Airflow + PostgreSQL
-3. DAG draaien met testdata → metrics zichtbaar in Datadog
-4. Screenshots opslaan in `docs/screenshots/`
-5. Trial laten expiren — geen doorlopende kosten
+**Aanpak (altijd live — zelfde filosofie als project 1a/1b):**
+1. OTel Collector toevoegen aan `docker-compose.yml` naast de bestaande stack
+2. Grafana Cloud free tier (hergebruik account van project 1b migratie)
+3. Dashboards configureren voor Airflow + PostgreSQL
+4. DAG draaien met testdata → metrics zichtbaar in Grafana
+5. Screenshots opslaan in `docs/screenshots/`
+6. Stack blijft live — gratis tier, geen doorlopende kosten
 
 > RAG interface (LLM + pgvector) is onderdeel van **Project 4**, niet 2b.
 

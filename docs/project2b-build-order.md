@@ -108,15 +108,16 @@ Phase 6: Power BI rapport
         │   └── frontend/src/pages/PowerBIDashboard.jsx (iframe embed)
         └── Screenshots → docs/screenshots/ (voor README)
 
-Phase 7: Observability — Datadog (trial)
-─────────────────────────────────────────
-  [11] Datadog agent opstarten + dashboards configureren
-        ├── Datadog agent via Docker (naast bestaande stack)
+Phase 7: Observability — OpenTelemetry + Grafana Cloud
+────────────────────────────────────────────────────────
+  [11] OTel Collector + Grafana Cloud opstarten + dashboards configureren
+        ├── OTel Collector toevoegen aan docker-compose.yml (zelfde aanpak als project 1b)
+        ├── Grafana Cloud free tier — Mimir (metrics) + Loki (logs) + Tempo (traces)
         ├── Airflow integratie: DAG run durations, task success/failure
         ├── PostgreSQL integratie: query latency, connections
-        ├── DAG draaien met testdata → metrics zichtbaar in Datadog UI
+        ├── DAG draaien met testdata → metrics zichtbaar in Grafana
         ├── Screenshots opslaan in docs/screenshots/
-        └── Trial laten expiren na portfolio bewijs — geen doorlopende kosten
+        └── Stack blijft altijd live — gratis tier, geen destroy cyclus
         Zie: docs/project2b-behavior-analyzer.md → Observability sectie
 
 Phase 8: CI/CD + Documentatie
