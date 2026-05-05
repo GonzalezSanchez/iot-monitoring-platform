@@ -12,7 +12,7 @@ herhaling om te demonstreren dat dezelfde businesslogica met andere tools oplosb
 |--------|------------------------|-------------------------------|
 | Orkestratie | AWS Step Functions | Apache Airflow |
 | Processing | Python (pandas) | PySpark (gedistribueerd) |
-| Infra | Terraform + Aurora Serverless v2 | Terraform + RDS PostgreSQL |
+| Infra | Terraform + Aurora Serverless v2 | Terraform + S3 + IAM (PostgreSQL via Docker op server) |
 | Visualisatie | REST API | Power BI rapport |
 | AI interface | — | — (zie Project 4) |
 | CD | — | Jenkins (dev → staging → prod) |
@@ -21,7 +21,7 @@ herhaling om te demonstreren dat dezelfde businesslogica met andere tools oplosb
 
 - **Orkestratie:** Apache Airflow 2.x (Docker via officieel `apache/airflow` image)
 - **Processing:** PySpark 3.x (Spark SQL + MLlib voor patroondetectie)
-- **Database:** RDS PostgreSQL (`db.t3.micro` op AWS; lokaal via Docker) + pgvector extensie
+- **Database:** PostgreSQL via Docker Compose (lokaal + acer-server — altijd live, geen AWS kosten) + pgvector extensie
 - **Opslag:** S3 (ruwe sensor events als Parquet bestanden)
 - **Visualisatie:** Power BI Desktop (DirectQuery op PostgreSQL)
 - **LLM / RAG:** OpenAI API (of Ollama lokaal) + pgvector voor semantisch zoeken over patronen en anomalieën
@@ -144,7 +144,7 @@ partities altijd bestaan voor de huidige en volgende maand.
 ## PySpark Jobs
 
 ### Extract (`jobs/extract.py`)
-- Leest Parquet bestanden van S3 (of lokale MinIO emulatie)
+- Leest Parquet bestanden van AWS S3
 - Schrijft rijen naar `raw_sensor_data` via JDBC (PostgreSQL)
 - Idempotent: `INSERT ... ON CONFLICT DO NOTHING` via Spark JDBC mode `"ignore"`
 
@@ -237,19 +237,15 @@ Grafana Cloud
 ```bash
 cd backend/project2b-behavior-analyzer
 
-# 1. Alle services starten (Airflow + PostgreSQL + MinIO + Spark)
+# 1. Alle services starten (Airflow + PostgreSQL)
 docker compose -f docker/docker-compose.yml up -d
 
 # 2. DB migratie draaien
 python scripts/migrate.py
 
-# 3. Airflow bereikbaar op http://localhost:8090
-#    (port 8090 om conflict met project 1b te vermijden)
+# 3. Airflow bereikbaar op http://localhost:8080
 
-# 4. MinIO (S3 lokaal) bereikbaar op http://localhost:9001
-#    credentials: minioadmin / minioadmin
-
-# 5. DAG manueel triggeren
+# 4. DAG manueel triggeren
 airflow dags trigger behavior_pipeline --conf '{"days_back": 7}'
 
 # 6. Of PySpark job direct draaien (zonder Airflow)
@@ -292,13 +288,14 @@ backend/project2b-behavior-analyzer/
 │   ├── transform.py             ← PySpark: normalize + validate
 │   └── analyze.py               ← PySpark: patronen + anomalieën
 ├── infrastructure/
-│   ├── main.tf                  ← RDS PostgreSQL + S3 + IAM
+│   ├── s3.tf                    ← S3 bucket (ruwe sensor Parquet data)
+│   ├── iam.tf                   ← IAM user voor Airflow worker (S3 + DynamoDB read)
 │   ├── variables.tf
 │   └── outputs.tf
 ├── scripts/
 │   ├── migrate.py               ← DB schema aanmaken
 │   ├── manage_partitions.py     ← maandelijkse partities aanmaken (geïnspireerd op fastapi-dbuploader)
-│   └── seed_data.py             ← testdata genereren (Parquet naar MinIO)
+│   └── seed_data.py             ← testdata genereren (Parquet naar S3)
 ├── rag/
 │   └── bot.py                   ← RAG query interface (pgvector + LLM)
 ├── tests/
@@ -311,7 +308,7 @@ backend/project2b-behavior-analyzer/
 │       └── test_pipeline.py
 ├── reports/                     ← Power BI .pbix (gitignored)
 ├── docker/
-│   └── docker-compose.yml       ← Airflow + PostgreSQL + MinIO + Spark
+│   └── docker-compose.yml       ← Airflow + PostgreSQL
 ├── Jenkinsfile                  ← CD pipeline
 ├── requirements.txt
 ├── requirements-dev.txt

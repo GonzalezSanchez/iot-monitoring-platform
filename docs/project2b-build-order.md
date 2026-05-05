@@ -17,7 +17,7 @@ Phase 1: Foundation
        backend/project2b-behavior-analyzer/
        ├── dags/                            ← Airflow DAGs
        ├── jobs/                            ← PySpark jobs
-       ├── infrastructure/                  ← Terraform (RDS PostgreSQL)
+       ├── infrastructure/                  ← Terraform (S3 + IAM)
        ├── tests/
        │   ├── unit/
        │   └── integration/
@@ -29,9 +29,9 @@ Phase 1: Foundation
        └── .github/workflows/ci.yml         ← ruff, mypy, pytest, terraform validate
 
   [2] Infrastructure — Terraform
-       ├── RDS PostgreSQL (db.t3.micro, lokaal via Docker)
        ├── S3 bucket (ruwe sensor data als Parquet)
-       └── IAM rollen (Airflow worker, Spark job toegang)
+       └── IAM user: Airflow worker (S3 read/write + DynamoDB read)
+       Note: PostgreSQL draait via Docker Compose op acer-server — geen RDS, geen AWS kosten
 
 Phase 2: Database
 ─────────────────
@@ -45,7 +45,7 @@ Phase 2: Database
 Phase 3: PySpark jobs
 ─────────────────────
   [4t] Tests: extract job
-       ├── leest Parquet van lokale S3-mock (MinIO)
+       ├── leest Parquet van AWS S3
        └── schrijft correcte rijen naar raw_sensor_data
   [4] PySpark job: Extract
        └── leest sensor events Parquet (S3) → raw_sensor_data (PostgreSQL via JDBC)
@@ -89,7 +89,7 @@ Phase 5: Jenkins CD pipeline
 ─────────────────────────────
   [9] Jenkinsfile voor project 2b
        ├── Stage: Unit Tests (pytest)
-       ├── Stage: Terraform Plan (RDS + S3)
+       ├── Stage: Terraform Plan (S3 + IAM)
        ├── Stage: Approval Gate
        ├── Stage: Terraform Apply
        └── Stage: Smoke Test (DAG trigger + status check)
@@ -135,7 +135,7 @@ Phase 8: CI/CD + Documentatie
             └── Project 1a opnieuw deployen naar AWS (VITE_P1A_API_ENDPOINT)
 
   [14] README + demo
-        ├── Lokaal starten (Docker Compose: Airflow + Spark + PostgreSQL + MinIO)
+        ├── Lokaal starten (Docker Compose: Airflow + PostgreSQL op acer-server)
         ├── DAG handmatig triggeren via Airflow UI
         ├── Power BI rapport screenshot
         ├── Grafana dashboard screenshot
