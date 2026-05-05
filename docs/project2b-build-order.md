@@ -92,13 +92,16 @@ Phase 5: Jenkins CD pipeline
 
 Phase 6: Power BI rapport
 ─────────────────────────
-  [10] PostgreSQL → Power BI connectie
+  [10] PostgreSQL → Power BI connectie + publicatie
         ├── DirectQuery op patterns en anomalies tabellen
         ├── Rapport pagina's:
         │   ├── Overzicht: patroon frequentie per kamer per week
         │   ├── Anomalieën: severity heatmap per kamer
         │   └── Trend: temperatuur trend over tijd (line chart)
-        └── .pbix bestand → reports/ (gitignored, screenshot in README)
+        ├── .pbix bestand → reports/ (gitignored)
+        ├── Publish to web → publieke iframe URL (Microsoft)
+        │   └── frontend/src/pages/PowerBIDashboard.jsx (iframe embed)
+        └── Screenshots → docs/screenshots/ (voor README)
 
 Phase 7: Observability — Datadog (trial)
 ─────────────────────────────────────────
@@ -119,7 +122,13 @@ Phase 8: CI/CD + Documentatie
         ├── pytest tests/unit/ --cov-fail-under=80
         └── terraform validate
 
-  [13] README + demo
+  [13] Frontend tabs herstructureren
+        └── Splits van 3 tabs naar 5: 1a (Lambda) | 1b (FastAPI) | 2a (AWS native) | 2b (Airflow+Spark) | 3 (Gateway)
+            ├── ProjectTabs.jsx uitbreiden
+            ├── PowerBIDashboard.jsx toevoegen (iframe uit stap [10])
+            └── Project 1a opnieuw deployen naar AWS (VITE_P1A_API_ENDPOINT)
+
+  [14] README + demo
         ├── Lokaal starten (Docker Compose: Airflow + Spark + PostgreSQL + MinIO)
         ├── DAG handmatig triggeren via Airflow UI
         ├── Power BI rapport screenshot
