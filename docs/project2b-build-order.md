@@ -138,7 +138,7 @@ Phase 8: CI/CD + Documentatie
         ├── Lokaal starten (Docker Compose: Airflow + Spark + PostgreSQL + MinIO)
         ├── DAG handmatig triggeren via Airflow UI
         ├── Power BI rapport screenshot
-        ├── Datadog dashboard screenshot
+        ├── Grafana dashboard screenshot
         └── Vergelijking tabel: project 2a vs 2b (zelfde doel, andere tools)
 
 ═══════════════════════════════════════════════════════════
@@ -147,7 +147,7 @@ Dependencies:
   3 → 7+7t → 8+8t                      (Airflow orkestratie, na DB schema)
   6,8 → 9                               (Jenkins CD, na pipeline werkend)
   6,8 → 10                              (Power BI, na data in DB)
-  8,10 → 11                             (Datadog, na pipeline + data werkend)
+  8,10 → 11                             (Grafana Cloud, na pipeline + data werkend)
   all → 12 → 13                         (CI + docs als laatste)
 
 ───────────────────────────────────────────────────────────
