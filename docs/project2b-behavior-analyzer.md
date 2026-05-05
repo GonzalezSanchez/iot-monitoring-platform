@@ -160,7 +160,9 @@ partities altijd bestaan voor de huidige en volgende maand.
   - `temperature_trend`: lineaire regressie via `pyspark.ml.regression.LinearRegression`
 - **Anomaliedetectie:**
   - z-score berekening: `(value - mean) / stddev` via Spark SQL aggregates
-  - z-score ≥ 3 → anomalie geschreven naar `anomalies`
+  - Minimum 4 metingen per kamer vereist (zelfde als project 2a — minder is statistisch onbetrouwbaar)
+  - z-score ≥ 3 → severity `medium`
+  - z-score ≥ 5 → severity `high`
 
 ## Airflow DAG
 

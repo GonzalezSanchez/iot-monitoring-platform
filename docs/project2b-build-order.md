@@ -59,10 +59,15 @@ Phase 3: PySpark jobs
   [6t] Tests: analyze job
        ├── occupancy_schedule: bekende input → verwachte schedule (window functions)
        ├── temperature_trend: stijgende reeks → 'rising' (linear regression via MLlib)
-       └── anomaly: z-score ≥ 3 → flagged (stddev + mean via Spark SQL)
+       ├── anomaly: z-score ≥ 3 → severity medium (stddev + mean via Spark SQL)
+       ├── anomaly: z-score ≥ 5 → severity high
+       └── anomaly: < 4 metingen per kamer → geen anomalie geschreven
   [6] PySpark job: Analyze
        └── pattern detection + anomaly detection via Spark SQL + MLlib
-           schrijft naar patterns + anomalies (PostgreSQL)
+           ├── min. 4 metingen per kamer vereist voor z-score (zelfde als project 2a)
+           ├── z-score ≥ 3 → severity medium
+           ├── z-score ≥ 5 → severity high
+           └── schrijft naar patterns + anomalies (PostgreSQL)
 
 Phase 4: Orkestratie (Airflow)
 ──────────────────────────────
