@@ -32,7 +32,7 @@ herhaling om te demonstreren dat dezelfde businesslogica met andere tools oplosb
 ## Architectuur
 
 ```
-S3 (sensor events als Parquet)
+DynamoDB (prod-SensorEvents)
         │
         ▼ (via Airflow DAG: @weekly)
 ┌────────────────────────────────────────────────────┐
@@ -44,12 +44,14 @@ S3 (sensor events als Parquet)
         ▼              ▼              ▼
   PySpark Job:   PySpark Job:   PySpark Job:
   Extract        Transform      Analyze
-  (Parquet       (normalize,    (Spark SQL +
-   → JDBC)        validate)      MLlib)
+  (DynamoDB →    (normalize,    (Spark SQL +
+   S3 Parquet     validate)      MLlib)
+   + JDBC)
         │
         ▼
-  RDS PostgreSQL
+  PostgreSQL (Docker)
   ├── raw_sensor_data
+  ├── processed_sensor_data
   ├── patterns
   └── anomalies
         │
@@ -144,8 +146,9 @@ partities altijd bestaan voor de huidige en volgende maand.
 ## PySpark Jobs
 
 ### Extract (`jobs/extract.py`)
-- Leest Parquet bestanden van AWS S3
-- Schrijft rijen naar `raw_sensor_data` via JDBC (PostgreSQL)
+- Leest sensor events van DynamoDB (`prod-SensorEvents`)
+- Schrijft ruwe events als Parquet naar S3 (data lake archief)
+- Laadt rijen naar `raw_sensor_data` via JDBC (PostgreSQL)
 - Idempotent: `INSERT ... ON CONFLICT DO NOTHING` via Spark JDBC mode `"ignore"`
 
 ### Transform (`jobs/transform.py`)
@@ -295,7 +298,7 @@ backend/project2b-behavior-analyzer/
 ├── scripts/
 │   ├── migrate.py               ← DB schema aanmaken
 │   ├── manage_partitions.py     ← maandelijkse partities aanmaken (geïnspireerd op fastapi-dbuploader)
-│   └── seed_data.py             ← testdata genereren (Parquet naar S3)
+│   └── seed_data.py             ← testdata seeden in DynamoDB (hergebruikt logica van project 2a)
 ├── rag/
 │   └── bot.py                   ← RAG query interface (pgvector + LLM)
 ├── tests/

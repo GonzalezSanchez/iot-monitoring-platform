@@ -45,10 +45,11 @@ Phase 2: Database
 Phase 3: PySpark jobs
 ─────────────────────
   [4t] Tests: extract job
-       ├── leest Parquet van AWS S3
-       └── schrijft correcte rijen naar raw_sensor_data
+       ├── leest sensor events van DynamoDB
+       ├── schrijft Parquet naar S3
+       └── schrijft correcte rijen naar raw_sensor_data via JDBC
   [4] PySpark job: Extract
-       └── leest sensor events Parquet (S3) → raw_sensor_data (PostgreSQL via JDBC)
+       └── DynamoDB (prod-SensorEvents) → S3 Parquet (archief) + raw_sensor_data (PostgreSQL via JDBC)
 
   [5t] Tests: transform job
        ├── ongeldige temperaturen gefilterd
