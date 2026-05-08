@@ -15,6 +15,3 @@ __pycache__/
 .mypy_cache/
 .coverage
 .ruff_cache/
-
-# Test data
-scripts/test-events/*.json
