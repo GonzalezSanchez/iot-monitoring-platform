@@ -42,6 +42,9 @@ Phase 2: Database
        └── creates: raw_sensor_data, patterns, anomalies
            (zelfde schema als project 2a — opzettelijk, toont portabiliteit)
 
+  Testdata: hergebruik backend/project2a-behavior-analyzer/scripts/seed_dynamodb.py
+       └── zelfde DynamoDB tabel (prod-SensorEvents) — geen aparte seed script nodig
+
 Phase 3: PySpark jobs
 ─────────────────────
   [4t] Tests: extract job

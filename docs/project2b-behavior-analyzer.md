@@ -298,7 +298,7 @@ backend/project2b-behavior-analyzer/
 ├── scripts/
 │   ├── migrate.py               ← DB schema aanmaken
 │   ├── manage_partitions.py     ← maandelijkse partities aanmaken (geïnspireerd op fastapi-dbuploader)
-│   └── seed_data.py             ← testdata seeden in DynamoDB (hergebruikt logica van project 2a)
+│   └── (geen seed script — hergebruik backend/project2a-behavior-analyzer/scripts/seed_dynamodb.py)
 ├── rag/
 │   └── bot.py                   ← RAG query interface (pgvector + LLM)
 ├── tests/
