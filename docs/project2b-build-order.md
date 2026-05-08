@@ -133,9 +133,11 @@ Phase 8: CI/CD + Documentatie
         └── terraform validate
 
   [13] Frontend tabs herstructureren
-        └── Splits van 3 tabs naar 5: 1a (Lambda) | 1b (FastAPI) | 2a (AWS native) | 2b (Airflow+Spark) | 3 (Gateway)
+        └── Splits van 3 tabs naar 5: 1a (Lambda) | 1b (FastAPI) | 2a (AWS native) | 2b (Airflow+Spark) | 4 (AI Assistant)
             ├── ProjectTabs.jsx uitbreiden
             ├── PowerBIDashboard.jsx toevoegen (iframe uit stap [10])
+            ├── LlmDashboard.jsx toevoegen (coming soon — project 4)
+            ├── Gateway tab verwijderen (project 3 = backend only → README + screenshots)
             └── Project 1a opnieuw deployen naar AWS (VITE_P1A_API_ENDPOINT)
 
   [14] README + demo
