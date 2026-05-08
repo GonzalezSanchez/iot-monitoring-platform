@@ -1,6 +1,8 @@
-# Project 3: IoT Device Gateway Simulator
+# Project 3 — IoT Device Gateway
 
-## Beschrijving
+Secure gateway for IoT device registration, authentication, and message delivery.
+Simulates the device layer of a production IoT platform — how physical sensors
+authenticate and send data securely before it reaches the ingestion layer (Project 1).
 
 Secure gateway voor IoT devices met authenticatie, rate limiting, en message queuing. Simuleert een production-ready IoT platform met device management.
 
@@ -26,105 +28,108 @@ Net als project 1/1b en 2a/2b wordt project 3 in twee varianten gebouwd — zelf
 - **Containerization:** Docker
 - **Testing:** pytest
 
-## Features
+## Architecture
 
-- Device registration en authenticatie (JWT)
-- Rate limiting per device
-- Message queuing voor reliable delivery
-- Device status monitoring
-- Command & control interface
-- Security: input validation, encryption
+```
+IoT Device (sensor)
+        │
+        ▼
+API Gateway (HTTP) — JWT auth via Cognito authorizer
+        │
+        ├── POST /devices/register     → RegisterDevice Lambda
+        ├── POST /devices/{id}/auth    → AuthDevice Lambda (issues JWT)
+        ├── POST /messages             → IngestMessage Lambda → SQS → ProcessMessage Lambda
+        ├── POST /commands/{id}        → SendCommand Lambda → SQS (command queue)
+        └── GET  /devices/{id}/status  → GetDeviceStatus Lambda
+                │
+                ▼
+          DynamoDB
+          ├── Devices table
+          ├── Messages table
+          └── RateLimits table
+```
+
+## Key Design Decisions
+
+**Cognito for JWT** — device authentication uses AWS Cognito User Pools. Devices
+register once, receive credentials, and exchange them for short-lived JWTs. API
+Gateway validates the JWT on every request via a Cognito authorizer — no custom
+auth logic in Lambda.
+
+**SQS for reliable delivery** — messages are queued in SQS before processing.
+If the processor Lambda fails, the message stays in the queue and retries automatically.
+After max retries, messages go to a Dead Letter Queue (DLQ) for inspection.
+
+**Rate limiting via DynamoDB** — per-device request counts are tracked in a
+`RateLimits` table with a TTL-based sliding window. Checked in the IngestMessage
+Lambda before queuing.
+
+**Deploy/destroy strategy** — same as project 2a. Deploy for demos, destroy after
+to minimise costs.
 
 ## API Endpoints
 
 ### POST /devices/register
-Registreer een nieuw IoT device
+Register a new IoT device. Returns an API key for subsequent authentication.
 
-**Request:**
 ```json
+// Request
 {
   "device_id": "sensor-001",
   "device_type": "temperature_sensor",
-  "metadata": {
-    "location": "conference-a1",
-    "model": "DHT22"
-  }
+  "metadata": { "location": "conference-a1", "model": "DHT22" }
 }
-```
 
-**Response:**
-```json
+// Response 201
 {
   "device_id": "sensor-001",
-  "api_key": "generated-api-key",
+  "api_key": "p3-xxxxxxxxxxxxxxxx",
   "status": "registered"
 }
 ```
 
-### POST /devices/{device_id}/authenticate
-Authenticeer en ontvang JWT token
+### POST /devices/{device_id}/auth
+Exchange API key for a short-lived JWT (1 hour).
 
-**Request:**
 ```json
-{
-  "api_key": "generated-api-key"
-}
-```
+// Request
+{ "api_key": "p3-xxxxxxxxxxxxxxxx" }
 
-**Response:**
-```json
-{
-  "access_token": "jwt-token-here",
-  "expires_in": 3600
-}
+// Response 200
+{ "access_token": "eyJ...", "expires_in": 3600, "token_type": "Bearer" }
 ```
 
 ### POST /messages
-Verstuur bericht van device naar cloud
+Send a sensor reading. Requires `Authorization: Bearer <token>`.
 
-**Headers:**
-```
-Authorization: Bearer jwt-token-here
-```
-
-**Request:**
 ```json
+// Request
 {
   "device_id": "sensor-001",
-  "payload": {
-    "temperature": 22.5,
-    "humidity": 45
-  },
+  "payload": { "temperature": 22.5, "humidity": 45 },
   "timestamp": "2026-01-07T10:30:00Z"
 }
-```
 
-**Response:**
-```json
-{
-  "message_id": "uuid-here",
-  "status": "queued"
-}
+// Response 202
+{ "message_id": "uuid", "status": "queued" }
 ```
 
 ### POST /commands/{device_id}
-Verstuur commando naar device
+Send a command to a device (stored in command queue, polled by device).
 
-**Request:**
 ```json
-{
-  "command": "update_interval",
-  "parameters": {
-    "interval_seconds": 60
-  }
-}
+// Request
+{ "command": "update_interval", "parameters": { "interval_seconds": 60 } }
+
+// Response 202
+{ "command_id": "uuid", "status": "queued" }
 ```
 
 ### GET /devices/{device_id}/status
-Haal device status op
+Get current device status and rate limit info.
 
-**Response:**
 ```json
+// Response 200
 {
   "device_id": "sensor-001",
   "status": "online",
@@ -134,97 +139,114 @@ Haal device status op
 }
 ```
 
-## Database Schema (DynamoDB)
+## DynamoDB Schema
 
-**Table:** devices
+**Devices table** (`p3-{env}-Devices`):
+- PK: `device_id` (String)
+- Attributes: `device_type`, `api_key_hash`, `cognito_username`, `status` (registered/online/offline/suspended), `metadata` (Map), `registered_at`, `last_seen`
 
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| device_id (PK) | String | Device identificatie |
-| device_type | String | Type sensor/actuator |
-| api_key_hash | String | Hashed API key |
-| status | String | online/offline/suspended |
-| metadata | Map | Device metadata |
-| registered_at | String | ISO 8601 timestamp |
-| last_seen | String | ISO 8601 timestamp |
+**Messages table** (`p3-{env}-Messages`):
+- PK: `device_id` (String)
+- SK: `timestamp` (String)
+- Attributes: `message_id`, `payload` (Map), `status` (queued/processed/failed), `sqs_message_id`
 
-**Table:** messages
+**RateLimits table** (`p3-{env}-RateLimits`):
+- PK: `device_id` (String)
+- SK: `window` (String — hourly bucket e.g. `2026-01-07T10`)
+- Attributes: `request_count` (Number), `limit` (Number), `ttl` (Number — epoch for DynamoDB TTL auto-cleanup)
 
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| message_id (PK) | String | UUID |
-| device_id | String | Device identificatie |
-| timestamp (SK) | String | ISO 8601 timestamp |
-| payload | Map | Message data |
-| status | String | queued/processed/failed |
+## Infrastructure
 
-**Table:** rate_limits
+Provisioned via CloudFormation in `infrastructure/`:
 
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| device_id (PK) | String | Device identificatie |
-| window (SK) | String | Time window (hourly) |
-| request_count | Number | Aantal requests |
-| limit | Number | Max toegestaan |
+| File | What it creates |
+|---|---|
+| `cognito.yml` | Cognito User Pool + App Client for device auth |
+| `dynamodb.yml` | Devices, Messages, RateLimits tables |
+| `sqs.yml` | Message queue + Command queue + DLQs |
+| `lambdas.yml` | 5 Lambda functions + IAM roles |
+| `apigateway.yml` | HTTP API + Cognito authorizer + routes |
 
-## Architectuur
+## Rate Limiting
 
-```
-API Gateway (JWT Auth) → Lambda (Message Handler) → SQS
-                                                      ↓
-                                                Lambda (Processor)
-                                                      ↓
-                                               DynamoDB (messages)
+- Default: 1000 messages/hour per device
+- Configurable per device type in `config/rate_limits.yml`
+- Sliding window tracked in DynamoDB RateLimits table with TTL auto-cleanup
+- Exceeded limit → 429 Too Many Requests
 
-API Gateway → Lambda (Device Mgmt) → DynamoDB (devices)
-                                   ↓
-                             Lambda (Rate Limiter) → DynamoDB (rate_limits)
-```
+## Security
 
-## Security Features
+- JWT validation via Cognito authorizer on API Gateway — no auth logic in Lambda
+- API keys stored as bcrypt hashes in DynamoDB — never in plaintext
+- Input validation via Pydantic on all Lambda handlers
+- TLS in transit (API Gateway enforced), encryption at rest (DynamoDB default)
+- Least-privilege IAM: each Lambda has its own role with only the permissions it needs
 
-- **Authentication:** JWT tokens via AWS Cognito
-- **Rate Limiting:** Per-device request limits
-- **Input Validation:** Schema validation voor alle payloads
-- **Encryption:** TLS in transit, encryption at rest
-- **API Keys:** Secure key generation en hashing
-
-## Installatie & Gebruik
+## Local Setup
 
 ```bash
 cd backend/project3-iot-gateway
 
-# Build Docker image
-docker build -t iot-gateway .
+# Start LocalStack (DynamoDB + SQS + Cognito simulation)
+docker-compose up -d
 
-# Run lokaal
-docker run -p 8000:8000 iot-gateway
+# Install dependencies
+pip install -r requirements-dev.txt
 
-# Deploy naar AWS
-./deploy.sh
+# Run unit tests (moto — no Docker needed)
+pytest tests/unit/ -v
+
+# Run integration tests (requires LocalStack)
+pytest tests/integration/ -v
 ```
 
-## Testing
+## Deployment
 
 ```bash
-# Unit tests
-pytest tests/unit/
+# Deploy all stacks in order
+./scripts/deploy.sh prod
 
-# Integration tests
-pytest tests/integration/
-
-# Security tests
-pytest tests/security/
-
-# Load testing
-locust -f tests/load/locustfile.py
+# Tear down after demo
+./scripts/destroy.sh prod
 ```
 
-## Rate Limiting
+## Project Structure
 
-- **Free tier:** 1000 requests/hour per device
-- **Standard tier:** 10000 requests/hour per device
-- **Burst:** Max 100 requests/minute
+```
+project3-iot-gateway/
+├── src/
+│   ├── handlers/          # Lambda entry points
+│   │   ├── register_device.py
+│   │   ├── auth_device.py
+│   │   ├── ingest_message.py
+│   │   ├── process_message.py
+│   │   ├── send_command.py
+│   │   └── get_device_status.py
+│   ├── models/            # Pydantic models
+│   ├── repositories/      # DynamoDB access
+│   ├── services/          # Business logic (auth, rate limiting)
+│   └── utils/             # Response helpers
+├── infrastructure/
+│   ├── cognito.yml
+│   ├── dynamodb.yml
+│   ├── sqs.yml
+│   ├── lambdas.yml
+│   └── apigateway.yml
+├── scripts/
+│   ├── deploy.sh
+│   ├── destroy.sh
+│   └── simulate_device.py  ← simulates a device registering and sending messages
+├── tests/
+│   ├── unit/
+│   └── integration/
+├── docker/
+│   └── docker-compose.yml  ← LocalStack
+├── config/
+│   └── rate_limits.yml
+├── requirements.txt
+├── requirements-dev.txt
+└── README.md
+```
 
 Configureerbaar per device type.
 
