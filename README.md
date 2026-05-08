@@ -85,10 +85,11 @@ processed through anomaly detection, and stored in DynamoDB.
 Same domain logic as Project 1, re-implemented with FastAPI and deployed as a
 containerised application. A deliberate choice to show infrastructure independence.
 
-**Stack:** Python, FastAPI, DynamoDB (AWS), Docker, nginx, Cloudflare tunnel
+**Stack:** Python, FastAPI, DynamoDB (AWS), Docker, nginx, OpenTelemetry, Datadog, Cloudflare tunnel
 **Live:** [iot.gonzalezsanchez.dev](https://iot.gonzalezsanchez.dev)
 **API docs:** [iot.gonzalezsanchez.dev/docs](https://iot.gonzalezsanchez.dev/docs)
 **Auth:** Intentionally excluded — device authentication (JWT via Cognito) is covered in Project 3
+**Observability:** End-to-end with OpenTelemetry auto-instrumentation → OTel Collector → Datadog APM — see [Observability section](#observability-project-1b) below
 
 [View project](backend/project1b-smart-room-monitor-fastapi/)
 
@@ -106,6 +107,19 @@ stored in Aurora Serverless v2 and exposed via REST API.
 **CI:** GitHub Actions — mypy, ruff, pytest (unit + integration + regression), terraform validate
 **Deploy:** On-demand for demos — destroyed after to minimise costs
 **Tests:** Unit (mocked AWS), integration (real PostgreSQL via Docker), regression (documented production bugs)
+**LinkedIn post:** [Serverless ETL pipeline for behavioral pattern detection](https://www.linkedin.com/posts/activity-7450582273697026049-aOCE)
+
+#### Step Functions execution graph — Extract → Transform → Analyze pipeline
+
+![Step Functions graph](docs/screeenshots/project2-step-functions/project2a-step-functions-graph.png)
+
+#### Execution history — 7 runs, all Succeeded
+
+![Step Functions executions](docs/screeenshots/project2-step-functions/project2a-step-functions-executions.png)
+
+#### Behavior Pattern Analyzer dashboard — occupancy schedules and temperature trends per room
+
+![Behavior dashboard](docs/screeenshots/project2-step-functions/project2a-behavior-dashboard.png)
 
 [View project](backend/project2a-behavior-analyzer/)
 
@@ -136,10 +150,12 @@ command & control, reliable message delivery, and device status monitoring.
 
 AI integration layer on top of the existing platform. Exposes the FastAPI routes as MCP
 tools via `fastapi-mcp`, enabling natural language queries over live sensor data.
+Uses `library-skills` to bundle FastAPI and Boto3 API knowledge directly into coding agents —
+so the agent understands the libraries the platform is built on without extra prompting.
 
 *"Which rooms had anomalies this week?" → Claude queries the IoT platform directly.*
 
-**Stack:** Python, fastapi-mcp, Claude API (Anthropic), RAG, Docker
+**Stack:** Python, fastapi-mcp, Claude API (Anthropic), library-skills, RAG, Docker
 
 ---
 
@@ -149,6 +165,52 @@ Real-time dashboard for visualising sensor data and room states.
 
 **Stack:** React, TanStack Query, Vite, nginx
 **Live:** [iot.gonzalezsanchez.dev](https://iot.gonzalezsanchez.dev)
+
+---
+
+## Observability (Project 1b)
+
+End-to-end observability implemented with **zero manual instrumentation** — OpenTelemetry auto-instrumentation exports traces, logs and metrics through an OTel Collector into Datadog APM.
+
+**What's instrumented automatically:**
+- Distributed traces: every HTTP request becomes a trace with DynamoDB child spans
+- Log-trace correlation: every log entry carries a `trace_id` and `span_id`
+- Watchdog anomaly detection: Datadog auto-detected and resolved an error rate spike
+- Metrics: `http.server.active_requests` submitted via `opentelemetry.instrumentation.fastapi`
+
+**LinkedIn post:** [Zero manual instrumentation — OTel + Datadog on a live FastAPI service](https://www.linkedin.com/posts/activity-7455558039853645824-reu9)
+
+---
+
+### APM Services — Watchdog auto-detected an error rate spike on GET /rooms/{room_id}/events
+
+> Distributed tracing pinpointed the fault to FastAPI (98.1% error rate), not DynamoDB (0% error rate). [LinkedIn post →](https://www.linkedin.com/posts/activity-7455558039853645824-reu9)
+
+![APM Services overview — Watchdog RESOLVED](docs/screeenshots/datadog-project1b/datadog-apm-services-watchdog-resolved.png)
+
+---
+
+### Service map — `iot-smart-room-monitor → dynamodb` dependency auto-detected from traces
+
+![Service map auto-detected from traces](docs/screeenshots/datadog-project1b/datadog-service-map.png)
+
+---
+
+### Flame graph — POST /events (149ms) with 3 automatic DynamoDB child spans
+
+![Flame graph — POST /events with DynamoDB child spans](docs/screeenshots/datadog-project1b/datadog-flame-graph.png)
+
+---
+
+### Log patterns — business logic visible in Datadog: anomaly detection, room state, event ingestion
+
+![Log patterns](docs/screeenshots/datadog-project1b/datadog-log-patterns.png)
+
+---
+
+### Log-trace correlation — flame graph embedded directly from a log entry
+
+![Log-trace correlation](docs/screeenshots/datadog-project1b/datadog-log-trace-correlation.png)
 
 ---
 
@@ -174,6 +236,8 @@ Real-time dashboard for visualising sensor data and room states.
 | pytest + moto (DynamoDB mocking), 80%+ coverage | project 1, 1b, 2a |
 | mypy + pre-commit hooks | project 1, 1b, 2a |
 | Cloudflare tunnel + production deployment | project 1b |
+| OpenTelemetry auto-instrumentation (traces, logs, metrics) | project 1b |
+| Datadog APM (distributed traces, Watchdog, log-trace correlation) | project 1b |
 
 ---
 
