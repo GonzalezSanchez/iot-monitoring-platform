@@ -23,10 +23,11 @@ const tabGroups = [
 
 function ProjectTabs({ active, onChange }) {
   return (
-    <nav className="w-56 shrink-0 bg-blue-50 border-r border-blue-100 py-6 px-3 flex flex-col">
+    <nav className="w-64 shrink-0 bg-blue-50 border-r border-blue-100 py-6 px-3 flex flex-col">
       {tabGroups.map((group, idx) => (
         <div key={group.group}>
-          <p className={`text-xs font-bold text-gray-700 uppercase tracking-widest px-2 mb-3 ${idx > 0 ? 'mt-6' : ''}`}>
+          {idx > 0 && <hr className="border-gray-300 my-4" />}
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-2 mb-3">
             {group.group}
           </p>
           <ul className="flex flex-col gap-1">

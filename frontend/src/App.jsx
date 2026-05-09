@@ -21,8 +21,8 @@ function App() {
 
       {/* Header */}
       <header className="bg-blue-50 border-b border-blue-100 px-6 py-4 flex flex-col items-center shrink-0">
-        <h1 className="text-xl font-bold text-gray-800">IoT Monitoring Platform</h1>
-        <p className="text-xs text-gray-500 mt-0.5">Multi-architecture sensor data analytics</p>
+        <h1 className="text-3xl font-bold text-gray-800">IoT Monitoring Platform</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Multi-architecture sensor data analytics</p>
         <div className="flex items-center gap-3 mt-2 text-sm">
           <span className="text-gray-700 font-medium">Álvaro González Sánchez</span>
           <span className="text-gray-300">|</span>

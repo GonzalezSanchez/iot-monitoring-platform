@@ -46,9 +46,9 @@ function RoomCard({ room, selected, onClick }) {
 
   return (
     <div onClick={onClick} className={`${border} ${bg} border-2 rounded-xl p-4 cursor-pointer min-w-[180px]`}>
-      <div className="flex justify-between items-center mb-2.5">
+      <div className="flex justify-between items-center gap-2 mb-2.5">
         <strong className="text-base">{room.name || room.room_id}</strong>
-        <StatusBadge status={room.status} />
+        <span className="shrink-0"><StatusBadge status={room.status} /></span>
       </div>
       <div className="text-sm text-gray-700 leading-loose">
         {state.temperature != null && <div>Temperature: <b>{state.temperature} °C</b></div>}
