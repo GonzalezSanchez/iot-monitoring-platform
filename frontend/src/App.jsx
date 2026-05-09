@@ -19,13 +19,26 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="pt-12 pb-8 text-center">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">
+        <div className="pt-12 pb-8 text-center border-b border-gray-200">
+          <h1 className="text-4xl font-bold text-gray-800">
             IoT Monitoring Platform
           </h1>
-          <p className="text-lg text-gray-600">
+          <p className="text-lg text-gray-600 mt-2">
             Multi-architecture sensor data analytics
           </p>
+          <div className="mt-4 flex justify-center gap-6 text-sm">
+            <span className="text-gray-700">
+              <strong>Álvaro González Sánchez</strong>
+            </span>
+            <a
+              href="https://www.linkedin.com/in/gonzalezsanchez/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 underline"
+            >
+              LinkedIn
+            </a>
+          </div>
         </div>
         <ProjectTabs active={activeTab} onChange={setActiveTab} />
       </div>
