@@ -5,7 +5,7 @@ import ProjectTabs from './components/ProjectTabs';
 
 function ComingSoon({ title, description }) {
   return (
-    <div className="py-12 px-6 text-center font-sans">
+    <div className="py-24 px-6 text-center font-sans">
       <div className="text-4xl mb-3">🚧</div>
       <h2 className="text-xl font-semibold text-gray-700 mb-2">{title}</h2>
       <p className="text-sm text-gray-500">{description}</p>
@@ -17,48 +17,50 @@ function App() {
   const [activeTab, setActiveTab] = useState('room-fastapi');
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="pt-12 pb-8 text-center border-b border-gray-200">
-          <h1 className="text-4xl font-bold text-gray-800">
-            IoT Monitoring Platform
-          </h1>
-          <p className="text-lg text-gray-600 mt-2">
-            Multi-architecture sensor data analytics
-          </p>
-          <div className="mt-4 flex justify-center gap-6 text-sm">
-            <span className="text-gray-700">
-              <strong>Álvaro González Sánchez</strong>
-            </span>
-            <a
-              href="https://www.linkedin.com/in/gonzalezsanchez/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-800 underline"
-            >
-              LinkedIn
-            </a>
-          </div>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+
+      {/* Header */}
+      <header className="bg-blue-50 border-b border-blue-100 px-6 py-4 flex flex-col items-center shrink-0">
+        <h1 className="text-xl font-bold text-gray-800">IoT Monitoring Platform</h1>
+        <p className="text-xs text-gray-500 mt-0.5">Multi-architecture sensor data analytics</p>
+        <div className="flex items-center gap-3 mt-2 text-sm">
+          <span className="text-gray-700 font-medium">Álvaro González Sánchez</span>
+          <span className="text-gray-300">|</span>
+          <a
+            href="https://www.linkedin.com/in/gonzalezsanchez/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 underline"
+          >
+            LinkedIn
+          </a>
         </div>
+      </header>
+
+      {/* Sidebar + content */}
+      <div className="flex flex-1">
         <ProjectTabs active={activeTab} onChange={setActiveTab} />
+
+        <main className="flex-1 overflow-auto">
+          {(activeTab === 'room-lambda' || activeTab === 'room-fastapi') && (
+            <RoomDashboard tab={activeTab} />
+          )}
+          {activeTab === 'behavior-aws' && <BehaviorDashboard />}
+          {activeTab === 'behavior-spark' && (
+            <ComingSoon
+              title="Behavior Analyzer — Spark"
+              description="Power BI dashboard with Airflow + PySpark pipeline results — coming soon"
+            />
+          )}
+          {activeTab === 'llm' && (
+            <ComingSoon
+              title="AI Assistant"
+              description="Natural language queries over live sensor data — planned for project 4"
+            />
+          )}
+        </main>
       </div>
-      {(activeTab === 'room-lambda' || activeTab === 'room-fastapi') && <RoomDashboard tab={activeTab} />}
-      {(activeTab === 'behavior-aws' || activeTab === 'behavior-spark') && (
-        activeTab === 'behavior-aws' ? (
-          <BehaviorDashboard />
-        ) : (
-          <ComingSoon
-            title="Behavior Analyzer — Spark"
-            description="Power BI dashboard with data pipeline results"
-          />
-        )
-      )}
-      {activeTab === 'llm' && (
-        <ComingSoon
-          title="AI Assistant"
-          description="Natural language queries over live sensor data — planned for project 4"
-        />
-      )}
+
     </div>
   );
 }

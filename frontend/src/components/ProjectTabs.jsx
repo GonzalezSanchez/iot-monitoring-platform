@@ -1,64 +1,55 @@
 const tabGroups = [
   {
-    group: 'Smart Room Monitoring',
-    icon: '🏠',
-    description: 'Real-time sensor visualization and room status tracking',
+    group: 'Smart room monitoring',
     tabs: [
-      { key: 'room-lambda', label: '⚡ AWS Lambda serverless (project 1a)' },
-      { key: 'room-fastapi', label: '🐍 Containerized REST API - FastAPI (project 1b)' },
-    ]
+      { key: 'room-lambda',  label: 'AWS Lambda', sub: 'project 1a' },
+      { key: 'room-fastapi', label: 'FastAPI',     sub: 'project 1b' },
+    ],
   },
   {
-    group: 'Behavior Analyzer',
-    icon: '📊',
-    description: 'Pattern detection and anomaly identification from historical data',
+    group: 'Behavior analyzer',
     tabs: [
-      { key: 'behavior-aws', label: '☁️ AWS Step Functions + Aurora (project 2a)' },
-      { key: 'behavior-spark', label: '⚡ Apache Spark + Airflow (project 2b)' },
-    ]
+      { key: 'behavior-aws',   label: 'Step Functions + Aurora', sub: 'project 2a' },
+      { key: 'behavior-spark', label: 'Spark + Airflow',         sub: 'project 2b' },
+    ],
   },
   {
-    group: 'AI Assistant',
-    icon: '🤖',
-    description: 'Natural language interface for sensor data queries',
+    group: 'AI assistant',
     tabs: [
-      { key: 'llm', label: '💬 AI Assistant - LLM with MCP protocol (project 4)' },
-    ]
-  }
+      { key: 'llm', label: 'LLM + MCP', sub: 'project 4' },
+    ],
+  },
 ];
 
 function ProjectTabs({ active, onChange }) {
   return (
-    <div className="bg-gradient-to-b from-blue-50 to-blue-100 rounded-xl p-8 shadow-lg max-w-3xl mx-auto my-8">
+    <nav className="w-56 shrink-0 bg-blue-50 border-r border-blue-100 py-6 px-3 flex flex-col">
       {tabGroups.map((group, idx) => (
-        <div key={group.group} className={idx > 0 ? 'mt-8 pt-8 border-t border-blue-200' : ''}>
-          <div className="mb-6 text-center">
-            <div className="text-3xl mb-2">{group.icon}</div>
-            <h3 className="text-lg font-bold text-gray-800">
-              {group.group}
-            </h3>
-            <p className="text-sm text-gray-600 mt-2">
-              {group.description}
-            </p>
-          </div>
-          <ul className="space-y-2 flex flex-col items-center">
-            {group.tabs.map(tab => (
+        <div key={group.group}>
+          <p className={`text-xs font-bold text-gray-700 uppercase tracking-widest px-2 mb-3 ${idx > 0 ? 'mt-6' : ''}`}>
+            {group.group}
+          </p>
+          <ul className="flex flex-col gap-1">
+            {group.tabs.map((tab) => (
               <li
                 key={tab.key}
                 onClick={() => onChange(tab.key)}
-                className={`px-4 py-2 rounded-lg cursor-pointer border-l-4 transition-all duration-200 w-fit
+                className={`ml-3 px-3 py-2 rounded-lg cursor-pointer transition-colors
                   ${active === tab.key
-                    ? 'bg-blue-800 text-white border-l-blue-900 shadow-lg'
-                    : 'bg-white text-gray-700 border-l-gray-300 hover:bg-blue-50 hover:border-l-blue-400'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
                   }`}
               >
-                <span className="font-semibold text-sm">{tab.label}</span>
+                <span className="block text-sm font-semibold">{tab.label}</span>
+                <span className={`block text-xs ${active === tab.key ? 'text-blue-200' : 'text-gray-400'}`}>
+                  {tab.sub}
+                </span>
               </li>
             ))}
           </ul>
         </div>
       ))}
-    </div>
+    </nav>
   );
 }
 

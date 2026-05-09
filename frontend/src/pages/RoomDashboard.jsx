@@ -79,7 +79,7 @@ function EventRow({ event }) {
 
 const SENSOR_DEFAULTS = { temperature: 22.5, humidity: 55, occupancy: 5, motion: 1 };
 
-function SendEventForm({ onEventSent }) {
+function SendEventForm({ onEventSent, apiBase }) {
   const [roomId, setRoomId]       = useState('room-1');
   const [sensorType, setSensorType] = useState('temperature');
   const [value, setValue]         = useState(SENSOR_DEFAULTS.temperature);
@@ -97,7 +97,7 @@ function SendEventForm({ onEventSent }) {
     e.preventDefault();
     setSubmitting(true);
     setResult(null);
-    fetch(`${API_BASE}/events`, {
+    fetch(`${apiBase}/events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -198,7 +198,8 @@ function RoomDashboard({ tab = 'room-fastapi' }) {
         return res.json();
       })
       .then(data => {
-        setRooms(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : (data.rooms || []);
+        setRooms(list);
         setLoading(false);
         setError(null);
       })
@@ -255,7 +256,7 @@ function RoomDashboard({ tab = 'room-fastapi' }) {
         <span className="text-sm text-gray-500">{rooms.length} room{rooms.length !== 1 ? 's' : ''}</span>
       </div>
 
-      <SendEventForm onEventSent={fetchRooms} />
+      <SendEventForm onEventSent={fetchRooms} apiBase={API_BASE} />
 
       {rooms.length === 0 ? (
         <div className="p-8 bg-gray-50 rounded-lg text-center text-gray-500">
