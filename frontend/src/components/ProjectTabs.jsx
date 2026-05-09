@@ -3,23 +3,23 @@ const tabGroups = [
     group: 'Smart Room Monitoring',
     description: 'Real-time sensor visualization and room status tracking',
     tabs: [
-      { key: 'room-lambda', label: 'Lambda (1a)', desc: 'AWS Lambda serverless' },
-      { key: 'room-fastapi', label: 'FastAPI (1b)', desc: 'Containerized REST API' },
+      { key: 'room-lambda', label: 'Lambda (project 1a)', desc: 'AWS Lambda serverless' },
+      { key: 'room-fastapi', label: 'FastAPI (project 1b)', desc: 'Containerized REST API' },
     ]
   },
   {
     group: 'Behavior Analyzer',
     description: 'Pattern detection and anomaly identification from historical data',
     tabs: [
-      { key: 'behavior-aws', label: 'AWS (2a)', desc: 'Step Functions + Aurora' },
-      { key: 'behavior-spark', label: 'Spark (2b)', desc: 'Apache Spark + Airflow' },
+      { key: 'behavior-aws', label: 'AWS (project 2a)', desc: 'Step Functions + Aurora' },
+      { key: 'behavior-spark', label: 'Spark (project 2b)', desc: 'Apache Spark + Airflow' },
     ]
   },
   {
     group: 'AI Assistant',
     description: 'Natural language interface for sensor data queries',
     tabs: [
-      { key: 'llm', label: 'AI Assistant (4)', desc: 'LLM with MCP protocol' },
+      { key: 'llm', label: 'AI Assistant (project 4)', desc: 'LLM with MCP protocol' },
     ]
   }
 ];
