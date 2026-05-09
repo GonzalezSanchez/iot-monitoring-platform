@@ -172,16 +172,4 @@ Dependencies:
   8,10 → 11                             (Grafana Cloud, na pipeline + data werkend)
   all → 12 → 13                         (CI + docs als laatste)
 
-───────────────────────────────────────────────────────────
-Uitbreidingen (na project 2b compleet)
-───────────────────────────────────────────────────────────
-
-  [U1] COPY binary writer — performance optimalisatie extract job
-        Huidig: S3 Parquet via PySpark — simpel, correct, schaalbaar
-        Doel:   voeg optioneel PostgreSQL bulk write toe via psycopg3 COPY FROM STDIN (FORMAT BINARY)
-                → geïnspireerd op fastapi-dbuploader/src/common/batch_writer.py
-                → 10-100x sneller dan JDBC voor bulk inserts (David Morel benchmarks)
-        Scope:  alleen jobs/extract.py — schema, partities, DAG blijven identiek
-        Verhaal: correctheid eerst (S3 Parquet), daarna performance (COPY binary)
-                 — dezelfde iteratieve aanpak als fastapi-dbuploader project
 ```
