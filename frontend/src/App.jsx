@@ -42,7 +42,7 @@ function App() {
         </div>
         <ProjectTabs active={activeTab} onChange={setActiveTab} />
       </div>
-      {(activeTab === 'room-lambda' || activeTab === 'room-fastapi') && <RoomDashboard />}
+      {(activeTab === 'room-lambda' || activeTab === 'room-fastapi') && <RoomDashboard tab={activeTab} />}
       {(activeTab === 'behavior-aws' || activeTab === 'behavior-spark') && (
         activeTab === 'behavior-aws' ? (
           <BehaviorDashboard />

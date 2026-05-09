@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 
-const API_BASE = import.meta.env.VITE_API_ENDPOINT || '';
+const API_ENDPOINTS = {
+  'room-fastapi': import.meta.env.VITE_API_ENDPOINT || 'http://localhost:8000',
+  'room-lambda': import.meta.env.VITE_LAMBDA_API_ENDPOINT || 'https://6c20a9bn61.execute-api.eu-central-1.amazonaws.com/dev',
+};
 
 const STATUS_BADGE = {
   normal:  'text-green-700 bg-green-50 border-green-600',
@@ -179,7 +182,8 @@ function SendEventForm({ onEventSent }) {
   );
 }
 
-function RoomDashboard() {
+function RoomDashboard({ tab = 'room-fastapi' }) {
+  const API_BASE = API_ENDPOINTS[tab];
   const [rooms, setRooms]               = useState([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
@@ -246,7 +250,7 @@ function RoomDashboard() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 m-0">Smart Room Monitor</h1>
-          <p className="mt-1 text-sm text-gray-500">FastAPI + DynamoDB — auto-refreshes every 30s</p>
+          <p className="mt-1 text-sm text-gray-500">{tab === 'room-lambda' ? 'AWS Lambda + API Gateway' : 'FastAPI + DynamoDB'} — auto-refreshes every 30s</p>
         </div>
         <span className="text-sm text-gray-500">{rooms.length} room{rooms.length !== 1 ? 's' : ''}</span>
       </div>
