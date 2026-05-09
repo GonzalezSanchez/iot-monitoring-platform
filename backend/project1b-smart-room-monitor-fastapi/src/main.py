@@ -1,6 +1,9 @@
 import logging
 import os
+import sys
 from typing import Any, Dict, List, Optional
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
