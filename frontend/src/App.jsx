@@ -14,17 +14,36 @@ function ComingSoon({ title, description }) {
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState('room');
+  const [activeTab, setActiveTab] = useState('room-fastapi');
 
   return (
-    <div>
-      <ProjectTabs active={activeTab} onChange={setActiveTab} />
-      {activeTab === 'room' && <RoomDashboard />}
-      {activeTab === 'behavior' && <BehaviorDashboard />}
-      {activeTab === 'gateway' && (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="pt-12 pb-8 text-center">
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">
+            IoT Monitoring Platform
+          </h1>
+          <p className="text-lg text-gray-600">
+            Multi-architecture sensor data analytics
+          </p>
+        </div>
+        <ProjectTabs active={activeTab} onChange={setActiveTab} />
+      </div>
+      {(activeTab === 'room-lambda' || activeTab === 'room-fastapi') && <RoomDashboard />}
+      {(activeTab === 'behavior-aws' || activeTab === 'behavior-spark') && (
+        activeTab === 'behavior-aws' ? (
+          <BehaviorDashboard />
+        ) : (
+          <ComingSoon
+            title="Behavior Analyzer — Spark"
+            description="Power BI dashboard with data pipeline results"
+          />
+        )
+      )}
+      {activeTab === 'llm' && (
         <ComingSoon
-          title="IoT Device Gateway"
-          description="Secure device management with auth and rate limiting — planned next phase"
+          title="AI Assistant"
+          description="Natural language queries over live sensor data — planned for project 4"
         />
       )}
     </div>
