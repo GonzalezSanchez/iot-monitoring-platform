@@ -2,11 +2,12 @@
 """
 jobs/extract.py — PySpark extract job for project 2b.
 
-Reads sensor events from DynamoDB (prod-SensorEvents),
-archives them as Parquet on S3,
-and loads new events into raw_sensor_data (PostgreSQL via JDBC).
+Reads all sensor events from DynamoDB (prod-SensorEvents)
+and archives them as Parquet on S3 (raw landing zone),
+partitioned by year/month.
 
-Idempotent: existing event_ids are skipped before writing.
+Idempotent: dynamic partition overwrite — re-running overwrites
+only the affected monthly partitions.
 
 Usage:
     spark-submit --master local[*] jobs/extract.py
@@ -21,6 +22,7 @@ from datetime import UTC, datetime
 import boto3
 from dotenv import load_dotenv
 from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql.functions import month, year
 from pyspark.sql.types import (
     BooleanType,
     DoubleType,
@@ -65,62 +67,78 @@ def scan_dynamodb(table_name: str, region: str) -> list[dict]:
     return items
 
 
+def _parse_ts(ts_str: str) -> datetime:
+    """Parse ISO timestamp in either %Y-%m-%dT%H:%M:%SZ or full ISO format."""
+    try:
+        return datetime.strptime(ts_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    except ValueError:
+        return datetime.fromisoformat(ts_str).astimezone(UTC).replace(tzinfo=UTC)
+
+
 def to_dataframe(spark: SparkSession, items: list[dict]) -> DataFrame:
-    """Convert DynamoDB items to Spark DataFrame matching raw_sensor_data schema."""
+    """Convert DynamoDB items to Spark DataFrame matching raw schema.
+
+    Handles two event formats:
+    - Seed format: JSON payload with all sensors per event (project 2b seed script)
+    - Project 1b format: individual sensor readings (sensor_type + value per event)
+    """
     rows = []
     for item in items:
-        payload = json.loads(item["payload"])
-        ts = datetime.strptime(item["timestamp"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+        ts = _parse_ts(item["timestamp"])
 
-        temp = payload.get("temperature")
-        hum = payload.get("humidity")
-
-        rows.append(
-            (
-                item["event_id"],
-                item["device_id"],
-                item["room_id"],
-                ts,
-                float(temp) if temp is not None else None,
-                float(hum) if hum is not None else None,
-                bool(payload.get("motion")),
-                bool(payload.get("occupancy")),
-                item["payload"],
+        if "payload" in item:
+            payload = json.loads(item["payload"])
+            temp = payload.get("temperature")
+            hum = payload.get("humidity")
+            rows.append(
+                (
+                    item["event_id"],
+                    item.get("device_id", item["room_id"]),
+                    item["room_id"],
+                    ts,
+                    float(temp) if temp is not None else None,
+                    float(hum) if hum is not None else None,
+                    bool(payload.get("motion")),
+                    bool(payload.get("occupancy")),
+                    item["payload"],
+                )
             )
-        )
+        else:
+            sensor_type = item.get("sensor_type", "")
+            value = float(item["value"]) if "value" in item else None
+            rows.append(
+                (
+                    item["event_id"],
+                    item.get("device_id", item["room_id"]),
+                    item["room_id"],
+                    ts,
+                    value if sensor_type == "temperature" else None,
+                    value if sensor_type == "humidity" else None,
+                    (value > 0) if sensor_type == "motion" and value is not None else False,
+                    (value > 0) if sensor_type == "occupancy" and value is not None else False,
+                    json.dumps({"sensor_type": sensor_type, "value": str(value)}),
+                )
+            )
 
     return spark.createDataFrame(rows, schema=RAW_SCHEMA)
 
 
 def filter_new_events(df: DataFrame, existing_ids: set[str]) -> DataFrame:
-    """Remove already-loaded events to ensure idempotent writes."""
+    """Remove events already present in an existing dataset."""
     if not existing_ids:
         return df
     return df.filter(~df.event_id.isin(existing_ids))
 
 
-def get_existing_event_ids(spark: SparkSession, jdbc_url: str, properties: dict) -> set[str]:
-    """Read event_ids already present in raw_sensor_data."""
-    existing = spark.read.jdbc(
-        jdbc_url,
-        "(SELECT event_id FROM raw_sensor_data) t",
-        properties=properties,
-    )
-    return {row.event_id for row in existing.collect()}
-
-
 def write_parquet(df: DataFrame, s3_path: str) -> None:
-    """Write DataFrame as Parquet to S3, partitioned by year and month."""
-    from pyspark.sql.functions import month, year
+    """Write DataFrame as Parquet to S3, partitioned by year and month.
 
+    Dynamic partition overwrite ensures re-running only replaces
+    the monthly partitions being written, not the entire prefix.
+    """
     df.withColumn("year", year("ts")).withColumn("month", month("ts")).write.partitionBy(
         "year", "month"
-    ).mode("append").parquet(s3_path)
-
-
-def write_jdbc(df: DataFrame, jdbc_url: str, table: str, properties: dict) -> None:
-    """Append DataFrame to PostgreSQL table via JDBC."""
-    df.write.jdbc(jdbc_url, table, mode="append", properties=properties)
+    ).mode("overwrite").parquet(s3_path)
 
 
 def build_spark(master: str) -> SparkSession:
@@ -128,6 +146,7 @@ def build_spark(master: str) -> SparkSession:
         SparkSession.builder.appName("project2b-extract")
         .master(master)
         .config("spark.sql.session.timeZone", "UTC")
+        .config("spark.sql.sources.partitionOverwriteMode", "dynamic")
         .getOrCreate()
     )
 
@@ -138,25 +157,14 @@ def main() -> None:
         format="%(levelname)s %(message)s",
     )
 
-    missing = [v for v in ("DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD") if not os.getenv(v)]
-    if missing:
-        log.error("Missing required env vars: %s", ", ".join(missing))
+    s3_path = os.getenv("S3_PARQUET_PATH")
+    if not s3_path:
+        log.error("Missing required env var: S3_PARQUET_PATH")
         sys.exit(1)
 
     table_name = os.getenv("DYNAMODB_TABLE", "prod-SensorEvents")
-    region = os.getenv("AWS_DEFAULT_REGION", "eu-central-1")
-    s3_path = os.getenv("S3_PARQUET_PATH")
+    region = os.getenv("AWS_REGION", "eu-central-1")
     master = os.getenv("SPARK_MASTER", "local[*]")
-
-    jdbc_url = (
-        f"jdbc:postgresql://{os.environ['DB_HOST']}:"
-        f"{os.getenv('DB_PORT', '5432')}/{os.environ['DB_NAME']}"
-    )
-    jdbc_props = {
-        "user": os.environ["DB_USER"],
-        "password": os.environ["DB_PASSWORD"],
-        "driver": "org.postgresql.Driver",
-    }
 
     spark = build_spark(master)
     spark.sparkContext.setLogLevel("WARN")
@@ -171,24 +179,10 @@ def main() -> None:
         return
 
     df = to_dataframe(spark, items)
+    count = df.count()
 
-    existing_ids = get_existing_event_ids(spark, jdbc_url, jdbc_props)
-    if existing_ids:
-        log.info("Skipping %d already-loaded events", len(existing_ids))
-    df = filter_new_events(df, existing_ids)
-
-    new_count = df.count()
-    if new_count == 0:
-        log.info("No new events to load.")
-        spark.stop()
-        return
-
-    if s3_path:
-        log.info("Writing %d events to S3: %s", new_count, s3_path)
-        write_parquet(df, s3_path)
-
-    log.info("Writing %d events to raw_sensor_data...", new_count)
-    write_jdbc(df, jdbc_url, "raw_sensor_data", jdbc_props)
+    log.info("Writing %d events to S3: %s", count, s3_path)
+    write_parquet(df, s3_path)
     log.info("Extract complete.")
 
     spark.stop()

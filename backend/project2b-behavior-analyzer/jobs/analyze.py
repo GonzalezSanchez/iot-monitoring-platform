@@ -2,7 +2,7 @@
 """
 jobs/analyze.py — PySpark analyze job for project 2b.
 
-Reads processed_sensor_data from PostgreSQL (JDBC) and detects:
+Reads processed Parquet from S3 (processed layer) and detects:
   - occupancy_schedule : hourly occupancy rate per room via window aggregation
   - temperature_trend  : direction (rising/falling/stable) via regr_slope (linear regression)
   - temperature anomalies: z-score per room (population stddev); min 4 measurements;
@@ -165,9 +165,9 @@ def detect_temperature_anomalies(df: DataFrame, job_id: str) -> DataFrame:
     )
 
 
-def read_processed(spark: SparkSession, jdbc_url: str, properties: dict) -> DataFrame:
-    """Read all rows from processed_sensor_data."""
-    return spark.read.jdbc(jdbc_url, "processed_sensor_data", properties=properties)
+def read_processed(spark: SparkSession, s3_path: str) -> DataFrame:
+    """Read processed Parquet from S3."""
+    return spark.read.parquet(s3_path)
 
 
 def write_patterns(df: DataFrame, jdbc_url: str, properties: dict) -> None:
@@ -195,10 +195,18 @@ def main() -> None:
         format="%(levelname)s %(message)s",
     )
 
-    missing = [v for v in ("DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD") if not os.getenv(v)]
-    if missing:
-        log.error("Missing required env vars: %s", ", ".join(missing))
+    s3_processed = os.getenv("S3_PROCESSED_PATH")
+    missing_s3 = not s3_processed
+    missing_db = [v for v in ("DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD") if not os.getenv(v)]
+
+    if missing_s3:
+        log.error("Missing required env var: S3_PROCESSED_PATH")
+    if missing_db:
+        log.error("Missing required env vars: %s", ", ".join(missing_db))
+    if missing_s3 or missing_db:
         sys.exit(1)
+
+    assert s3_processed is not None
 
     master = os.getenv("SPARK_MASTER", "local[*]")
     jdbc_url = (
@@ -209,13 +217,14 @@ def main() -> None:
         "user": os.environ["DB_USER"],
         "password": os.environ["DB_PASSWORD"],
         "driver": "org.postgresql.Driver",
+        "stringtype": "unspecified",  # allow PostgreSQL to coerce varchar → jsonb
     }
 
     spark = build_spark(master)
     spark.sparkContext.setLogLevel("WARN")
 
-    log.info("Reading processed_sensor_data...")
-    df = read_processed(spark, jdbc_url, jdbc_props)
+    log.info("Reading processed Parquet from %s...", s3_processed)
+    df = read_processed(spark, s3_processed)
     row_count = df.count()
     log.info("Found %d processed rows", row_count)
 

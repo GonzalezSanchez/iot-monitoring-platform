@@ -125,13 +125,48 @@ stored in Aurora Serverless v2 and exposed via REST API.
 
 ---
 
-### Project 2b — Behavior Pattern Analyzer (Data Engineering stack) *(planned)*
+### Project 2b — Behavior Pattern Analyzer (Data Engineering stack) *(in progress)*
 
 Same analytics goal as Project 2a, re-implemented with a data engineering stack.
 A deliberate choice to demonstrate the same problem solved with different tools.
 
-**Stack:** Python, Apache Airflow, PySpark, RDS PostgreSQL, Power BI
+**Stack:** Python, Apache Airflow, PySpark 4.x, AWS S3 (data lake), PostgreSQL (self-hosted), Power BI
+**Infrastructure:** Terraform (S3 bucket + IAM)
 **CI/CD:** GitHub Actions (CI) + Jenkins (CD) — deployment pipeline with environment promotion (dev → staging → prod)
+**Tests:** 65 unit tests (pytest + PySpark in-process)
+
+**Data lake architecture** — three layers:
+
+```
+DynamoDB (prod-SensorEvents)
+    │
+    ▼ extract.py
+S3/raw   (s3a://p2b-prod-sensor-events/raw/)       ← Parquet, partitioned by year/month
+    │
+    ▼ transform.py
+S3/processed (s3a://p2b-prod-sensor-events/processed/)  ← validated, cleaned Parquet
+    │
+    ▼ analyze.py
+PostgreSQL (self-hosted on acer-server via Docker)  ← patterns + anomalies → Power BI
+```
+
+**Why PostgreSQL only at the end?** Power BI cannot query S3 Parquet directly — it needs a SQL endpoint. Alternatives like Amazon Athena or Redshift add AWS costs. PostgreSQL runs self-hosted via Docker on acer-server, always live, no destroy cycle, no RDS costs (~€15–20/month avoided).
+
+**Pipeline results (first production run, May 2026):** 12,744 events extracted → 12,715 processed → 5 occupancy patterns, 5 temperature trends, 22 anomalies detected.
+
+#### Power BI dashboard — Anomaly Overview (22 temperature anomalies across 5 rooms)
+
+![Power BI anomaly overview](docs/screenshots/project2b-PySpark/project2b-powerbi-anomaly-overview.png)
+
+#### Temperature Trend per room — linear regression slope via PySpark regr_slope
+
+![Power BI temperature trend](docs/screenshots/project2b-PySpark/project2b-powerbi-temperature-trend.png)
+
+#### Patterns Summary — occupancy schedule and temperature trend per room
+
+![Power BI patterns summary](docs/screenshots/project2b-PySpark/project2b-powerbi-patterns-summary.png)
+
+[View project](backend/project2b-behavior-analyzer/)
 
 ---
 
@@ -222,17 +257,21 @@ End-to-end observability implemented with **zero manual instrumentation** — Op
 | RESTful API design | project 1 (Lambda handlers), 1b (FastAPI), 2a |
 | AWS serverless (Lambda, API Gateway, CloudWatch) | project 1, 2a |
 | DynamoDB data modelling | project 1, 1b |
-| ETL pipeline design (Extract → Transform → Analyze) | project 2a |
+| ETL pipeline design (Extract → Transform → Analyze) | project 2a, 2b |
 | Step Functions orchestration | project 2a |
-| Aurora Serverless v2 + PostgreSQL schema design | project 2a |
-| Idempotent writes (ON CONFLICT DO NOTHING/UPDATE) | project 2a |
+| Apache Airflow DAG orchestration | project 2b |
+| PySpark (Spark SQL, window functions, regr_slope) | project 2b |
+| S3 data lake (landing zone → staging → serving) | project 2b |
+| Aurora Serverless v2 + PostgreSQL schema design | project 2a, 2b |
+| Idempotent writes (ON CONFLICT DO NOTHING/UPDATE, dynamic partition overwrite) | project 2a, 2b |
 | Regression testing (documented production bugs) | project 2a |
 | Infrastructure as Code (CloudFormation) | project 1 |
-| Infrastructure as Code (Terraform) | project 2a |
+| Infrastructure as Code (Terraform) | project 2a, 2b |
 | Docker + nginx | project 1b, frontend |
 | CI/CD with GitHub Actions | project 1, 1b, 2a |
+| CI/CD with Jenkins (declarative pipeline, environment promotion) | project 2b |
 | Pydantic v2 models + validation | project 1, 1b, 2a |
-| Anomaly detection logic | project 1, 1b, 2a |
+| Anomaly detection logic (threshold + z-score) | project 1, 1b, 2a, 2b |
 | pytest + moto (DynamoDB mocking), 80%+ coverage | project 1, 1b, 2a |
 | mypy + pre-commit hooks | project 1, 1b, 2a |
 | Cloudflare tunnel + production deployment | project 1b |
@@ -249,7 +288,7 @@ iot-monitoring-platform/
 │   ├── project1a-smart-room-monitor/          # AWS Lambda + API Gateway (live)
 │   ├── project1b-smart-room-monitor-fastapi/ # FastAPI + Docker (live)
 │   ├── project2a-behavior-analyzer/          # AWS native ETL pipeline (complete)
-│   ├── project2b-behavior-analyzer/          # Airflow + PySpark (planned)
+│   ├── project2b-behavior-analyzer/          # Airflow + PySpark + S3 data lake (in progress)
 │   └── project3-iot-gateway/                 # Device gateway (planned)
 ├── docs/                                      # Project specs and architecture
 ├── frontend/                                  # React dashboard
