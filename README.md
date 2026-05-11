@@ -154,6 +154,18 @@ PostgreSQL (self-hosted on acer-server via Docker)  ← patterns + anomalies →
 
 **Pipeline results (first production run, May 2026):** 12,744 events extracted → 12,715 processed → 5 occupancy patterns, 5 temperature trends, 22 anomalies detected.
 
+#### Power BI dashboard — Anomaly Overview (22 temperature anomalies across 5 rooms)
+
+![Power BI anomaly overview](docs/screenshots/project2b-PySpark/project2b-powerbi-anomaly-overview.png)
+
+#### Temperature Trend per room — linear regression slope via PySpark regr_slope
+
+![Power BI temperature trend](docs/screenshots/project2b-PySpark/project2b-powerbi-temperature-trend.png)
+
+#### Patterns Summary — occupancy schedule and temperature trend per room
+
+![Power BI patterns summary](docs/screenshots/project2b-PySpark/project2b-powerbi-patterns-summary.png)
+
 [View project](backend/project2b-behavior-analyzer/)
 
 ---

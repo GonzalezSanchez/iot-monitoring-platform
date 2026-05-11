@@ -137,15 +137,10 @@ Phase 6: Power BI rapport
 Uitbreidingen Power BI rapport (na project 2b compleet)
 ───────────────────────────────────────────────────────────
 
-  [U1] JSON parsing in Power Query — rijkere visualisaties
-        Huidig: data kolom (JSONB) wordt als tekst geladen — niet bruikbaar voor visuals
-        Doel:   Power Query M-code om JSON te parsen:
-                ├── patterns waar pattern_type = 'temperature_trend'
-                │   → direction (rising/falling/stable) + slope als aparte kolommen
-                │   → bar chart: richting per kamer
-                └── patterns waar pattern_type = 'occupancy_schedule'
-                    → schedule uitklappen: day_of_week + hour + occupancy_rate
-                    → heatmap: dag vs uur, kleur = bezettingsgraad
+  ✓ [U1] JSON parsing in Power Query — DONE
+        Power Query M-code: `if [pattern_type] = "temperature_trend" then Json.Document([data])[direction] else null`
+        → Direction kolom (rising/falling/stable) zichtbaar in Temperature Trend pagina
+        Resterend (optioneel): occupancy_schedule uitklappen → heatmap dag vs uur
 
   [U2] Lijndiagram anomalieën over tijd
         Huidig: geen tijdsvisualisatie van anomalieën
