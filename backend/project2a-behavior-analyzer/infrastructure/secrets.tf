@@ -2,8 +2,9 @@
 # Aurora endpoint is wired in automatically — no manual update needed after deploy
 # The master password is managed by Aurora (manage_master_user_password = true)
 resource "aws_secretsmanager_secret" "db_credentials" {
-  name        = "p2a-${var.environment}-db-credentials"
-  description = "Aurora PostgreSQL connection details for project 2a ETL lambdas"
+  name                    = "p2a-${var.environment}-db-credentials"
+  description             = "Aurora PostgreSQL connection details for project 2a ETL lambdas"
+  recovery_window_in_days = 0
 
   tags = {
     Project     = "p2a-behavior-analyzer"

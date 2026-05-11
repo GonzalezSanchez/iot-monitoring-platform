@@ -3,6 +3,10 @@ Get Rooms Lambda Handler
 GET /rooms - Returns list of all rooms with their current status
 """
 
+import sys
+sys.path.insert(0, '/var/task')
+sys.path.insert(0, '/var/task/python')
+
 import logging
 import os
 from typing import Any, Dict

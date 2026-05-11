@@ -20,13 +20,14 @@ pip install \
   --target "${DIST}/python" \
   --platform manylinux2014_x86_64 \
   --implementation cp \
-  --python-version 3.11 \
+  --python-version 3.12 \
   --only-binary=:all: \
   --quiet
 
 echo "[build] Packaging Lambda zip..."
 cd "${DIST}"
-cp -r "${ROOT}/src/." python/
-zip -r lambda_package.zip python/ --quiet
+cp -r "${ROOT}/src/." .
+touch __init__.py
+zip -r lambda_package.zip handlers/ utils/ repositories/ models/ services/ python/ __init__.py --quiet
 
 echo "[build] Done: dist/lambda_package.zip"

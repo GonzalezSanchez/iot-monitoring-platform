@@ -3,6 +3,10 @@ Get Room Detail Lambda Handler
 GET /rooms/{id} - Returns detailed room information with recent events
 """
 
+import sys
+sys.path.insert(0, '/var/task')
+sys.path.insert(0, '/var/task/python')
+
 import logging
 import os
 from typing import Any, Dict

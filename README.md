@@ -111,15 +111,15 @@ stored in Aurora Serverless v2 and exposed via REST API.
 
 #### Step Functions execution graph — Extract → Transform → Analyze pipeline
 
-![Step Functions graph](docs/screeenshots/project2-step-functions/project2a-step-functions-graph.png)
+![Step Functions graph](docs/screenshots/project2-step-functions/project2a-step-functions-graph.png)
 
 #### Execution history — 7 runs, all Succeeded
 
-![Step Functions executions](docs/screeenshots/project2-step-functions/project2a-step-functions-executions.png)
+![Step Functions executions](docs/screenshots/project2-step-functions/project2a-step-functions-executions.png)
 
 #### Behavior Pattern Analyzer dashboard — occupancy schedules and temperature trends per room
 
-![Behavior dashboard](docs/screeenshots/project2-step-functions/project2a-behavior-dashboard.png)
+![Behavior dashboard](docs/screenshots/project2-step-functions/project2a-behavior-dashboard.png)
 
 [View project](backend/project2a-behavior-analyzer/)
 
@@ -186,31 +186,31 @@ End-to-end observability implemented with **zero manual instrumentation** — Op
 
 > Distributed tracing pinpointed the fault to FastAPI (98.1% error rate), not DynamoDB (0% error rate). [LinkedIn post →](https://www.linkedin.com/posts/activity-7455558039853645824-reu9)
 
-![APM Services overview — Watchdog RESOLVED](docs/screeenshots/datadog-project1b/datadog-apm-services-watchdog-resolved.png)
+![APM Services overview — Watchdog RESOLVED](docs/screenshots/datadog-project1b/datadog-apm-services-watchdog-resolved.png)
 
 ---
 
 ### Service map — `iot-smart-room-monitor → dynamodb` dependency auto-detected from traces
 
-![Service map auto-detected from traces](docs/screeenshots/datadog-project1b/datadog-service-map.png)
+![Service map auto-detected from traces](docs/screenshots/datadog-project1b/datadog-service-map.png)
 
 ---
 
 ### Flame graph — POST /events (149ms) with 3 automatic DynamoDB child spans
 
-![Flame graph — POST /events with DynamoDB child spans](docs/screeenshots/datadog-project1b/datadog-flame-graph.png)
+![Flame graph — POST /events with DynamoDB child spans](docs/screenshots/datadog-project1b/datadog-flame-graph.png)
 
 ---
 
 ### Log patterns — business logic visible in Datadog: anomaly detection, room state, event ingestion
 
-![Log patterns](docs/screeenshots/datadog-project1b/datadog-log-patterns.png)
+![Log patterns](docs/screenshots/datadog-project1b/datadog-log-patterns.png)
 
 ---
 
 ### Log-trace correlation — flame graph embedded directly from a log entry
 
-![Log-trace correlation](docs/screeenshots/datadog-project1b/datadog-log-trace-correlation.png)
+![Log-trace correlation](docs/screenshots/datadog-project1b/datadog-log-trace-correlation.png)
 
 ---
 

@@ -3,6 +3,10 @@ Ingest Event Lambda Handler
 POST /events - Receives and processes sensor events
 """
 
+import sys
+sys.path.insert(0, '/var/task')
+sys.path.insert(0, '/var/task/python')
+
 import json
 import logging
 import os

@@ -1,0 +1,252 @@
+// Declarative CD pipeline for project 2b — Behavior Pattern Analyzer
+//
+// CI (GitHub Actions) runs on every push: ruff, mypy, pytest unit, terraform validate.
+// This pipeline handles deployment: terraform apply, DB migration, DAG sync, smoke test.
+//
+// Environments: dev → staging → prod (each requires manual approval)
+// Parameters:
+//   ENVIRONMENT     : target environment (dev / staging / prod)
+//   PIPELINE_ACTION : deploy or destroy
+//   DRY_RUN         : plan only, skip apply/destroy
+//   SKIP_TESTS      : skip unit tests (use only for hotfixes)
+//   MIGRATE_DB      : run scripts/migrate.py after Terraform apply
+
+pipeline {
+    agent {
+        docker {
+            image 'python:3.12-slim'
+            args  '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
+
+    parameters {
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['dev', 'staging', 'prod'],
+            description: 'Target deployment environment'
+        )
+        choice(
+            name: 'PIPELINE_ACTION',
+            choices: ['deploy', 'destroy'],
+            description: 'Deploy infrastructure and DAGs, or destroy RDS/S3'
+        )
+        booleanParam(
+            name: 'DRY_RUN',
+            defaultValue: false,
+            description: 'Run terraform plan only — skip apply/destroy'
+        )
+        booleanParam(
+            name: 'SKIP_TESTS',
+            defaultValue: false,
+            description: 'Skip unit tests (use only for emergency hotfixes)'
+        )
+        booleanParam(
+            name: 'MIGRATE_DB',
+            defaultValue: true,
+            description: 'Run scripts/migrate.py after Terraform apply'
+        )
+    }
+
+    environment {
+        WORK_DIR        = 'backend/project2b-behavior-analyzer'
+        TF_DIR          = 'backend/project2b-behavior-analyzer/infrastructure'
+        TF_VAR_env      = "${params.ENVIRONMENT}"
+        PYTHONUNBUFFERED = '1'
+    }
+
+    options {
+        timeout(time: 60, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        ansiColor('xterm')
+    }
+
+    stages {
+
+        // ── 1. Checkout ────────────────────────────────────────────────────
+        stage('Checkout') {
+            steps {
+                checkout scm
+                sh 'git log --oneline -5'
+            }
+        }
+
+        // ── 2. Unit Tests ──────────────────────────────────────────────────
+        stage('Unit Tests') {
+            when {
+                allOf {
+                    expression { params.PIPELINE_ACTION == 'deploy' }
+                    not { expression { params.SKIP_TESTS } }
+                }
+            }
+            steps {
+                dir(env.WORK_DIR) {
+                    sh '''
+                        pip install --quiet -r requirements-dev.txt
+                        pytest tests/unit/ \
+                            --cov=jobs --cov=dags \
+                            --cov-fail-under=80 \
+                            --junitxml=test-results/unit.xml \
+                            -q
+                    '''
+                }
+            }
+            post {
+                always {
+                    junit "${env.WORK_DIR}/test-results/unit.xml"
+                }
+            }
+        }
+
+        // ── 3. Terraform Plan ──────────────────────────────────────────────
+        stage('Terraform Plan') {
+            when {
+                expression { params.PIPELINE_ACTION == 'deploy' }
+            }
+            steps {
+                withCredentials([
+                    string(credentialsId: 'aws-access-key-id',     variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY'),
+                ]) {
+                    dir(env.TF_DIR) {
+                        sh '''
+                            terraform init -input=false
+                            terraform plan \
+                                -var="environment=${TF_VAR_env}" \
+                                -out=tfplan \
+                                -input=false
+                        '''
+                    }
+                }
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: "${env.TF_DIR}/tfplan", allowEmptyArchive: false
+                }
+            }
+        }
+
+        // ── 4. Approval Gate ───────────────────────────────────────────────
+        stage('Approval') {
+            steps {
+                input(
+                    message: "${params.PIPELINE_ACTION.capitalize()} naar ${params.ENVIRONMENT}?",
+                    ok: 'Bevestigen',
+                    submitter: 'deployers'
+                )
+            }
+        }
+
+        // ── 5. Terraform Apply ─────────────────────────────────────────────
+        stage('Terraform Apply') {
+            when {
+                allOf {
+                    expression { params.PIPELINE_ACTION == 'deploy' }
+                    not { expression { params.DRY_RUN } }
+                }
+            }
+            steps {
+                withCredentials([
+                    string(credentialsId: 'aws-access-key-id',     variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY'),
+                ]) {
+                    dir(env.TF_DIR) {
+                        sh 'terraform apply -input=false tfplan'
+                    }
+                }
+            }
+        }
+
+        // ── 6. DB Migration ────────────────────────────────────────────────
+        stage('DB Migration') {
+            when {
+                allOf {
+                    expression { params.PIPELINE_ACTION == 'deploy' }
+                    expression { params.MIGRATE_DB }
+                    not { expression { params.DRY_RUN } }
+                }
+            }
+            steps {
+                withCredentials([
+                    string(credentialsId: "db-password-${params.ENVIRONMENT}", variable: 'DB_PASSWORD'),
+                ]) {
+                    dir(env.WORK_DIR) {
+                        sh '''
+                            pip install --quiet psycopg2-binary python-dotenv
+                            python scripts/migrate.py
+                            python scripts/manage_partitions.py --months-ahead 3
+                        '''
+                    }
+                }
+            }
+        }
+
+        // ── 7. Deploy Airflow DAGs ─────────────────────────────────────────
+        stage('Deploy DAGs') {
+            when {
+                allOf {
+                    expression { params.PIPELINE_ACTION == 'deploy' }
+                    not { expression { params.DRY_RUN } }
+                }
+            }
+            steps {
+                dir(env.WORK_DIR) {
+                    sh 'airflow dags reserialize'
+                }
+            }
+        }
+
+        // ── 8. Smoke Test ──────────────────────────────────────────────────
+        stage('Smoke Test') {
+            when {
+                allOf {
+                    expression { params.PIPELINE_ACTION == 'deploy' }
+                    not { expression { params.DRY_RUN } }
+                }
+            }
+            steps {
+                dir(env.WORK_DIR) {
+                    sh 'bash scripts/run_smoke_tests.sh'
+                }
+            }
+        }
+
+        // ── 9. Terraform Destroy ───────────────────────────────────────────
+        stage('Terraform Destroy') {
+            when {
+                allOf {
+                    expression { params.PIPELINE_ACTION == 'destroy' }
+                    not { expression { params.DRY_RUN } }
+                }
+            }
+            steps {
+                withCredentials([
+                    string(credentialsId: 'aws-access-key-id',     variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY'),
+                ]) {
+                    dir(env.TF_DIR) {
+                        sh 'terraform destroy -auto-approve -var="environment=${TF_VAR_env}"'
+                    }
+                }
+            }
+        }
+
+    }
+
+    // ── Post actions ───────────────────────────────────────────────────────
+    post {
+        always {
+            script {
+                env.BUILD_STATUS = currentBuild.currentResult
+            }
+            dir(env.WORK_DIR) {
+                sh 'bash scripts/notify.sh'
+            }
+        }
+        success {
+            echo "Deployment to ${params.ENVIRONMENT} succeeded."
+        }
+        failure {
+            echo "Deployment to ${params.ENVIRONMENT} FAILED — consider rollback."
+        }
+    }
+}

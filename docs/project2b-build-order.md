@@ -17,7 +17,7 @@ Phase 1: Foundation
        backend/project2b-behavior-analyzer/
        ├── dags/                            ← Airflow DAGs
        ├── jobs/                            ← PySpark jobs
-       ├── infrastructure/                  ← Terraform (RDS PostgreSQL)
+       ├── infrastructure/                  ← Terraform (S3 + IAM)
        ├── tests/
        │   ├── unit/
        │   └── integration/
@@ -29,9 +29,9 @@ Phase 1: Foundation
        └── .github/workflows/ci.yml         ← ruff, mypy, pytest, terraform validate
 
   [2] Infrastructure — Terraform
-       ├── RDS PostgreSQL (db.t3.micro, lokaal via Docker)
        ├── S3 bucket (ruwe sensor data als Parquet)
-       └── IAM rollen (Airflow worker, Spark job toegang)
+       └── IAM user: Airflow worker (S3 read/write + DynamoDB read)
+       Note: PostgreSQL draait via Docker Compose op acer-server — geen RDS, geen AWS kosten
 
 Phase 2: Database
 ─────────────────
@@ -42,13 +42,17 @@ Phase 2: Database
        └── creates: raw_sensor_data, patterns, anomalies
            (zelfde schema als project 2a — opzettelijk, toont portabiliteit)
 
+  Testdata: hergebruik backend/project2a-behavior-analyzer/scripts/seed_dynamodb.py
+       └── zelfde DynamoDB tabel (prod-SensorEvents) — geen aparte seed script nodig
+
 Phase 3: PySpark jobs
 ─────────────────────
   [4t] Tests: extract job
-       ├── leest Parquet van lokale S3-mock (MinIO)
-       └── schrijft correcte rijen naar raw_sensor_data
+       ├── leest sensor events van DynamoDB
+       ├── schrijft Parquet naar S3
+       └── schrijft correcte rijen naar raw_sensor_data via JDBC
   [4] PySpark job: Extract
-       └── leest sensor events Parquet (S3) → raw_sensor_data (PostgreSQL via JDBC)
+       └── DynamoDB (prod-SensorEvents) → S3 Parquet (archief) + raw_sensor_data (PostgreSQL via JDBC)
 
   [5t] Tests: transform job
        ├── ongeldige temperaturen gefilterd
@@ -59,10 +63,15 @@ Phase 3: PySpark jobs
   [6t] Tests: analyze job
        ├── occupancy_schedule: bekende input → verwachte schedule (window functions)
        ├── temperature_trend: stijgende reeks → 'rising' (linear regression via MLlib)
-       └── anomaly: z-score ≥ 3 → flagged (stddev + mean via Spark SQL)
+       ├── anomaly: z-score ≥ 3 → severity medium (stddev + mean via Spark SQL)
+       ├── anomaly: z-score ≥ 5 → severity high
+       └── anomaly: < 4 metingen per kamer → geen anomalie geschreven
   [6] PySpark job: Analyze
        └── pattern detection + anomaly detection via Spark SQL + MLlib
-           schrijft naar patterns + anomalies (PostgreSQL)
+           ├── min. 4 metingen per kamer vereist voor z-score (zelfde als project 2a)
+           ├── z-score ≥ 3 → severity medium
+           ├── z-score ≥ 5 → severity high
+           └── schrijft naar patterns + anomalies (PostgreSQL)
 
 Phase 4: Orkestratie (Airflow)
 ──────────────────────────────
@@ -84,7 +93,7 @@ Phase 5: Jenkins CD pipeline
 ─────────────────────────────
   [9] Jenkinsfile voor project 2b
        ├── Stage: Unit Tests (pytest)
-       ├── Stage: Terraform Plan (RDS + S3)
+       ├── Stage: Terraform Plan (S3 + IAM)
        ├── Stage: Approval Gate
        ├── Stage: Terraform Apply
        └── Stage: Smoke Test (DAG trigger + status check)
@@ -92,23 +101,27 @@ Phase 5: Jenkins CD pipeline
 
 Phase 6: Power BI rapport
 ─────────────────────────
-  [10] PostgreSQL → Power BI connectie
+  [10] PostgreSQL → Power BI connectie + publicatie
         ├── DirectQuery op patterns en anomalies tabellen
         ├── Rapport pagina's:
         │   ├── Overzicht: patroon frequentie per kamer per week
         │   ├── Anomalieën: severity heatmap per kamer
         │   └── Trend: temperatuur trend over tijd (line chart)
-        └── .pbix bestand → reports/ (gitignored, screenshot in README)
+        ├── .pbix bestand → reports/ (gitignored)
+        ├── Publish to web → publieke iframe URL (Microsoft)
+        │   └── frontend/src/pages/PowerBIDashboard.jsx (iframe embed)
+        └── Screenshots → docs/screenshots/ (voor README)
 
-Phase 7: Observability — Datadog (trial)
-─────────────────────────────────────────
-  [11] Datadog agent opstarten + dashboards configureren
-        ├── Datadog agent via Docker (naast bestaande stack)
+Phase 7: Observability — OpenTelemetry + Grafana Cloud
+────────────────────────────────────────────────────────
+  [11] OTel Collector + Grafana Cloud opstarten + dashboards configureren
+        ├── OTel Collector toevoegen aan docker-compose.yml (zelfde aanpak als project 1b)
+        ├── Grafana Cloud free tier — Mimir (metrics) + Loki (logs) + Tempo (traces)
         ├── Airflow integratie: DAG run durations, task success/failure
         ├── PostgreSQL integratie: query latency, connections
-        ├── DAG draaien met testdata → metrics zichtbaar in Datadog UI
+        ├── DAG draaien met testdata → metrics zichtbaar in Grafana
         ├── Screenshots opslaan in docs/screenshots/
-        └── Trial laten expiren na portfolio bewijs — geen doorlopende kosten
+        └── Stack blijft altijd live — gratis tier, geen destroy cyclus
         Zie: docs/project2b-behavior-analyzer.md → Observability sectie
 
 Phase 8: CI/CD + Documentatie
@@ -119,11 +132,19 @@ Phase 8: CI/CD + Documentatie
         ├── pytest tests/unit/ --cov-fail-under=80
         └── terraform validate
 
-  [13] README + demo
-        ├── Lokaal starten (Docker Compose: Airflow + Spark + PostgreSQL + MinIO)
+  [13] Frontend tabs herstructureren
+        └── Splits van 3 tabs naar 5: 1a (Lambda) | 1b (FastAPI) | 2a (AWS native) | 2b (Airflow+Spark) | 4 (AI Assistant)
+            ├── ProjectTabs.jsx uitbreiden
+            ├── PowerBIDashboard.jsx toevoegen (iframe uit stap [10])
+            ├── LlmDashboard.jsx toevoegen (coming soon — project 4)
+            ├── Gateway tab verwijderen (project 3 = backend only → README + screenshots)
+            └── Project 1a opnieuw deployen naar AWS (VITE_P1A_API_ENDPOINT)
+
+  [14] README + demo
+        ├── Lokaal starten (Docker Compose: Airflow + PostgreSQL op acer-server)
         ├── DAG handmatig triggeren via Airflow UI
         ├── Power BI rapport screenshot
-        ├── Datadog dashboard screenshot
+        ├── Grafana dashboard screenshot
         └── Vergelijking tabel: project 2a vs 2b (zelfde doel, andere tools)
 
 ═══════════════════════════════════════════════════════════
@@ -132,7 +153,7 @@ Dependencies:
   3 → 7+7t → 8+8t                      (Airflow orkestratie, na DB schema)
   6,8 → 9                               (Jenkins CD, na pipeline werkend)
   6,8 → 10                              (Power BI, na data in DB)
-  8,10 → 11                             (Datadog, na pipeline + data werkend)
+  8,10 → 11                             (Grafana Cloud, na pipeline + data werkend)
   all → 12 → 13                         (CI + docs als laatste)
 
 ───────────────────────────────────────────────────────────

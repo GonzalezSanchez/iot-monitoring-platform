@@ -12,7 +12,7 @@ herhaling om te demonstreren dat dezelfde businesslogica met andere tools oplosb
 |--------|------------------------|-------------------------------|
 | Orkestratie | AWS Step Functions | Apache Airflow |
 | Processing | Python (pandas) | PySpark (gedistribueerd) |
-| Infra | Terraform + Aurora Serverless v2 | Terraform + RDS PostgreSQL |
+| Infra | Terraform + Aurora Serverless v2 | Terraform + S3 + IAM (PostgreSQL via Docker op server) |
 | Visualisatie | REST API | Power BI rapport |
 | AI interface | — | — (zie Project 4) |
 | CD | — | Jenkins (dev → staging → prod) |
@@ -21,7 +21,7 @@ herhaling om te demonstreren dat dezelfde businesslogica met andere tools oplosb
 
 - **Orkestratie:** Apache Airflow 2.x (Docker via officieel `apache/airflow` image)
 - **Processing:** PySpark 3.x (Spark SQL + MLlib voor patroondetectie)
-- **Database:** RDS PostgreSQL (`db.t3.micro` op AWS; lokaal via Docker) + pgvector extensie
+- **Database:** PostgreSQL via Docker Compose (lokaal + acer-server — altijd live, geen AWS kosten) + pgvector extensie
 - **Opslag:** S3 (ruwe sensor events als Parquet bestanden)
 - **Visualisatie:** Power BI Desktop (DirectQuery op PostgreSQL)
 - **LLM / RAG:** OpenAI API (of Ollama lokaal) + pgvector voor semantisch zoeken over patronen en anomalieën
@@ -32,7 +32,7 @@ herhaling om te demonstreren dat dezelfde businesslogica met andere tools oplosb
 ## Architectuur
 
 ```
-S3 (sensor events als Parquet)
+DynamoDB (prod-SensorEvents)
         │
         ▼ (via Airflow DAG: @weekly)
 ┌────────────────────────────────────────────────────┐
@@ -44,12 +44,14 @@ S3 (sensor events als Parquet)
         ▼              ▼              ▼
   PySpark Job:   PySpark Job:   PySpark Job:
   Extract        Transform      Analyze
-  (Parquet       (normalize,    (Spark SQL +
-   → JDBC)        validate)      MLlib)
+  (DynamoDB →    (normalize,    (Spark SQL +
+   S3 Parquet     validate)      MLlib)
+   + JDBC)
         │
         ▼
-  RDS PostgreSQL
+  PostgreSQL (Docker)
   ├── raw_sensor_data
+  ├── processed_sensor_data
   ├── patterns
   └── anomalies
         │
@@ -144,8 +146,9 @@ partities altijd bestaan voor de huidige en volgende maand.
 ## PySpark Jobs
 
 ### Extract (`jobs/extract.py`)
-- Leest Parquet bestanden van S3 (of lokale MinIO emulatie)
-- Schrijft rijen naar `raw_sensor_data` via JDBC (PostgreSQL)
+- Leest sensor events van DynamoDB (`prod-SensorEvents`)
+- Schrijft ruwe events als Parquet naar S3 (data lake archief)
+- Laadt rijen naar `raw_sensor_data` via JDBC (PostgreSQL)
 - Idempotent: `INSERT ... ON CONFLICT DO NOTHING` via Spark JDBC mode `"ignore"`
 
 ### Transform (`jobs/transform.py`)
@@ -160,7 +163,9 @@ partities altijd bestaan voor de huidige en volgende maand.
   - `temperature_trend`: lineaire regressie via `pyspark.ml.regression.LinearRegression`
 - **Anomaliedetectie:**
   - z-score berekening: `(value - mean) / stddev` via Spark SQL aggregates
-  - z-score ≥ 3 → anomalie geschreven naar `anomalies`
+  - Minimum 4 metingen per kamer vereist (zelfde als project 2a — minder is statistisch onbetrouwbaar)
+  - z-score ≥ 3 → severity `medium`
+  - z-score ≥ 5 → severity `high`
 
 ## Airflow DAG
 
@@ -185,23 +190,36 @@ with DAG(
     extract >> transform >> analyze
 ```
 
-## Observability — Datadog
+## Observability — OpenTelemetry + Grafana Cloud
 
-Tijdens de actieve trial periode wordt Datadog ingezet voor operationele monitoring.
-Screenshots worden opgenomen in de README als portfolio bewijs.
+Zelfde OTel Collector laag als project 1b — alleen de backend wisselt van Datadog naar
+Grafana Cloud. Stack blijft altijd live (gratis tier, geen trial, geen destroy cyclus).
+
+**Stack:**
+```
+Airflow + PostgreSQL + Spark
+        ↓
+OTel Collector (vendor-neutraal — zelfde aanpak als project 1b)
+        ↓
+Grafana Cloud
+  ├── Mimir   (metrics)
+  ├── Loki    (logs)
+  └── Tempo   (traces)
+```
 
 **Wat wordt gemonitord:**
 - **Airflow** — DAG run durations, task success/failure rates
-- **PostgreSQL (RDS)** — query latency, connections, disk I/O
+- **PostgreSQL** — query latency, connections, disk I/O
 - **Spark jobs** — job duration via Airflow task metrics
 - **Infrastructure** — Docker container CPU/memory
 
-**Aanpak (trial → screenshots → deactiveren):**
-1. Datadog agent draaien via Docker naast de bestaande stack
-2. Dashboards configureren voor Airflow + PostgreSQL
-3. DAG draaien met testdata → metrics zichtbaar in Datadog
-4. Screenshots opslaan in `docs/screenshots/`
-5. Trial laten expiren — geen doorlopende kosten
+**Aanpak (altijd live — zelfde filosofie als project 1a/1b):**
+1. OTel Collector toevoegen aan `docker-compose.yml` naast de bestaande stack
+2. Grafana Cloud free tier (hergebruik account van project 1b migratie)
+3. Dashboards configureren voor Airflow + PostgreSQL
+4. DAG draaien met testdata → metrics zichtbaar in Grafana
+5. Screenshots opslaan in `docs/screenshots/`
+6. Stack blijft live — gratis tier, geen doorlopende kosten
 
 > RAG interface (LLM + pgvector) is onderdeel van **Project 4**, niet 2b.
 
@@ -222,19 +240,15 @@ Screenshots worden opgenomen in de README als portfolio bewijs.
 ```bash
 cd backend/project2b-behavior-analyzer
 
-# 1. Alle services starten (Airflow + PostgreSQL + MinIO + Spark)
+# 1. Alle services starten (Airflow + PostgreSQL)
 docker compose -f docker/docker-compose.yml up -d
 
 # 2. DB migratie draaien
 python scripts/migrate.py
 
-# 3. Airflow bereikbaar op http://localhost:8090
-#    (port 8090 om conflict met project 1b te vermijden)
+# 3. Airflow bereikbaar op http://localhost:8080
 
-# 4. MinIO (S3 lokaal) bereikbaar op http://localhost:9001
-#    credentials: minioadmin / minioadmin
-
-# 5. DAG manueel triggeren
+# 4. DAG manueel triggeren
 airflow dags trigger behavior_pipeline --conf '{"days_back": 7}'
 
 # 6. Of PySpark job direct draaien (zonder Airflow)
@@ -277,13 +291,14 @@ backend/project2b-behavior-analyzer/
 │   ├── transform.py             ← PySpark: normalize + validate
 │   └── analyze.py               ← PySpark: patronen + anomalieën
 ├── infrastructure/
-│   ├── main.tf                  ← RDS PostgreSQL + S3 + IAM
+│   ├── s3.tf                    ← S3 bucket (ruwe sensor Parquet data)
+│   ├── iam.tf                   ← IAM user voor Airflow worker (S3 + DynamoDB read)
 │   ├── variables.tf
 │   └── outputs.tf
 ├── scripts/
 │   ├── migrate.py               ← DB schema aanmaken
 │   ├── manage_partitions.py     ← maandelijkse partities aanmaken (geïnspireerd op fastapi-dbuploader)
-│   └── seed_data.py             ← testdata genereren (Parquet naar MinIO)
+│   └── (geen seed script — hergebruik backend/project2a-behavior-analyzer/scripts/seed_dynamodb.py)
 ├── rag/
 │   └── bot.py                   ← RAG query interface (pgvector + LLM)
 ├── tests/
@@ -296,7 +311,7 @@ backend/project2b-behavior-analyzer/
 │       └── test_pipeline.py
 ├── reports/                     ← Power BI .pbix (gitignored)
 ├── docker/
-│   └── docker-compose.yml       ← Airflow + PostgreSQL + MinIO + Spark
+│   └── docker-compose.yml       ← Airflow + PostgreSQL
 ├── Jenkinsfile                  ← CD pipeline
 ├── requirements.txt
 ├── requirements-dev.txt

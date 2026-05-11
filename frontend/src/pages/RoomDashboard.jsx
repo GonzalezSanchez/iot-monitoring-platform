@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 
-const API_BASE = import.meta.env.VITE_API_ENDPOINT || '';
+const API_ENDPOINTS = {
+  'room-fastapi': import.meta.env.VITE_API_ENDPOINT || 'http://localhost:8000',
+  'room-lambda': import.meta.env.VITE_LAMBDA_API_ENDPOINT || 'https://6c20a9bn61.execute-api.eu-central-1.amazonaws.com/dev',
+};
 
 const STATUS_BADGE = {
   normal:  'text-green-700 bg-green-50 border-green-600',
@@ -43,9 +46,9 @@ function RoomCard({ room, selected, onClick }) {
 
   return (
     <div onClick={onClick} className={`${border} ${bg} border-2 rounded-xl p-4 cursor-pointer min-w-[180px]`}>
-      <div className="flex justify-between items-center mb-2.5">
+      <div className="flex justify-between items-center gap-2 mb-2.5">
         <strong className="text-base">{room.name || room.room_id}</strong>
-        <StatusBadge status={room.status} />
+        <span className="shrink-0"><StatusBadge status={room.status} /></span>
       </div>
       <div className="text-sm text-gray-700 leading-loose">
         {state.temperature != null && <div>Temperature: <b>{state.temperature} °C</b></div>}
@@ -76,7 +79,7 @@ function EventRow({ event }) {
 
 const SENSOR_DEFAULTS = { temperature: 22.5, humidity: 55, occupancy: 5, motion: 1 };
 
-function SendEventForm({ onEventSent }) {
+function SendEventForm({ onEventSent, apiBase }) {
   const [roomId, setRoomId]       = useState('room-1');
   const [sensorType, setSensorType] = useState('temperature');
   const [value, setValue]         = useState(SENSOR_DEFAULTS.temperature);
@@ -94,7 +97,7 @@ function SendEventForm({ onEventSent }) {
     e.preventDefault();
     setSubmitting(true);
     setResult(null);
-    fetch(`${API_BASE}/events`, {
+    fetch(`${apiBase}/events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -179,7 +182,8 @@ function SendEventForm({ onEventSent }) {
   );
 }
 
-function RoomDashboard() {
+function RoomDashboard({ tab = 'room-fastapi' }) {
+  const API_BASE = API_ENDPOINTS[tab];
   const [rooms, setRooms]               = useState([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
@@ -194,7 +198,8 @@ function RoomDashboard() {
         return res.json();
       })
       .then(data => {
-        setRooms(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : (data.rooms || []);
+        setRooms(list);
         setLoading(false);
         setError(null);
       })
@@ -246,12 +251,12 @@ function RoomDashboard() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 m-0">Smart Room Monitor</h1>
-          <p className="mt-1 text-sm text-gray-500">FastAPI + DynamoDB — auto-refreshes every 30s</p>
+          <p className="mt-1 text-sm text-gray-500">{tab === 'room-lambda' ? 'AWS Lambda + API Gateway' : 'FastAPI + DynamoDB'} — auto-refreshes every 30s</p>
         </div>
         <span className="text-sm text-gray-500">{rooms.length} room{rooms.length !== 1 ? 's' : ''}</span>
       </div>
 
-      <SendEventForm onEventSent={fetchRooms} />
+      <SendEventForm onEventSent={fetchRooms} apiBase={API_BASE} />
 
       {rooms.length === 0 ? (
         <div className="p-8 bg-gray-50 rounded-lg text-center text-gray-500">
