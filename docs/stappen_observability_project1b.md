@@ -167,3 +167,22 @@ exporters:
 ```
 
 FastAPI code, Dockerfile, requirements.txt: **ongewijzigd**.
+
+
+## Uitbreiding: Pydantic Logfire
+
+Logfire is een Python-native observability platform van het Pydantic team.
+Native FastAPI + Pydantic integratie — één regel instrumentatie.
+
+**Verhaal:** Datadog (enterprise OTel) vs Logfire (Python-native) als twee benaderingen op hetzelfde project.
+
+```python
+import logfire
+logfire.configure()
+logfire.instrument_fastapi(app)   # automatische traces + request/response logging
+logfire.instrument_pydantic()     # Pydantic model validaties zichtbaar in traces
+```
+
+**Stack:** logfire SDK → Logfire cloud (gratis tier)
+**Scope:** alleen project 1b (FastAPI) — meest natuurlijke fit
+**Wanneer:** na Grafana Cloud migratie op project 2b
