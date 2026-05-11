@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import RoomDashboard from './pages/RoomDashboard';
 import BehaviorDashboard from './pages/BehaviorDashboard';
+import PowerBIDashboard from './pages/PowerBIDashboard';
 import ProjectTabs from './components/ProjectTabs';
 
 function ComingSoon({ title, description }) {
@@ -46,12 +47,7 @@ function App() {
             <RoomDashboard tab={activeTab} />
           )}
           {activeTab === 'behavior-aws' && <BehaviorDashboard />}
-          {activeTab === 'behavior-spark' && (
-            <ComingSoon
-              title="Behavior Analyzer — Spark"
-              description="Power BI dashboard with Airflow + PySpark pipeline results — coming soon"
-            />
-          )}
+          {activeTab === 'behavior-spark' && <PowerBIDashboard />}
           {activeTab === 'llm' && (
             <ComingSoon
               title="AI Assistant"
