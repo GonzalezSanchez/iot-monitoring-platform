@@ -152,7 +152,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install "apache-airflow>=2.9.0,<3.0.0" pytest
+        run: pip install "apache-airflow>=2.9.0,<3.0.0" pytest ruff
         env:
           AIRFLOW_HOME: /tmp/airflow
 

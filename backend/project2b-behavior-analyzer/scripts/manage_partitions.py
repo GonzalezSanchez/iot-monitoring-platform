@@ -15,6 +15,7 @@ import argparse
 import logging
 import os
 import sys
+from collections.abc import Generator, Iterator
 
 import psycopg2
 from dotenv import load_dotenv
@@ -43,7 +44,9 @@ def partition_sql(year: int, month: int) -> str:
     )
 
 
-def month_range(start_year: int, start_month: int, n: int):
+def month_range(
+    start_year: int, start_month: int, n: int
+) -> Generator[tuple[int, int], None, None]:
     """Yield (year, month) tuples for n months starting from start_year/month."""
     year, month = start_year, start_month
     for _ in range(n):
@@ -53,7 +56,7 @@ def month_range(start_year: int, start_month: int, n: int):
             month, year = 1, year + 1
 
 
-def months_back(ref_year: int, ref_month: int, n: int):
+def months_back(ref_year: int, ref_month: int, n: int) -> Iterator[tuple[int, int]]:
     """Yield (year, month) tuples for n months ending before ref_year/ref_month."""
     months = []
     year, month = ref_year, ref_month
