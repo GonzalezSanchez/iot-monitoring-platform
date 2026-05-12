@@ -168,6 +168,18 @@ PostgreSQL (self-hosted on acer-server via Docker)  ← patterns + anomalies →
 
 [View project](backend/project2b-behavior-analyzer/)
 
+#### Project 2a vs 2b — same goal, different tools
+
+| | Project 2a | Project 2b |
+|---|---|---|
+| **Orchestration** | AWS Step Functions | Apache Airflow |
+| **Processing** | AWS Lambda (Python) | PySpark |
+| **Storage** | Aurora Serverless v2 | S3 data lake + PostgreSQL |
+| **Infrastructure** | Terraform (VPC, RDS, IAM) | Terraform (S3, IAM) |
+| **CD pipeline** | GitHub Actions | Jenkins |
+| **Visualisation** | React dashboard (API) | Power BI (SQL direct) |
+| **Cost model** | On-demand, destroy after demo | Always-on, self-hosted |
+
 ---
 
 ### Project 3 — IoT Device Gateway Simulator *(planned)*

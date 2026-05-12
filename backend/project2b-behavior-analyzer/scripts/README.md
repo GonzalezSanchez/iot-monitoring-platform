@@ -43,6 +43,9 @@ Prerequisites:
 ```bash
 cd backend/project2b-behavior-analyzer
 
+# Activeer de virtual environment
+source .venv/bin/activate
+
 # 1. Start services (PostgreSQL)
 docker compose -f docker/docker-compose.yml up -d
 
