@@ -15,3 +15,6 @@ warn_return_any = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+omit = ["scripts/manage_partitions.py"]

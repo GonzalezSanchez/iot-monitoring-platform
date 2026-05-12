@@ -134,7 +134,7 @@ jobs:
         run: mypy jobs/ scripts/ --ignore-missing-imports
 
       - name: Run PySpark + migrate tests
-        run: pytest tests/unit/ --ignore=tests/unit/test_dag.py -v --cov=jobs --cov=scripts --cov-omit=scripts/manage_partitions.py --cov-report=term-missing --cov-fail-under=80
+        run: pytest tests/unit/ --ignore=tests/unit/test_dag.py -v --cov=jobs --cov=scripts --cov-report=term-missing --cov-fail-under=80
 
   test-project2b-dag:
     name: project2b Airflow DAG tests

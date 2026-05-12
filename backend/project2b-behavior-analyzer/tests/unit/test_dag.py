@@ -16,7 +16,7 @@ def test_dag_loads_without_import_errors():
 def test_dag_has_no_cycles():
     from dags.behavior_pipeline import dag
 
-    assert dag.test_cycle() is None
+    dag.validate()  # raises AirflowDagCycleException if cycles exist
 
 
 def test_dag_id():
