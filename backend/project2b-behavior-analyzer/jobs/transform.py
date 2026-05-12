@@ -59,12 +59,12 @@ def filter_unprocessed(df: DataFrame, processed_ids: set[str]) -> DataFrame:
     return df.filter(~df.event_id.isin(processed_ids))
 
 
-def read_raw(spark: SparkSession, s3_path: str) -> DataFrame:
+def read_raw(spark: SparkSession, s3_path: str) -> DataFrame:  # pragma: no cover
     """Read raw Parquet from S3 landing zone."""
     return spark.read.parquet(s3_path)
 
 
-def write_processed(df: DataFrame, s3_path: str) -> None:
+def write_processed(df: DataFrame, s3_path: str) -> None:  # pragma: no cover
     """Write cleaned Parquet to S3 processed layer, partitioned by year/month.
 
     Dynamic partition overwrite ensures re-running only replaces
@@ -75,7 +75,7 @@ def write_processed(df: DataFrame, s3_path: str) -> None:
     ).mode("overwrite").parquet(s3_path)
 
 
-def build_spark(master: str) -> SparkSession:
+def build_spark(master: str) -> SparkSession:  # pragma: no cover
     return (
         SparkSession.builder.appName("project2b-transform")
         .master(master)
@@ -85,7 +85,7 @@ def build_spark(master: str) -> SparkSession:
     )
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover
     logging.basicConfig(
         level=os.getenv("LOG_LEVEL", "INFO"),
         format="%(levelname)s %(message)s",

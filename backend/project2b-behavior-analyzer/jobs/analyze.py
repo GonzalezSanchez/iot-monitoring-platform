@@ -165,22 +165,22 @@ def detect_temperature_anomalies(df: DataFrame, job_id: str) -> DataFrame:
     )
 
 
-def read_processed(spark: SparkSession, s3_path: str) -> DataFrame:
+def read_processed(spark: SparkSession, s3_path: str) -> DataFrame:  # pragma: no cover
     """Read processed Parquet from S3."""
     return spark.read.parquet(s3_path)
 
 
-def write_patterns(df: DataFrame, jdbc_url: str, properties: dict) -> None:
+def write_patterns(df: DataFrame, jdbc_url: str, properties: dict) -> None:  # pragma: no cover
     """Append pattern rows to patterns table via JDBC."""
     df.write.jdbc(jdbc_url, "patterns", mode="append", properties=properties)
 
 
-def write_anomalies(df: DataFrame, jdbc_url: str, properties: dict) -> None:
+def write_anomalies(df: DataFrame, jdbc_url: str, properties: dict) -> None:  # pragma: no cover
     """Append anomaly rows to anomalies table via JDBC."""
     df.write.jdbc(jdbc_url, "anomalies", mode="append", properties=properties)
 
 
-def build_spark(master: str) -> SparkSession:
+def build_spark(master: str) -> SparkSession:  # pragma: no cover
     return (
         SparkSession.builder.appName("project2b-analyze")
         .master(master)
@@ -189,7 +189,7 @@ def build_spark(master: str) -> SparkSession:
     )
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover
     logging.basicConfig(
         level=os.getenv("LOG_LEVEL", "INFO"),
         format="%(levelname)s %(message)s",

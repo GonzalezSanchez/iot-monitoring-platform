@@ -16,7 +16,7 @@ def test_dag_loads_without_import_errors():
 def test_dag_has_no_cycles():
     from dags.behavior_pipeline import dag
 
-    assert dag.check_cycle() is None
+    assert dag.test_cycle() is None
 
 
 def test_dag_id():
@@ -47,7 +47,7 @@ def test_task_dependencies():
 def test_schedule():
     from dags.behavior_pipeline import dag
 
-    assert dag.schedule == "0 2 * * 1"
+    assert dag.schedule_interval == "0 2 * * 1"
 
 
 def test_retries_configured():

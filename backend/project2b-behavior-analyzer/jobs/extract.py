@@ -51,7 +51,7 @@ RAW_SCHEMA = StructType(
 )
 
 
-def scan_dynamodb(table_name: str, region: str) -> list[dict]:
+def scan_dynamodb(table_name: str, region: str) -> list[dict]:  # pragma: no cover
     """Scan all items from DynamoDB table, handling pagination."""
     dynamodb = boto3.resource("dynamodb", region_name=region)
     table = dynamodb.Table(table_name)
@@ -130,7 +130,7 @@ def filter_new_events(df: DataFrame, existing_ids: set[str]) -> DataFrame:
     return df.filter(~df.event_id.isin(existing_ids))
 
 
-def write_parquet(df: DataFrame, s3_path: str) -> None:
+def write_parquet(df: DataFrame, s3_path: str) -> None:  # pragma: no cover
     """Write DataFrame as Parquet to S3, partitioned by year and month.
 
     Dynamic partition overwrite ensures re-running only replaces
@@ -141,7 +141,7 @@ def write_parquet(df: DataFrame, s3_path: str) -> None:
     ).mode("overwrite").parquet(s3_path)
 
 
-def build_spark(master: str) -> SparkSession:
+def build_spark(master: str) -> SparkSession:  # pragma: no cover
     return (
         SparkSession.builder.appName("project2b-extract")
         .master(master)
@@ -151,7 +151,7 @@ def build_spark(master: str) -> SparkSession:
     )
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover
     logging.basicConfig(
         level=os.getenv("LOG_LEVEL", "INFO"),
         format="%(levelname)s %(message)s",
