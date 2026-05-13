@@ -1,5 +1,7 @@
 # Project 2b: Behavior Pattern Analyzer (Data Engineering Stack)
 
+**LinkedIn post:** [Same analytics goal. Completely different stack.](https://www.linkedin.com/posts/gonzalezsanchez_dataengineering-apacheairflow-pyspark-ugcPost-7460192378834890752-nb33)
+
 ## Beschrijving
 
 Dezelfde analytics als Project 2a — gedragspatronen en anomalieën detecteren uit

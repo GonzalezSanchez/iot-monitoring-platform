@@ -125,7 +125,7 @@ stored in Aurora Serverless v2 and exposed via REST API.
 
 ---
 
-### Project 2b — Behavior Pattern Analyzer (Data Engineering stack) *(in progress)*
+### Project 2b — Behavior Pattern Analyzer (Data Engineering stack)
 
 Same analytics goal as Project 2a, re-implemented with a data engineering stack.
 A deliberate choice to demonstrate the same problem solved with different tools.
@@ -165,6 +165,8 @@ PostgreSQL (self-hosted on acer-server via Docker)  ← patterns + anomalies →
 #### Patterns Summary — occupancy schedule and temperature trend per room
 
 ![Power BI patterns summary](docs/screenshots/project2b-PySpark/project2b-powerbi-patterns-summary.png)
+
+**LinkedIn post:** [Same analytics goal. Completely different stack.](https://www.linkedin.com/posts/gonzalezsanchez_dataengineering-apacheairflow-pyspark-ugcPost-7460192378834890752-nb33)
 
 [View project](backend/project2b-behavior-analyzer/)
 
