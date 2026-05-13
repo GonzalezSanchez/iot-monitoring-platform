@@ -162,9 +162,26 @@ def main() -> None:  # pragma: no cover
         log.error("Missing required env var: S3_PARQUET_PATH")
         sys.exit(1)
 
-    table_name = os.getenv("DYNAMODB_TABLE", "prod-SensorEvents")
-    region = os.getenv("AWS_REGION", "eu-central-1")
-    master = os.getenv("SPARK_MASTER", "local[*]")
+    table_name = os.getenv("DYNAMODB_TABLE")
+    region = os.getenv("AWS_REGION")
+    master = os.getenv("SPARK_MASTER")
+
+    missing = [
+        name
+        for name, val in [
+            ("DYNAMODB_TABLE", table_name),
+            ("AWS_REGION", region),
+            ("SPARK_MASTER", master),
+        ]
+        if not val
+    ]
+    if missing:
+        log.error("Missing required env vars: %s", ", ".join(missing))
+        sys.exit(1)
+
+    assert table_name is not None
+    assert region is not None
+    assert master is not None
 
     spark = build_spark(master)
     spark.sparkContext.setLogLevel("WARN")

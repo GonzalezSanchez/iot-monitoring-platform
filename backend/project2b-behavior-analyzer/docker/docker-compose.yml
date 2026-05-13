@@ -23,6 +23,7 @@ services:
     volumes:
       - ../dags:/opt/airflow/dags
       - ../jobs:/opt/airflow/jobs
+      - ../scripts:/opt/airflow/scripts
       - airflow_logs:/opt/airflow/logs
     command: standalone
 

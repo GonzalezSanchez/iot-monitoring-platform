@@ -208,7 +208,11 @@ def main() -> None:  # pragma: no cover
 
     assert s3_processed is not None
 
-    master = os.getenv("SPARK_MASTER", "local[*]")
+    master = os.getenv("SPARK_MASTER")
+    if not master:
+        log.error("Missing required env var: SPARK_MASTER")
+        sys.exit(1)
+
     jdbc_url = (
         f"jdbc:postgresql://{os.environ['DB_HOST']}:"
         f"{os.getenv('DB_PORT', '5432')}/{os.environ['DB_NAME']}"

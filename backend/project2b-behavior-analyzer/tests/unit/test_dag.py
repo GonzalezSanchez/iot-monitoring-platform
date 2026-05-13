@@ -77,6 +77,26 @@ def test_failure_callback_configured():
             assert callbacks is on_failure
 
 
+def test_spark_master_in_bash_commands():
+    import importlib
+    import os
+
+    import dags.behavior_pipeline
+
+    os.environ["SPARK_MASTER"] = "spark://test-cluster:7077"
+    importlib.reload(dags.behavior_pipeline)
+    from dags.behavior_pipeline import dag
+
+    spark_tasks = {t.task_id: t for t in dag.tasks if t.task_id != "manage_partitions"}
+    for task_id, task in spark_tasks.items():
+        assert (
+            "spark://test-cluster:7077" in task.bash_command
+        ), f"{task_id} does not use SPARK_MASTER"
+
+    os.environ["SPARK_MASTER"] = "local[*]"
+    importlib.reload(dags.behavior_pipeline)
+
+
 def test_failure_callback_logs_task_info(capsys):
     from unittest.mock import MagicMock
 

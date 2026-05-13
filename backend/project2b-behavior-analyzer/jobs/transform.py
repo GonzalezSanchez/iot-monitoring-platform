@@ -106,7 +106,11 @@ def main() -> None:  # pragma: no cover
     assert s3_raw is not None
     assert s3_processed is not None
 
-    master = os.getenv("SPARK_MASTER", "local[*]")
+    master = os.getenv("SPARK_MASTER")
+    if not master:
+        log.error("Missing required env var: SPARK_MASTER")
+        sys.exit(1)
+
     spark = build_spark(master)
     spark.sparkContext.setLogLevel("WARN")
 

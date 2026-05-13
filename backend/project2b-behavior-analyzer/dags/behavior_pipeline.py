@@ -1,8 +1,11 @@
+import os
 from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.utils.context import Context
+
+SPARK_MASTER = os.environ.get("SPARK_MASTER", "local[*]")
 
 
 def on_failure(context: Context) -> None:
@@ -35,17 +38,17 @@ with DAG(
 
     extract = BashOperator(
         task_id="extract",
-        bash_command="spark-submit --master local[*] /opt/airflow/jobs/extract.py",
+        bash_command=f"spark-submit --master {SPARK_MASTER} /opt/airflow/jobs/extract.py",
     )
 
     transform = BashOperator(
         task_id="transform",
-        bash_command="spark-submit --master local[*] /opt/airflow/jobs/transform.py",
+        bash_command=f"spark-submit --master {SPARK_MASTER} /opt/airflow/jobs/transform.py",
     )
 
     analyze = BashOperator(
         task_id="analyze",
-        bash_command="spark-submit --master local[*] /opt/airflow/jobs/analyze.py",
+        bash_command=f"spark-submit --master {SPARK_MASTER} /opt/airflow/jobs/analyze.py",
     )
 
     manage_partitions >> extract >> transform >> analyze
