@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 jobs/extract.py — PySpark extract job for project 2b.
 

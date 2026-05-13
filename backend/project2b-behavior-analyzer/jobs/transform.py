@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 jobs/transform.py — PySpark transform job for project 2b.
 

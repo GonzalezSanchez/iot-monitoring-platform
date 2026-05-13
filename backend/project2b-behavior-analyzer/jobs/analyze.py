@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 jobs/analyze.py — PySpark analyze job for project 2b.
 
