@@ -2,6 +2,18 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
+from airflow.utils.context import Context
+
+
+def on_failure(context: Context) -> None:
+    """Log a clear failure message after all retries are exhausted."""
+    ti = context["task_instance"]
+    dag_id = context["dag"].dag_id
+    print(
+        f"[ALERT] Task failed after all retries — dag={dag_id} task={ti.task_id} "
+        f"run={context['run_id']} execution={context['execution_date']}"
+    )
+
 
 with DAG(
     dag_id="behavior_pipeline",
@@ -12,6 +24,7 @@ with DAG(
     default_args={
         "retries": 2,
         "retry_delay": timedelta(minutes=5),
+        "on_failure_callback": on_failure,
     },
     tags=["project2b"],
 ) as dag:

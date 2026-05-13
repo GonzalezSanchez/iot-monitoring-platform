@@ -47,7 +47,9 @@ def test_task_dependencies():
 def test_schedule():
     from dags.behavior_pipeline import dag
 
-    assert dag.schedule_interval == "0 2 * * 1"
+    # Airflow 2.x uses schedule_interval, Airflow 3.x uses schedule
+    schedule = getattr(dag, "schedule_interval", None) or getattr(dag, "schedule", None)
+    assert schedule == "0 2 * * 1"
 
 
 def test_retries_configured():
@@ -62,3 +64,39 @@ def test_dag_accepts_days_back_param():
     from dags.behavior_pipeline import dag
 
     assert "days_back" in dag.params
+
+
+def test_failure_callback_configured():
+    from dags.behavior_pipeline import dag, on_failure
+
+    for task in dag.tasks:
+        callbacks = task.on_failure_callback
+        if isinstance(callbacks, list):
+            assert on_failure in callbacks
+        else:
+            assert callbacks is on_failure
+
+
+def test_failure_callback_logs_task_info(capsys):
+    from unittest.mock import MagicMock
+
+    from dags.behavior_pipeline import on_failure
+
+    ti = MagicMock()
+    ti.task_id = "extract"
+    dag_mock = MagicMock()
+    dag_mock.dag_id = "behavior_pipeline"
+
+    on_failure(
+        {
+            "task_instance": ti,
+            "dag": dag_mock,
+            "run_id": "manual__2026-01-01",
+            "execution_date": "2026-01-01",
+        }
+    )
+
+    captured = capsys.readouterr()
+    assert "ALERT" in captured.out
+    assert "extract" in captured.out
+    assert "behavior_pipeline" in captured.out
