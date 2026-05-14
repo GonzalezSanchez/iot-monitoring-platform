@@ -11,7 +11,6 @@ from jobs.extract import to_dataframe
 from jobs.transform import (
     TEMP_MAX,
     TEMP_MIN,
-    filter_unprocessed,
     main,
     validate_and_clean,
 )
@@ -169,21 +168,3 @@ class TestMain:
         with patch.dict(os.environ, self.ENV):
             main()
         mock_write.assert_called_once()
-
-
-class TestFilterUnprocessed:
-    def test_filters_existing_ids(self, spark):
-        items = _make_items({}, {})
-        df = to_dataframe(spark, items)
-        result = filter_unprocessed(df, {"evt-001"})
-        ids = {row.event_id for row in result.collect()}
-        assert "evt-001" not in ids
-        assert "evt-002" in ids
-
-    def test_empty_set_returns_all(self, spark):
-        df = to_dataframe(spark, _make_items({}, {}))
-        assert filter_unprocessed(df, set()).count() == 2
-
-    def test_all_existing_returns_empty(self, spark):
-        df = to_dataframe(spark, _make_items({}, {}))
-        assert filter_unprocessed(df, {"evt-001", "evt-002"}).count() == 0

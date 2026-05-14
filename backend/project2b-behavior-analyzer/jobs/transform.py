@@ -51,13 +51,6 @@ def validate_and_clean(df: DataFrame) -> DataFrame:
     )
 
 
-def filter_unprocessed(df: DataFrame, processed_ids: set[str]) -> DataFrame:
-    """Remove events already present in a processed dataset."""
-    if not processed_ids:
-        return df
-    return df.filter(~df.event_id.isin(processed_ids))
-
-
 def read_raw(spark: SparkSession, s3_path: str) -> DataFrame:  # pragma: no cover
     """Read raw Parquet from S3 landing zone."""
     return spark.read.parquet(s3_path)
