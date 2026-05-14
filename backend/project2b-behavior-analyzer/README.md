@@ -35,6 +35,18 @@ PostgreSQL    ← Gold: patronen + anomalieën (voor Power BI)
 
 Idempotent: `partitionOverwriteMode=dynamic` — re-runnen overschrijft alleen de betreffende maandpartities.
 
+## Design Decisions
+
+**Bronze laag bevat genormaliseerd Parquet, niet ruwe JSON**
+
+In een strikte Medallion architectuur zou Bronze de DynamoDB items bewaren als ruwe JSON — exact zoals de bron ze levert. Hier schrijft `extract.py` al als Parquet naar Bronze, na een lichte normalisatie van twee event formaten (project 2b seed format + project 1b API format) naar één unified schema.
+
+Trade-off: Parquet is gecomprimeerd en efficiënt leesbaar door Spark. Ruwe JSON in Bronze zou volledige herverwerking toelaten bij een bug in de extractie — dat is hier niet mogelijk. Voor een portfolio met beperkte dataset is dit aanvaardbaar; in productie zou ik Bronze als ruwe JSON bewaren.
+
+**Gold laag in PostgreSQL, niet op S3**
+
+`analyze.py` schrijft patronen en anomalieën naar PostgreSQL via JDBC in plaats van naar S3 Gold. Reden: Power BI verbindt eenvoudiger met een SQL database dan met S3 + Athena. In een volledig AWS-native setup zou Gold als Parquet op S3 staan en Athena de query-laag vormen.
+
 ## Airflow DAG
 
 `dags/behavior_pipeline.py` — wekelijks elke maandag om 02:00:
