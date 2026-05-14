@@ -2,6 +2,7 @@ import json
 import os
 import sys
 from datetime import UTC, datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -13,6 +14,7 @@ from jobs.analyze import (
     compute_hourly_occupancy,
     compute_temperature_trends,
     detect_temperature_anomalies,
+    main,
 )
 
 
@@ -286,3 +288,109 @@ class TestDetectTemperatureAnomalies:
         data = json.loads(result.collect()[0].data)
         assert "z_score" in data
         assert abs(data["z_score"] - 3.0) < 0.01
+
+
+class TestMain:
+    ENV = {
+        "S3_PROCESSED_PATH": "s3://bucket/processed",
+        "DB_HOST": "localhost",
+        "DB_NAME": "testdb",
+        "DB_USER": "user",
+        "DB_PASSWORD": "pass",
+        "SPARK_MASTER": "local[*]",
+    }
+
+    def test_exits_if_env_var_missing(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with pytest.raises(SystemExit):
+                main()
+
+    @patch("jobs.analyze.write_anomalies")
+    @patch("jobs.analyze.write_patterns")
+    @patch("jobs.analyze.read_processed")
+    @patch("jobs.analyze.build_spark")
+    def test_skips_write_if_no_data(
+        self, _spark, mock_read, mock_write_patterns, mock_write_anomalies
+    ):
+        mock_df = MagicMock()
+        mock_df.count.return_value = 0
+        mock_read.return_value = mock_df
+        with patch.dict(os.environ, self.ENV):
+            main()
+        mock_write_patterns.assert_not_called()
+        mock_write_anomalies.assert_not_called()
+
+    @patch("jobs.analyze.write_anomalies")
+    @patch("jobs.analyze.write_patterns")
+    @patch("jobs.analyze.detect_temperature_anomalies")
+    @patch("jobs.analyze.build_trend_pattern_rows")
+    @patch("jobs.analyze.compute_temperature_trends")
+    @patch("jobs.analyze.build_occupancy_pattern_rows")
+    @patch("jobs.analyze.compute_hourly_occupancy")
+    @patch("jobs.analyze.read_processed")
+    @patch("jobs.analyze.build_spark")
+    def test_runs_full_pipeline(
+        self,
+        _spark,
+        mock_read,
+        _hourly,
+        mock_occ_patterns,
+        _trends,
+        mock_trend_rows,
+        mock_anomalies,
+        mock_write_patterns,
+        mock_write_anomalies,
+    ):
+        mock_df = MagicMock()
+        mock_df.count.return_value = 10
+        mock_read.return_value = mock_df
+        mock_occ_df = MagicMock()
+        mock_occ_df.count.return_value = 3
+        mock_occ_patterns.return_value = mock_occ_df
+        mock_trend_df = MagicMock()
+        mock_trend_df.count.return_value = 2
+        mock_trend_rows.return_value = mock_trend_df
+        mock_anomaly_df = MagicMock()
+        mock_anomaly_df.count.return_value = 1
+        mock_anomalies.return_value = mock_anomaly_df
+        with patch.dict(os.environ, self.ENV):
+            main()
+        assert mock_write_patterns.call_count == 2
+        mock_write_anomalies.assert_called_once()
+
+    @patch("jobs.analyze.write_anomalies")
+    @patch("jobs.analyze.write_patterns")
+    @patch("jobs.analyze.detect_temperature_anomalies")
+    @patch("jobs.analyze.build_trend_pattern_rows")
+    @patch("jobs.analyze.compute_temperature_trends")
+    @patch("jobs.analyze.build_occupancy_pattern_rows")
+    @patch("jobs.analyze.compute_hourly_occupancy")
+    @patch("jobs.analyze.read_processed")
+    @patch("jobs.analyze.build_spark")
+    def test_skips_anomaly_write_if_none_detected(
+        self,
+        _spark,
+        mock_read,
+        _hourly,
+        mock_occ_patterns,
+        _trends,
+        mock_trend_rows,
+        mock_anomalies,
+        mock_write_patterns,
+        mock_write_anomalies,
+    ):
+        mock_df = MagicMock()
+        mock_df.count.return_value = 10
+        mock_read.return_value = mock_df
+        mock_occ_df = MagicMock()
+        mock_occ_df.count.return_value = 3
+        mock_occ_patterns.return_value = mock_occ_df
+        mock_trend_df = MagicMock()
+        mock_trend_df.count.return_value = 2
+        mock_trend_rows.return_value = mock_trend_df
+        mock_anomaly_df = MagicMock()
+        mock_anomaly_df.count.return_value = 0
+        mock_anomalies.return_value = mock_anomaly_df
+        with patch.dict(os.environ, self.ENV):
+            main()
+        mock_write_anomalies.assert_not_called()

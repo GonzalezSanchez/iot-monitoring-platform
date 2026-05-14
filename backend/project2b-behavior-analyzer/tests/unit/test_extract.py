@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from jobs.extract import RAW_SCHEMA, scan_dynamodb, to_dataframe
+from jobs.extract import RAW_SCHEMA, main, scan_dynamodb, to_dataframe
 
 
 @pytest.fixture(scope="module")
@@ -96,6 +96,48 @@ class TestToDataframe:
         row = df.collect()[0]
         assert row.temperature is None
         assert row.humidity is None
+
+
+class TestMain:
+    ENV = {
+        "S3_PARQUET_PATH": "s3://bucket/raw",
+        "DYNAMODB_TABLE": "prod-SensorEvents",
+        "AWS_REGION": "eu-central-1",
+        "SPARK_MASTER": "local[*]",
+    }
+
+    def test_exits_if_s3_path_missing(self):
+        env = {k: v for k, v in self.ENV.items() if k != "S3_PARQUET_PATH"}
+        with patch.dict(os.environ, env, clear=True):
+            with pytest.raises(SystemExit):
+                main()
+
+    def test_exits_if_required_var_missing(self):
+        env = {k: v for k, v in self.ENV.items() if k != "DYNAMODB_TABLE"}
+        with patch.dict(os.environ, env, clear=True):
+            with pytest.raises(SystemExit):
+                main()
+
+    @patch("jobs.extract.write_parquet")
+    @patch("jobs.extract.to_dataframe")
+    @patch("jobs.extract.scan_dynamodb", return_value=[])
+    @patch("jobs.extract.build_spark")
+    def test_skips_write_if_no_items(self, _spark, _scan, _to_df, mock_write):
+        with patch.dict(os.environ, self.ENV):
+            main()
+        mock_write.assert_not_called()
+
+    @patch("jobs.extract.write_parquet")
+    @patch("jobs.extract.to_dataframe")
+    @patch("jobs.extract.scan_dynamodb", return_value=[{"event_id": "evt-1"}])
+    @patch("jobs.extract.build_spark")
+    def test_runs_full_pipeline(self, _spark, _scan, mock_to_df, mock_write):
+        mock_df = MagicMock()
+        mock_df.count.return_value = 1
+        mock_to_df.return_value = mock_df
+        with patch.dict(os.environ, self.ENV):
+            main()
+        mock_write.assert_called_once()
 
 
 class TestScanDynamodb:

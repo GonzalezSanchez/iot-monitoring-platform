@@ -188,7 +188,7 @@ def build_spark(master: str) -> SparkSession:  # pragma: no cover
     )
 
 
-def main() -> None:  # pragma: no cover
+def main() -> None:
     logging.basicConfig(
         level=os.getenv("LOG_LEVEL", "INFO"),
         format="%(levelname)s %(message)s",
