@@ -182,7 +182,7 @@ class TestRunMigrations:
 class TestDDLIdempotency:
     def test_create_table_statements_use_if_not_exists(self) -> None:
         create_statements = [s for s in migrate.DDL_STATEMENTS if "CREATE TABLE" in s.upper()]
-        assert len(create_statements) == 3, "Expected 3 CREATE TABLE statements"
+        assert len(create_statements) == 4, "Expected 4 CREATE TABLE statements"
         for stmt in create_statements:
             assert "IF NOT EXISTS" in stmt.upper(), f"Missing IF NOT EXISTS in: {stmt[:60]}..."
 
@@ -192,7 +192,7 @@ class TestDDLIdempotency:
         for stmt in index_statements:
             assert "IF NOT EXISTS" in stmt.upper(), f"Missing IF NOT EXISTS in: {stmt[:60]}..."
 
-    def test_all_three_tables_defined(self) -> None:
+    def test_all_four_tables_defined(self) -> None:
         ddl_text = " ".join(migrate.DDL_STATEMENTS)
-        for table in ("raw_sensor_data", "patterns", "anomalies"):
+        for table in ("rooms", "raw_sensor_data", "patterns", "anomalies"):
             assert table in ddl_text, f"Table '{table}' not found in DDL"
