@@ -51,4 +51,9 @@ with DAG(
         bash_command=f"spark-submit --master {SPARK_MASTER} /opt/airflow/jobs/analyze.py",
     )
 
-    manage_partitions >> extract >> transform >> analyze
+    spatial = BashOperator(
+        task_id="spatial",
+        bash_command="python /opt/airflow/jobs/spatial.py",
+    )
+
+    manage_partitions >> extract >> transform >> analyze >> spatial

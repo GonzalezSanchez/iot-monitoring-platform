@@ -42,6 +42,19 @@ log = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────────────────────────
 
 DDL_STATEMENTS = [
+    # Static room registry — populated via scripts/seed_rooms.py
+    # Normally building/location metadata would be managed by project 1a (device registry),
+    # but for this portfolio the rooms table is seeded directly to keep projects self-contained.
+    """
+    CREATE TABLE IF NOT EXISTS rooms (
+        room_id       TEXT             PRIMARY KEY,
+        building_id   TEXT             NOT NULL,
+        building_name TEXT             NOT NULL,
+        floor         INTEGER,
+        lat           DOUBLE PRECISION NOT NULL,
+        lon           DOUBLE PRECISION NOT NULL
+    )
+    """,
     # Raw readings ingested from DynamoDB SensorEvents (project 1a)
     """
     CREATE TABLE IF NOT EXISTS raw_sensor_data (
@@ -83,9 +96,9 @@ DDL_STATEMENTS = [
         job_id        TEXT          NOT NULL,
         entity_type   TEXT          NOT NULL,   -- 'room' | 'device'
         entity_id     TEXT          NOT NULL,
-        anomaly_type  TEXT          NOT NULL,   -- 'unusual_activity' | 'temperature_spike' | ...
+        anomaly_type  TEXT          NOT NULL,   -- 'temperature' | 'unusual_activity'
         detected_at   TIMESTAMPTZ   NOT NULL,
-        severity      TEXT          NOT NULL,   -- 'low' | 'medium' | 'high'
+        severity      TEXT          NOT NULL,   -- 'medium' | 'high'
         data          JSONB         NOT NULL,
         created_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW()
     )

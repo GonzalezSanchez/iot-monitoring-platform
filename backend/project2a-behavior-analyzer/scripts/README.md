@@ -9,6 +9,7 @@
 | `destroy.sh` | Runs `terraform destroy` to tear down all resources | After a demo to stop AWS costs (~$15/month) |
 | `migrate.py` | Creates/updates all database tables and indexes | Once after first deploy, and after every schema change |
 | `seed_dynamodb.py` | Seeds 30 days of test sensor data into DynamoDB (prod-SensorEvents) | Once before first ETL run — gives the pipeline data to process |
+| `seed_rooms.py` | Seeds 3 rooms with building names and coordinates into Aurora | Once after migrate.py |
 
 ## Deploy infrastructure (AWS)
 
@@ -93,7 +94,10 @@ docker compose -f docker/docker-compose.yml up -d
 # 2. Create tables
 python scripts/migrate.py
 
-# 3. (Optional) seed test data
+# 3. Seed rooms with building names and coordinates
+python scripts/seed_rooms.py
+
+# 4. (Optional) seed sensor test data
 python scripts/seed_dynamodb.py
 ```
 

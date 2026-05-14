@@ -17,4 +17,4 @@ warn_return_any = true
 testpaths = ["tests"]
 
 [tool.coverage.run]
-omit = ["scripts/manage_partitions.py"]
+omit = ["scripts/manage_partitions.py", "scripts/seed_rooms.py"]

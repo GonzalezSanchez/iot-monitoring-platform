@@ -125,7 +125,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install pyspark psycopg2-binary python-dotenv boto3 pytest pytest-cov ruff mypy
+        run: pip install pyspark psycopg2-binary python-dotenv boto3 pytest pytest-cov ruff mypy pandas geopandas shapely
 
       - name: Run ruff
         run: ruff check jobs/ scripts/ tests/unit/ --exclude tests/unit/test_dag.py
