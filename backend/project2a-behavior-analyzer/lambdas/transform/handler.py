@@ -72,9 +72,9 @@ def _fetch_unprocessed(
 def _is_valid(row: RawRow) -> bool:
     if not row.device_id or not row.room_id or row.ts is None:
         return False
-    if row.temperature is not None and not (TEMP_MIN <= row.temperature <= TEMP_MAX):
+    if row.temperature is None or not (TEMP_MIN <= row.temperature <= TEMP_MAX):
         return False
-    if row.humidity is not None and not (HUMIDITY_MIN <= row.humidity <= HUMIDITY_MAX):
+    if row.humidity is None or not (HUMIDITY_MIN <= row.humidity <= HUMIDITY_MAX):
         return False
     return True
 
