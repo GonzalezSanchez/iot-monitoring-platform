@@ -1,0 +1,54 @@
+version: 2
+
+sources:
+  - name: p2b
+    schema: public
+    tables:
+      - name: anomalies
+        columns:
+          - name: id
+            tests: [unique, not_null]
+          - name: job_id
+            tests: [not_null]
+          - name: entity_id
+            tests: [not_null]
+          - name: anomaly_type
+            tests:
+              - not_null
+              - accepted_values:
+                  values: [temperature, unusual_activity]
+          - name: severity
+            tests:
+              - not_null
+              - accepted_values:
+                  values: [medium, high]
+
+      - name: patterns
+        columns:
+          - name: id
+            tests: [unique, not_null]
+          - name: entity_id
+            tests: [not_null]
+          - name: pattern_type
+            tests:
+              - not_null
+              - accepted_values:
+                  values: [occupancy_schedule, temperature_trend]
+
+      - name: rooms
+        columns:
+          - name: room_id
+            tests: [unique, not_null]
+          - name: building_id
+            tests: [not_null]
+          - name: lat
+            tests: [not_null]
+          - name: lon
+            tests: [not_null]
+
+      - name: spatial_insights
+        columns:
+          - name: id
+            tests: [unique, not_null]
+          - name: building_id
+            tests: [not_null]

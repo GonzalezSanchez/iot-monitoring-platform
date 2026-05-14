@@ -49,6 +49,7 @@ services:
       - ../dags:/opt/airflow/dags
       - ../jobs:/opt/airflow/jobs
       - ../scripts:/opt/airflow/scripts
+      - ../dbt:/opt/airflow/dbt
       - airflow_logs:/opt/airflow/logs
       - spark_jars:/home/airflow/.ivy2
     command: standalone

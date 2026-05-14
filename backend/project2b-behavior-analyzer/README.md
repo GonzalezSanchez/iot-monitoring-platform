@@ -10,9 +10,10 @@ Zelfde analytisch doel als project 2a — bewust opnieuw geïmplementeerd met ee
 
 - **Processing:** PySpark 4.x (Spark SQL, window functions, `regr_slope`)
 - **Spatial analysis:** GeoPandas + Shapely (anomalie hotspots per gebouw, WGS84 coördinaten)
+- **Reporting layer:** dbt (staging views + marts voor Power BI)
 - **Orchestration:** Apache Airflow 2.x (DAG met BashOperators)
 - **Storage:** AWS S3 (data lake — raw + processed Parquet), PostgreSQL (resultaten)
-- **Visualization:** Power BI (direct connect op PostgreSQL — map visual via `spatial_insights`)
+- **Visualization:** Power BI (direct connect op PostgreSQL — map visual, bar charts, heatmap)
 - **IaC:** Terraform (S3 bucket + IAM)
 - **CI/CD:** GitHub Actions (CI) + Jenkins (CD)
 - **Testing:** pytest + PySpark in-process
@@ -35,6 +36,9 @@ PostgreSQL    ← Gold: patronen + anomalieën (voor Power BI)
     │
     ▼  jobs/spatial.py  (GeoPandas)
 PostgreSQL    ← Spatial: anomalie hotspots per gebouw (voor Power BI map visual)
+    │
+    ▼  dbt run  (dbt-postgres)
+PostgreSQL    ← Marts: anomaly_detail, pattern_detail, building_summary (Power BI-klare tabellen)
 ```
 
 Idempotent: `partitionOverwriteMode=dynamic` — re-runnen overschrijft alleen de betreffende maandpartities.
@@ -56,7 +60,7 @@ Trade-off: Parquet is gecomprimeerd en efficiënt leesbaar door Spark. Ruwe JSON
 `dags/behavior_pipeline.py` — wekelijks elke maandag om 02:00:
 
 ```
-manage_partitions >> extract >> transform >> analyze >> spatial
+manage_partitions >> extract >> transform >> analyze >> spatial >> dbt_run
 ```
 
 - `on_failure_callback` logt een `[ALERT]` na alle retries uitgeput
@@ -69,6 +73,7 @@ manage_partitions >> extract >> transform >> analyze >> spatial
 - Anomalie detectie — z-score per kamer (populatie stddev); z ≥ 3 → medium, z ≥ 5 → high
 - Occupancy anomalie detectie — kamer bezet tijdens typisch lege uren (occupancy_rate < 20%) → unusual_activity (medium)
 - Spatiale analyse — GeoPandas aggregeert anomalieën per gebouw (lat/lon), schrijft naar `spatial_insights` voor Power BI map visual
+- dbt rapportagelaag — staging views + gematerialiseerde marts (`anomaly_detail`, `pattern_detail`, `building_summary`) met source tests
 
 **Note:** de spatiale analyse (`jobs/spatial.py`) is specifiek voor project 2b. Project 2a exposeert resultaten via een REST API; Power BI kan daar rechtstreeks de `rooms` tabel voor gebruiken. GeoPandas past in de Data Engineering stack van project 2b (Python jobs pipeline), niet in de AWS Lambda architectuur van 2a.
 
@@ -134,6 +139,54 @@ CREATE TABLE spatial_insights (
     created_at    TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
 ```
+
+## dbt Rapportagelaag
+
+`dbt run` materialiseert staging views en marts rechtstreeks in PostgreSQL — klaar voor Power BI DirectQuery.
+
+### Modellen
+
+**Staging** (views — geen extra opslag):
+
+| Model | Bron | Transformatie |
+|---|---|---|
+| `stg_anomalies` | `anomalies` tabel | `entity_id` hernoemd naar `room_id` |
+| `stg_patterns` | `patterns` tabel | `entity_id` hernoemd naar `room_id` |
+| `stg_rooms` | `rooms` tabel | Geen transformatie |
+
+**Marts** (gematerialiseerde tabellen — Power BI-klaar):
+
+**`anomaly_detail`** — anomalies gejoined met rooms, inclusief tijdextracties:
+```sql
+room_id | building_id | building_name | lat | lon | anomaly_type | severity | detected_at | detected_hour | detected_dow
+```
+
+**`pattern_detail`** — patterns gejoined met rooms:
+```sql
+room_id | building_id | building_name | pattern_type | period_start | period_end
+```
+
+**`building_summary`** — aggregatie per gebouw over alle jobs:
+```sql
+building_id | building_name | lat | lon | anomaly_count | high_count | medium_count | dominant_type | last_anomaly_at
+```
+
+### Source tests (`dbt test`)
+
+| Test | Kolom |
+|---|---|
+| unique + not_null | `anomalies.id`, `rooms.room_id` |
+| accepted_values | `anomalies.anomaly_type` → [temperature, unusual_activity] |
+| accepted_values | `anomalies.severity` → [medium, high] |
+| accepted_values | `patterns.pattern_type` → [occupancy_schedule, temperature_trend] |
+
+### Verschil met `spatial_insights`
+
+| | `spatial_insights` | `building_summary` (dbt) |
+|---|---|---|
+| **Geschreven door** | `jobs/spatial.py` (GeoPandas) | dbt mart |
+| **Scope** | Per job (job_id aanwezig) | Alle jobs gecumuleerd |
+| **Doel** | Power BI map visual (bubble per gebouw per run) | Overzicht over alle runs heen |
 
 ## Installatie & Gebruik
 

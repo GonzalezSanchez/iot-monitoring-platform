@@ -58,4 +58,9 @@ with DAG(
         bash_command="python /opt/airflow/jobs/spatial.py",
     )
 
-    manage_partitions >> extract >> transform >> analyze >> spatial
+    dbt_run = BashOperator(
+        task_id="dbt_run",
+        bash_command=("dbt run --project-dir /opt/airflow/dbt --profiles-dir /opt/airflow/dbt"),
+    )
+
+    manage_partitions >> extract >> transform >> analyze >> spatial >> dbt_run

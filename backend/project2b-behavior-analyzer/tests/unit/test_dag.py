@@ -88,7 +88,7 @@ def test_spark_master_in_bash_commands():
     from dags.behavior_pipeline import dag
 
     # spatial uses plain Python, not spark-submit — exclude from SPARK_MASTER check
-    non_spark = {"manage_partitions", "spatial"}
+    non_spark = {"manage_partitions", "spatial", "dbt_run"}
     spark_tasks = {t.task_id: t for t in dag.tasks if t.task_id not in non_spark}
     for task_id, task in spark_tasks.items():
         assert (

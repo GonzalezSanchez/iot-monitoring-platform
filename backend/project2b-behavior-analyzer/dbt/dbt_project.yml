@@ -1,0 +1,15 @@
+name: behavior_analyzer
+version: "1.0.0"
+config-version: 2
+
+profile: behavior_analyzer
+
+model-paths: ["models"]
+test-paths: ["tests"]
+
+models:
+  behavior_analyzer:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
