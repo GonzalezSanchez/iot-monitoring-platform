@@ -6,6 +6,7 @@
 |--------|---------|-------------|
 | `migrate.py` | Creates/updates all PostgreSQL tables and indexes | Once after first setup, and after every schema change |
 | `manage_partitions.py` | Creates monthly partitions for `raw_sensor_data` | Before first extract run, then automatically by Airflow DAG |
+| `seed_rooms.py` | Seeds 3 rooms with building names and coordinates | Once after migrate.py — required for spatial analysis |
 
 ## Testdata
 
@@ -23,11 +24,12 @@ Dit genereert 30 dagen aan sensor events voor 5 kamers. Zie project 2a scripts/R
 
 Data lake patroon met drie lagen:
 
-| Laag | Opslag | PySpark job |
-|------|--------|-------------|
+| Laag | Opslag | Job |
+|------|--------|-----|
 | Landing zone | `s3a://p2b-prod-sensor-events/raw/` | `extract.py` (DynamoDB → S3 Parquet) |
 | Staging | `s3a://p2b-prod-sensor-events/processed/` | `transform.py` (valideren, schoonmaken) |
 | Serving | PostgreSQL (`patterns` + `anomalies`) | `analyze.py` (patronen + anomalieën → Power BI) |
+| Spatial | PostgreSQL (`spatial_insights`) | `spatial.py` (GeoPandas — anomalieën per gebouw → Power BI map) |
 
 PostgreSQL draait self-hosted op acer-server via Docker. Dit vermijdt AWS RDS kosten (~€15–20/maand)
 en maakt directe Power BI verbinding mogelijk zonder extra AWS services (Athena, Redshift).
@@ -58,7 +60,10 @@ python scripts/manage_partitions.py --months-back 2 --months-ahead 3
 # 4. Seed testdata in DynamoDB (eenmalig — hergebruik project 2a script)
 python ../project2a-behavior-analyzer/scripts/seed_dynamodb.py
 
-# 5. Draai de pipeline
+# 5. Seed kamers met gebouwen en coördinaten
+python scripts/seed_rooms.py
+
+# 6. Draai de pipeline
 #    Benodigde JAR pakketten:
 #      - hadoop-aws + aws-java-sdk-bundle: S3A connector (s3a:// schema voor Spark)
 #      - postgresql JDBC driver: voor JDBC write naar PostgreSQL (alleen analyze.py)
@@ -75,8 +80,10 @@ spark-submit --packages $PACKAGES --conf spark.hadoop.fs.s3a.aws.credentials.pro
 Maakt de serving layer tabellen aan in PostgreSQL. Idempotent — veilig om meerdere keren te draaien.
 
 Aangemaakt:
-- `patterns` — geaggregeerde patroonresultaten (occupancy_schedule, temperature_trend) — actief geschreven door `analyze.py`
-- `anomalies` — gedetecteerde temperatuurafwijkingen — actief geschreven door `analyze.py`
+- `rooms` — statische kamer/gebouw registry met coördinaten — gevuld via `seed_rooms.py`
+- `patterns` — geaggregeerde patroonresultaten (occupancy_schedule, temperature_trend) — geschreven door `analyze.py`
+- `anomalies` — gedetecteerde anomalieën — geschreven door `analyze.py`
+- `spatial_insights` — anomalieën geaggregeerd per gebouw met coördinaten — geschreven door `spatial.py`
 - `raw_sensor_data` — gepartitioneerde tabel (S3 Parquet is de primaire opslag; deze tabel is aanwezig voor uitbreidingen)
 
 ```bash

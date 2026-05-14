@@ -37,6 +37,19 @@ log = logging.getLogger(__name__)
 DDL_STATEMENTS = [
     # pgvector — needed for project 4 RAG queries over patterns/anomalies
     "CREATE EXTENSION IF NOT EXISTS vector",
+    # Static room registry — populated via scripts/seed_rooms.py
+    # Normally building/location metadata would be managed by project 1a (device registry),
+    # but for this portfolio the rooms table is seeded directly to keep projects self-contained.
+    """
+    CREATE TABLE IF NOT EXISTS rooms (
+        room_id       TEXT             PRIMARY KEY,
+        building_id   TEXT             NOT NULL,
+        building_name TEXT             NOT NULL,
+        floor         INTEGER,
+        lat           DOUBLE PRECISION NOT NULL,
+        lon           DOUBLE PRECISION NOT NULL
+    )
+    """,
     # Raw readings ingested from S3 Parquet (originally from DynamoDB SensorEvents)
     # Partitioned by month — inspired by https://gitlab.com/dmorel69/fastapi-dbuploader
     """
@@ -111,6 +124,26 @@ DDL_STATEMENTS = [
     """,
     "CREATE INDEX IF NOT EXISTS idx_anomalies_entity ON anomalies (entity_type, entity_id)",
     "CREATE INDEX IF NOT EXISTS idx_anomalies_job_id ON anomalies (job_id)",
+    # Spatial insights produced by jobs/spatial.py (GeoPandas)
+    # Aggregates anomalies per building with coordinates — consumed by Power BI map visual
+    """
+    CREATE TABLE IF NOT EXISTS spatial_insights (
+        id              BIGSERIAL        PRIMARY KEY,
+        job_id          TEXT             NOT NULL,
+        building_id     TEXT             NOT NULL,
+        building_name   TEXT             NOT NULL,
+        lat             DOUBLE PRECISION NOT NULL,
+        lon             DOUBLE PRECISION NOT NULL,
+        anomaly_count   INTEGER          NOT NULL,
+        high_count      INTEGER          NOT NULL,
+        medium_count    INTEGER          NOT NULL,
+        dominant_type   TEXT,
+        period_start    TIMESTAMPTZ      NOT NULL,
+        period_end      TIMESTAMPTZ      NOT NULL,
+        created_at      TIMESTAMPTZ      NOT NULL DEFAULT NOW()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_spatial_insights_job_id ON spatial_insights (job_id)",
 ]
 
 # ──────────────────────────────────────────────────────────────────────────────

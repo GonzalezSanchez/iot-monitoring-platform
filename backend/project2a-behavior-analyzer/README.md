@@ -111,6 +111,18 @@ Haal alle patterns en anomalieën op voor één entity (kamer of device).
 
 ## Database Schema (Aurora PostgreSQL)
 
+**Table:** `rooms` *(statische referentietabel — gevuld via `seed_rooms.py`)*
+```sql
+CREATE TABLE rooms (
+    room_id       TEXT             PRIMARY KEY,
+    building_id   TEXT             NOT NULL,
+    building_name TEXT             NOT NULL,
+    floor         INTEGER,
+    lat           DOUBLE PRECISION NOT NULL,
+    lon           DOUBLE PRECISION NOT NULL
+);
+```
+
 **Table:** `raw_sensor_data`
 ```sql
 CREATE TABLE raw_sensor_data (
@@ -198,6 +210,9 @@ docker-compose up -d db
 
 # Database migraties uitvoeren
 python scripts/migrate.py
+
+# Kamers seeden met gebouwen en coördinaten
+python scripts/seed_rooms.py
 
 # Deploy naar AWS (Terraform)
 cd infrastructure

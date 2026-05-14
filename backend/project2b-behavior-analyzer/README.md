@@ -9,9 +9,10 @@ Zelfde analytisch doel als project 2a — bewust opnieuw geïmplementeerd met ee
 ## Stack
 
 - **Processing:** PySpark 4.x (Spark SQL, window functions, `regr_slope`)
+- **Spatial analysis:** GeoPandas + Shapely (anomalie hotspots per gebouw, WGS84 coördinaten)
 - **Orchestration:** Apache Airflow 2.x (DAG met BashOperators)
 - **Storage:** AWS S3 (data lake — raw + processed Parquet), PostgreSQL (resultaten)
-- **Visualization:** Power BI (direct connect op PostgreSQL)
+- **Visualization:** Power BI (direct connect op PostgreSQL — map visual via `spatial_insights`)
 - **IaC:** Terraform (S3 bucket + IAM)
 - **CI/CD:** GitHub Actions (CI) + Jenkins (CD)
 - **Testing:** pytest + PySpark in-process
@@ -31,6 +32,9 @@ S3/processed  ← Silver: gevalideerd en opgeschoond Parquet
     │
     ▼  jobs/analyze.py  (spark-submit)
 PostgreSQL    ← Gold: patronen + anomalieën (voor Power BI)
+    │
+    ▼  jobs/spatial.py  (GeoPandas)
+PostgreSQL    ← Spatial: anomalie hotspots per gebouw (voor Power BI map visual)
 ```
 
 Idempotent: `partitionOverwriteMode=dynamic` — re-runnen overschrijft alleen de betreffende maandpartities.
@@ -52,7 +56,7 @@ Trade-off: Parquet is gecomprimeerd en efficiënt leesbaar door Spark. Ruwe JSON
 `dags/behavior_pipeline.py` — wekelijks elke maandag om 02:00:
 
 ```
-manage_partitions >> extract >> transform >> analyze
+manage_partitions >> extract >> transform >> analyze >> spatial
 ```
 
 - `on_failure_callback` logt een `[ALERT]` na alle retries uitgeput
@@ -64,8 +68,23 @@ manage_partitions >> extract >> transform >> analyze
 - Temperature trend — stijgend/dalend/stabiel via `regr_slope` (lineaire regressie)
 - Anomalie detectie — z-score per kamer (populatie stddev); z ≥ 3 → medium, z ≥ 5 → high
 - Occupancy anomalie detectie — kamer bezet tijdens typisch lege uren (occupancy_rate < 20%) → unusual_activity (medium)
+- Spatiale analyse — GeoPandas aggregeert anomalieën per gebouw (lat/lon), schrijft naar `spatial_insights` voor Power BI map visual
+
+**Note:** de spatiale analyse (`jobs/spatial.py`) is specifiek voor project 2b. Project 2a exposeert resultaten via een REST API; Power BI kan daar rechtstreeks de `rooms` tabel voor gebruiken. GeoPandas past in de Data Engineering stack van project 2b (Python jobs pipeline), niet in de AWS Lambda architectuur van 2a.
 
 ## Database Schema (PostgreSQL)
+
+**Table:** `rooms` *(statische referentietabel — gevuld via `seed_rooms.py`)*
+```sql
+CREATE TABLE rooms (
+    room_id       TEXT             PRIMARY KEY,
+    building_id   TEXT             NOT NULL,
+    building_name TEXT             NOT NULL,
+    floor         INTEGER,
+    lat           DOUBLE PRECISION NOT NULL,
+    lon           DOUBLE PRECISION NOT NULL
+);
+```
 
 **Table:** `patterns`
 ```sql
@@ -97,6 +116,25 @@ CREATE TABLE anomalies (
 );
 ```
 
+**Table:** `spatial_insights` *(geschreven door `jobs/spatial.py`)*
+```sql
+CREATE TABLE spatial_insights (
+    id            BIGSERIAL        PRIMARY KEY,
+    job_id        TEXT             NOT NULL,
+    building_id   TEXT             NOT NULL,
+    building_name TEXT             NOT NULL,
+    lat           DOUBLE PRECISION NOT NULL,
+    lon           DOUBLE PRECISION NOT NULL,
+    anomaly_count INTEGER          NOT NULL,
+    high_count    INTEGER          NOT NULL,
+    medium_count  INTEGER          NOT NULL,
+    dominant_type TEXT,
+    period_start  TIMESTAMPTZ      NOT NULL,
+    period_end    TIMESTAMPTZ      NOT NULL,
+    created_at    TIMESTAMPTZ      NOT NULL DEFAULT NOW()
+);
+```
+
 ## Installatie & Gebruik
 
 ```bash
@@ -108,10 +146,14 @@ docker-compose -f docker/docker-compose.yml up -d postgres
 # Database migraties uitvoeren
 python scripts/migrate.py
 
+# Kamers seeden met gebouwen en coördinaten
+python scripts/seed_rooms.py
+
 # Handmatig een job starten (vereist .env met AWS + DB credentials)
 spark-submit --master local[*] jobs/extract.py
 spark-submit --master local[*] jobs/transform.py
 spark-submit --master local[*] jobs/analyze.py
+python jobs/spatial.py
 ```
 
 Zie `.env.example` voor de vereiste environment variabelen.
