@@ -11,13 +11,32 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   airflow:
-    image: apache/airflow:2.9.0-python3.11
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     depends_on:
       - postgres
     environment:
+      # Airflow
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DB_USER}:${DB_PASSWORD}@postgres/${DB_NAME}
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      # Java / Spark
+      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+      SPARK_MASTER: local[2]
+      # PostgreSQL — DB_HOST overridden: inside Docker the service name is 'postgres'
+      DB_HOST: postgres
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      # AWS
+      AWS_REGION: ${AWS_REGION:-eu-central-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      DYNAMODB_TABLE: ${DYNAMODB_TABLE:-prod-SensorEvents}
+      S3_PARQUET_PATH: ${S3_PARQUET_PATH}
+      S3_PROCESSED_PATH: ${S3_PROCESSED_PATH}
     ports:
       - "8080:8080"
     volumes:
@@ -25,8 +44,10 @@ services:
       - ../jobs:/opt/airflow/jobs
       - ../scripts:/opt/airflow/scripts
       - airflow_logs:/opt/airflow/logs
+      - spark_jars:/home/airflow/.ivy2
     command: standalone
 
 volumes:
   postgres_data:
   airflow_logs:
+  spark_jars:
