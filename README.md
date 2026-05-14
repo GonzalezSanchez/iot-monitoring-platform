@@ -133,7 +133,7 @@ A deliberate choice to demonstrate the same problem solved with different tools.
 **Stack:** Python, Apache Airflow, PySpark 4.x, AWS S3 (data lake), PostgreSQL (self-hosted), Power BI
 **Infrastructure:** Terraform (S3 bucket + IAM)
 **CI/CD:** GitHub Actions (CI) + Jenkins (CD) — deployment pipeline with environment promotion (dev → staging → prod)
-**Tests:** 65 unit tests (pytest + PySpark in-process)
+**Tests:** 77 unit tests (pytest + PySpark in-process) — pipeline orchestration tested via mocks, I/O functions with `pragma: no cover` pending integration tests (LocalStack + PostgreSQL)
 
 **Data lake architecture** — three layers:
 
