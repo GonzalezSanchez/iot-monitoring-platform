@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from jobs.extract import RAW_SCHEMA, filter_new_events, scan_dynamodb, to_dataframe
+from jobs.extract import RAW_SCHEMA, scan_dynamodb, to_dataframe
 
 
 @pytest.fixture(scope="module")
@@ -96,25 +96,6 @@ class TestToDataframe:
         row = df.collect()[0]
         assert row.temperature is None
         assert row.humidity is None
-
-
-class TestFilterNewEvents:
-    def test_filters_existing_ids(self, spark):
-        df = to_dataframe(spark, SAMPLE_ITEMS)
-        filtered = filter_new_events(df, {"evt-001"})
-        ids = {row.event_id for row in filtered.collect()}
-        assert "evt-001" not in ids
-        assert "evt-002" in ids
-
-    def test_empty_existing_ids_returns_all(self, spark):
-        df = to_dataframe(spark, SAMPLE_ITEMS)
-        filtered = filter_new_events(df, set())
-        assert filtered.count() == df.count()
-
-    def test_all_existing_returns_empty(self, spark):
-        df = to_dataframe(spark, SAMPLE_ITEMS)
-        filtered = filter_new_events(df, {"evt-001", "evt-002"})
-        assert filtered.count() == 0
 
 
 class TestScanDynamodb:

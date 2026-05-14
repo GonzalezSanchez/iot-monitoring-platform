@@ -122,13 +122,6 @@ def to_dataframe(spark: SparkSession, items: list[dict]) -> DataFrame:
     return spark.createDataFrame(rows, schema=RAW_SCHEMA)
 
 
-def filter_new_events(df: DataFrame, existing_ids: set[str]) -> DataFrame:
-    """Remove events already present in an existing dataset."""
-    if not existing_ids:
-        return df
-    return df.filter(~df.event_id.isin(existing_ids))
-
-
 def write_parquet(df: DataFrame, s3_path: str) -> None:  # pragma: no cover
     """Write DataFrame as Parquet to S3, partitioned by year and month.
 
