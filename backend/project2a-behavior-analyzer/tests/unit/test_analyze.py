@@ -13,7 +13,7 @@ from analyze.handler import (
     _insert_patterns,
     _load_rows,
     detect_occupancy_schedule,
-    detect_temperature_spikes,
+    detect_temperature_anomalies,
     detect_temperature_trend,
     detect_unusual_activity,
     handler,
@@ -137,38 +137,38 @@ class TestDetectTemperatureTrend:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# detect_temperature_spikes
+# detect_temperature_anomalies
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-class TestDetectTemperatureSpikes:
+class TestDetectTemperatureAnomalies:
     def test_returns_empty_for_no_rows(self) -> None:
-        assert detect_temperature_spikes([]) == []
+        assert detect_temperature_anomalies([]) == []
 
     def test_returns_empty_when_too_few_readings(self) -> None:
         rows = [_row(temperature=21.0) for _ in range(3)]
-        assert detect_temperature_spikes(rows) == []
+        assert detect_temperature_anomalies(rows) == []
 
-    def test_detects_spike(self) -> None:
-        # 10 normal readings + 1 extreme spike; z = 10/sqrt(11) ≈ 3.02 ≥ threshold
+    def test_detects_anomaly(self) -> None:
+        # 10 normal readings + 1 extreme; population z ≈ 3.16 ≥ Z_MEDIUM (3)
         normal = [_row(ts=f"2026-01-{i+1:02d}T09:00:00Z", temperature=20.0) for i in range(10)]
         spike = [_row(ts="2026-01-11T09:00:00Z", temperature=60.0)]
-        anomalies = detect_temperature_spikes(normal + spike)
+        anomalies = detect_temperature_anomalies(normal + spike)
         assert len(anomalies) == 1
-        assert anomalies[0]["anomaly_type"] == "temperature_spike"
+        assert anomalies[0]["anomaly_type"] == "temperature"
         assert anomalies[0]["entity_id"] == "room-a"
 
-    def test_no_spike_for_normal_variation(self) -> None:
+    def test_no_anomaly_for_normal_variation(self) -> None:
         rows = [
             _row(ts=f"2026-01-{i+1:02d}T09:00:00Z", temperature=20.0 + i * 0.1) for i in range(10)
         ]
-        assert detect_temperature_spikes(rows) == []
+        assert detect_temperature_anomalies(rows) == []
 
-    def test_high_severity_for_extreme_spike(self) -> None:
-        # 29 normal readings + 1 spike; z = 29/sqrt(30) ≈ 5.29 ≥ 5 → "high"
+    def test_high_severity_for_extreme_anomaly(self) -> None:
+        # 29 normal readings + 1 extreme; population z ≈ 5.39 ≥ Z_HIGH (5) → "high"
         normal = [_row(ts=f"2026-01-{i+1:02d}T09:00:00Z", temperature=20.0) for i in range(29)]
         extreme = [_row(ts="2026-01-30T09:00:00Z", temperature=100.0)]
-        anomalies = detect_temperature_spikes(normal + extreme)
+        anomalies = detect_temperature_anomalies(normal + extreme)
         assert anomalies[0]["severity"] == "high"
 
 
@@ -205,7 +205,7 @@ class TestDetectUnusualActivity:
         anomalies = detect_unusual_activity(rows, patterns)
         assert len(anomalies) == 1
         assert anomalies[0]["anomaly_type"] == "unusual_activity"
-        assert anomalies[0]["severity"] == "low"
+        assert anomalies[0]["severity"] == "medium"
 
     def test_ignores_rows_without_motion(self) -> None:
         rows = [_row(ts="2026-01-05T03:00:00Z", motion=False)]
@@ -302,7 +302,7 @@ class TestInsertAnomalies:
             {
                 "entity_type": "room",
                 "entity_id": "room-a",
-                "anomaly_type": "temperature_spike",
+                "anomaly_type": "temperature",
                 "detected_at": "2026-01-01T09:00:00+00:00",
                 "severity": "medium",
                 "data": "{}",
@@ -318,7 +318,7 @@ class TestInsertAnomalies:
                 "entity_id": "r",
                 "anomaly_type": "t",
                 "detected_at": "2026-01-01T09:00:00+00:00",
-                "severity": "low",
+                "severity": "medium",
                 "data": "{}",
             }
         ]

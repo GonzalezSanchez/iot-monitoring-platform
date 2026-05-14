@@ -181,7 +181,7 @@ class TestGetInsights:
             "job-1",
             "room",
             "room-a",
-            "temperature_spike",
+            "temperature",
             "2026-01-05T09:00:00+00:00",
             "medium",
             "{}",

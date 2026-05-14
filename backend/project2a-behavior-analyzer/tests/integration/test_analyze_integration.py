@@ -76,7 +76,7 @@ class TestInsertAnomaliesIntegration:
             {
                 "entity_type": "room",
                 "entity_id": "room-b",
-                "anomaly_type": "temperature_spike",
+                "anomaly_type": "temperature",
                 "detected_at": "2026-01-05T09:00:00+00:00",
                 "severity": "high",
                 "data": json.dumps({"z_score": 3.5}),
