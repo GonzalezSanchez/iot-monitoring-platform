@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 jobs/extract.py — PySpark extract job for project 2b.
 
@@ -123,13 +122,6 @@ def to_dataframe(spark: SparkSession, items: list[dict]) -> DataFrame:
     return spark.createDataFrame(rows, schema=RAW_SCHEMA)
 
 
-def filter_new_events(df: DataFrame, existing_ids: set[str]) -> DataFrame:
-    """Remove events already present in an existing dataset."""
-    if not existing_ids:
-        return df
-    return df.filter(~df.event_id.isin(existing_ids))
-
-
 def write_parquet(df: DataFrame, s3_path: str) -> None:  # pragma: no cover
     """Write DataFrame as Parquet to S3, partitioned by year and month.
 
@@ -151,7 +143,7 @@ def build_spark(master: str) -> SparkSession:  # pragma: no cover
     )
 
 
-def main() -> None:  # pragma: no cover
+def main() -> None:
     logging.basicConfig(
         level=os.getenv("LOG_LEVEL", "INFO"),
         format="%(levelname)s %(message)s",
@@ -162,9 +154,26 @@ def main() -> None:  # pragma: no cover
         log.error("Missing required env var: S3_PARQUET_PATH")
         sys.exit(1)
 
-    table_name = os.getenv("DYNAMODB_TABLE", "prod-SensorEvents")
-    region = os.getenv("AWS_REGION", "eu-central-1")
-    master = os.getenv("SPARK_MASTER", "local[*]")
+    table_name = os.getenv("DYNAMODB_TABLE")
+    region = os.getenv("AWS_REGION")
+    master = os.getenv("SPARK_MASTER")
+
+    missing = [
+        name
+        for name, val in [
+            ("DYNAMODB_TABLE", table_name),
+            ("AWS_REGION", region),
+            ("SPARK_MASTER", master),
+        ]
+        if not val
+    ]
+    if missing:
+        log.error("Missing required env vars: %s", ", ".join(missing))
+        sys.exit(1)
+
+    assert table_name is not None
+    assert region is not None
+    assert master is not None
 
     spark = build_spark(master)
     spark.sparkContext.setLogLevel("WARN")

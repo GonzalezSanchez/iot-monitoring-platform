@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -10,7 +11,7 @@ from jobs.extract import to_dataframe
 from jobs.transform import (
     TEMP_MAX,
     TEMP_MIN,
-    filter_unprocessed,
+    main,
     validate_and_clean,
 )
 
@@ -114,19 +115,56 @@ class TestValidateAndClean:
         assert row.humidity_pct == 60.0
 
 
-class TestFilterUnprocessed:
-    def test_filters_existing_ids(self, spark):
-        items = _make_items({}, {})
-        df = to_dataframe(spark, items)
-        result = filter_unprocessed(df, {"evt-001"})
-        ids = {row.event_id for row in result.collect()}
-        assert "evt-001" not in ids
-        assert "evt-002" in ids
+class TestMain:
+    ENV = {
+        "S3_PARQUET_PATH": "s3://bucket/raw",
+        "S3_PROCESSED_PATH": "s3://bucket/processed",
+        "SPARK_MASTER": "local[*]",
+    }
 
-    def test_empty_set_returns_all(self, spark):
-        df = to_dataframe(spark, _make_items({}, {}))
-        assert filter_unprocessed(df, set()).count() == 2
+    def test_exits_if_env_var_missing(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with pytest.raises(SystemExit):
+                main()
 
-    def test_all_existing_returns_empty(self, spark):
-        df = to_dataframe(spark, _make_items({}, {}))
-        assert filter_unprocessed(df, {"evt-001", "evt-002"}).count() == 0
+    @patch("jobs.transform.write_processed")
+    @patch("jobs.transform.validate_and_clean")
+    @patch("jobs.transform.read_raw")
+    @patch("jobs.transform.build_spark")
+    def test_skips_write_if_raw_empty(self, _spark, mock_read, _validate, mock_write):
+        mock_df = MagicMock()
+        mock_df.count.return_value = 0
+        mock_read.return_value = mock_df
+        with patch.dict(os.environ, self.ENV):
+            main()
+        mock_write.assert_not_called()
+
+    @patch("jobs.transform.write_processed")
+    @patch("jobs.transform.validate_and_clean")
+    @patch("jobs.transform.read_raw")
+    @patch("jobs.transform.build_spark")
+    def test_skips_write_if_all_filtered(self, _spark, mock_read, mock_validate, mock_write):
+        mock_raw = MagicMock()
+        mock_raw.count.return_value = 3
+        mock_read.return_value = mock_raw
+        mock_clean = MagicMock()
+        mock_clean.count.return_value = 0
+        mock_validate.return_value = mock_clean
+        with patch.dict(os.environ, self.ENV):
+            main()
+        mock_write.assert_not_called()
+
+    @patch("jobs.transform.write_processed")
+    @patch("jobs.transform.validate_and_clean")
+    @patch("jobs.transform.read_raw")
+    @patch("jobs.transform.build_spark")
+    def test_runs_full_pipeline(self, _spark, mock_read, mock_validate, mock_write):
+        mock_raw = MagicMock()
+        mock_raw.count.return_value = 5
+        mock_read.return_value = mock_raw
+        mock_clean = MagicMock()
+        mock_clean.count.return_value = 4
+        mock_validate.return_value = mock_clean
+        with patch.dict(os.environ, self.ENV):
+            main()
+        mock_write.assert_called_once()

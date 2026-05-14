@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from jobs.extract import RAW_SCHEMA, filter_new_events, scan_dynamodb, to_dataframe
+from jobs.extract import RAW_SCHEMA, main, scan_dynamodb, to_dataframe
 
 
 @pytest.fixture(scope="module")
@@ -98,23 +98,46 @@ class TestToDataframe:
         assert row.humidity is None
 
 
-class TestFilterNewEvents:
-    def test_filters_existing_ids(self, spark):
-        df = to_dataframe(spark, SAMPLE_ITEMS)
-        filtered = filter_new_events(df, {"evt-001"})
-        ids = {row.event_id for row in filtered.collect()}
-        assert "evt-001" not in ids
-        assert "evt-002" in ids
+class TestMain:
+    ENV = {
+        "S3_PARQUET_PATH": "s3://bucket/raw",
+        "DYNAMODB_TABLE": "prod-SensorEvents",
+        "AWS_REGION": "eu-central-1",
+        "SPARK_MASTER": "local[*]",
+    }
 
-    def test_empty_existing_ids_returns_all(self, spark):
-        df = to_dataframe(spark, SAMPLE_ITEMS)
-        filtered = filter_new_events(df, set())
-        assert filtered.count() == df.count()
+    def test_exits_if_s3_path_missing(self):
+        env = {k: v for k, v in self.ENV.items() if k != "S3_PARQUET_PATH"}
+        with patch.dict(os.environ, env, clear=True):
+            with pytest.raises(SystemExit):
+                main()
 
-    def test_all_existing_returns_empty(self, spark):
-        df = to_dataframe(spark, SAMPLE_ITEMS)
-        filtered = filter_new_events(df, {"evt-001", "evt-002"})
-        assert filtered.count() == 0
+    def test_exits_if_required_var_missing(self):
+        env = {k: v for k, v in self.ENV.items() if k != "DYNAMODB_TABLE"}
+        with patch.dict(os.environ, env, clear=True):
+            with pytest.raises(SystemExit):
+                main()
+
+    @patch("jobs.extract.write_parquet")
+    @patch("jobs.extract.to_dataframe")
+    @patch("jobs.extract.scan_dynamodb", return_value=[])
+    @patch("jobs.extract.build_spark")
+    def test_skips_write_if_no_items(self, _spark, _scan, _to_df, mock_write):
+        with patch.dict(os.environ, self.ENV):
+            main()
+        mock_write.assert_not_called()
+
+    @patch("jobs.extract.write_parquet")
+    @patch("jobs.extract.to_dataframe")
+    @patch("jobs.extract.scan_dynamodb", return_value=[{"event_id": "evt-1"}])
+    @patch("jobs.extract.build_spark")
+    def test_runs_full_pipeline(self, _spark, _scan, mock_to_df, mock_write):
+        mock_df = MagicMock()
+        mock_df.count.return_value = 1
+        mock_to_df.return_value = mock_df
+        with patch.dict(os.environ, self.ENV):
+            main()
+        mock_write.assert_called_once()
 
 
 class TestScanDynamodb:

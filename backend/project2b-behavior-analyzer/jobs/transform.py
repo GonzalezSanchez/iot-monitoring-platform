@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 jobs/transform.py — PySpark transform job for project 2b.
 
@@ -52,13 +51,6 @@ def validate_and_clean(df: DataFrame) -> DataFrame:
     )
 
 
-def filter_unprocessed(df: DataFrame, processed_ids: set[str]) -> DataFrame:
-    """Remove events already present in a processed dataset."""
-    if not processed_ids:
-        return df
-    return df.filter(~df.event_id.isin(processed_ids))
-
-
 def read_raw(spark: SparkSession, s3_path: str) -> DataFrame:  # pragma: no cover
     """Read raw Parquet from S3 landing zone."""
     return spark.read.parquet(s3_path)
@@ -85,7 +77,7 @@ def build_spark(master: str) -> SparkSession:  # pragma: no cover
     )
 
 
-def main() -> None:  # pragma: no cover
+def main() -> None:
     logging.basicConfig(
         level=os.getenv("LOG_LEVEL", "INFO"),
         format="%(levelname)s %(message)s",
@@ -106,7 +98,11 @@ def main() -> None:  # pragma: no cover
     assert s3_raw is not None
     assert s3_processed is not None
 
-    master = os.getenv("SPARK_MASTER", "local[*]")
+    master = os.getenv("SPARK_MASTER")
+    if not master:
+        log.error("Missing required env var: SPARK_MASTER")
+        sys.exit(1)
+
     spark = build_spark(master)
     spark.sparkContext.setLogLevel("WARN")
 

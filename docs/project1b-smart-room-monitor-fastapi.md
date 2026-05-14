@@ -57,7 +57,7 @@ FastAPI (opentelemetry-instrument uvicorn)
 - **Logs:** trace ID correlatie via `OTEL_PYTHON_LOG_CORRELATION=true`
 - **Vendor-neutral:** backend stuurt OTLP, alleen de Collector config wijzigt bij overstap naar Grafana Stack
 
-Zie [stappen_observability_project1b.md](stappen_observability_project1b.md) voor de volledige implementatie.
+Zie `temp/stappen_observability_project1b.md` voor de volledige implementatie.
 
 ## 8. Toekomstige uitbreidingen
 - Authenticatie/authorisatie

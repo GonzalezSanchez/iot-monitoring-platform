@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 jobs/analyze.py — PySpark analyze job for project 2b.
 
@@ -7,6 +6,8 @@ Reads processed Parquet from S3 (processed layer) and detects:
   - temperature_trend  : direction (rising/falling/stable) via regr_slope (linear regression)
   - temperature anomalies: z-score per room (population stddev); min 4 measurements;
                            z >= 3 → medium, z >= 5 → high
+  - occupancy anomalies: room occupied during typically empty hours;
+                         occupancy_rate < OCCUPANCY_ANOMALY_THRESHOLD → unusual_activity (medium)
 
 Writes results to patterns and anomalies tables in PostgreSQL.
 
@@ -53,6 +54,8 @@ Z_MEDIUM = 3.0
 Z_HIGH = 5.0
 # 1 °C per day expressed in °C/second (slope unit from ts cast to unix seconds)
 SLOPE_THRESHOLD = 1.0 / 86400
+# Rooms with typical occupancy rate below this threshold are considered "normally empty"
+OCCUPANCY_ANOMALY_THRESHOLD = 0.2
 
 
 def compute_hourly_occupancy(df: DataFrame) -> DataFrame:
@@ -165,6 +168,35 @@ def detect_temperature_anomalies(df: DataFrame, job_id: str) -> DataFrame:
     )
 
 
+def detect_occupancy_anomalies(df: DataFrame, hourly_df: DataFrame, job_id: str) -> DataFrame:
+    """Detect unusual activity: room occupied during typically empty hours.
+
+    Joins each event with its typical occupancy rate for (room_id, day_of_week, hour).
+    occupancy=True but typical rate < OCCUPANCY_ANOMALY_THRESHOLD → unusual_activity (medium).
+    """
+    df_with_time = df.withColumn("hour", hour("ts")).withColumn("day_of_week", dayofweek("ts"))
+    return (
+        df_with_time.join(hourly_df, on=["room_id", "day_of_week", "hour"], how="inner")
+        .filter(col("occupancy"))
+        .filter(col("occupancy_rate") < OCCUPANCY_ANOMALY_THRESHOLD)
+        .select(
+            lit(job_id).alias("job_id"),
+            lit("room").alias("entity_type"),
+            col("room_id").alias("entity_id"),
+            lit("unusual_activity").alias("anomaly_type"),
+            col("ts").alias("detected_at"),
+            lit("medium").alias("severity"),
+            to_json(
+                struct(
+                    col("occupancy_rate"),
+                    col("day_of_week"),
+                    col("hour"),
+                )
+            ).alias("data"),
+        )
+    )
+
+
 def read_processed(spark: SparkSession, s3_path: str) -> DataFrame:  # pragma: no cover
     """Read processed Parquet from S3."""
     return spark.read.parquet(s3_path)
@@ -189,7 +221,7 @@ def build_spark(master: str) -> SparkSession:  # pragma: no cover
     )
 
 
-def main() -> None:  # pragma: no cover
+def main() -> None:
     logging.basicConfig(
         level=os.getenv("LOG_LEVEL", "INFO"),
         format="%(levelname)s %(message)s",
@@ -208,7 +240,11 @@ def main() -> None:  # pragma: no cover
 
     assert s3_processed is not None
 
-    master = os.getenv("SPARK_MASTER", "local[*]")
+    master = os.getenv("SPARK_MASTER")
+    if not master:
+        log.error("Missing required env var: SPARK_MASTER")
+        sys.exit(1)
+
     jdbc_url = (
         f"jdbc:postgresql://{os.environ['DB_HOST']}:"
         f"{os.getenv('DB_PORT', '5432')}/{os.environ['DB_NAME']}"
@@ -249,12 +285,19 @@ def main() -> None:  # pragma: no cover
     log.info("Writing %d temperature trend rows...", trend_patterns.count())
     write_patterns(trend_patterns, jdbc_url, jdbc_props)
 
-    # Anomaly detection
+    # Temperature anomalies
     anomalies_df = detect_temperature_anomalies(df, job_id)
     anomaly_count = anomalies_df.count()
-    log.info("Writing %d anomalies...", anomaly_count)
+    log.info("Writing %d temperature anomalies...", anomaly_count)
     if anomaly_count > 0:
         write_anomalies(anomalies_df, jdbc_url, jdbc_props)
+
+    # Occupancy anomalies
+    occ_anomalies_df = detect_occupancy_anomalies(df, hourly_df, job_id)
+    occ_anomaly_count = occ_anomalies_df.count()
+    log.info("Writing %d occupancy anomalies...", occ_anomaly_count)
+    if occ_anomaly_count > 0:
+        write_anomalies(occ_anomalies_df, jdbc_url, jdbc_props)
 
     log.info("Analyze complete. job_id=%s", job_id)
     spark.stop()

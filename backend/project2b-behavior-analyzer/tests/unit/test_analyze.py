@@ -2,17 +2,21 @@ import json
 import os
 import sys
 from datetime import UTC, datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from jobs.analyze import (
+    OCCUPANCY_ANOMALY_THRESHOLD,
     SLOPE_THRESHOLD,
     build_trend_pattern_rows,
     compute_hourly_occupancy,
     compute_temperature_trends,
+    detect_occupancy_anomalies,
     detect_temperature_anomalies,
+    main,
 )
 
 
@@ -286,3 +290,178 @@ class TestDetectTemperatureAnomalies:
         data = json.loads(result.collect()[0].data)
         assert "z_score" in data
         assert abs(data["z_score"] - 3.0) < 0.01
+
+
+class TestDetectOccupancyAnomalies:
+    def _make_room_df(self, spark, occupancies: list[bool], hour_val: int = 3):
+        rows = [
+            {
+                "event_id": f"evt-{i:03d}",
+                "room_id": "room-a",
+                "ts": _ts(0, hour_val),
+                "occupancy": occ,
+            }
+            for i, occ in enumerate(occupancies)
+        ]
+        return _make_df(spark, rows)
+
+    def test_detects_unusual_activity(self, spark):
+        # 9 empty + 1 occupied at hour=3 → rate=0.1 < threshold → anomaly
+        df = self._make_room_df(spark, [False] * 9 + [True])
+        hourly_df = compute_hourly_occupancy(df)
+        result = detect_occupancy_anomalies(df, hourly_df, "job-test")
+        assert result.count() == 1
+
+    def test_no_anomaly_if_typically_occupied(self, spark):
+        # 5 occupied at hour=10 → rate=1.0 → not unusual
+        rows = [
+            {"event_id": f"evt-{i:03d}", "room_id": "room-a", "ts": _ts(0, 10), "occupancy": True}
+            for i in range(5)
+        ]
+        df = _make_df(spark, rows)
+        hourly_df = compute_hourly_occupancy(df)
+        result = detect_occupancy_anomalies(df, hourly_df, "job-test")
+        assert result.count() == 0
+
+    def test_no_anomaly_if_not_occupied(self, spark):
+        # All empty at hour=3 → no one there, no anomaly
+        df = self._make_room_df(spark, [False] * 10)
+        hourly_df = compute_hourly_occupancy(df)
+        result = detect_occupancy_anomalies(df, hourly_df, "job-test")
+        assert result.count() == 0
+
+    def test_anomaly_type_is_unusual_activity(self, spark):
+        df = self._make_room_df(spark, [False] * 9 + [True])
+        hourly_df = compute_hourly_occupancy(df)
+        result = detect_occupancy_anomalies(df, hourly_df, "job-test")
+        assert result.collect()[0].anomaly_type == "unusual_activity"
+
+    def test_severity_is_medium(self, spark):
+        df = self._make_room_df(spark, [False] * 9 + [True])
+        hourly_df = compute_hourly_occupancy(df)
+        result = detect_occupancy_anomalies(df, hourly_df, "job-test")
+        assert result.collect()[0].severity == "medium"
+
+    def test_threshold_boundary(self, spark):
+        # rate = OCCUPANCY_ANOMALY_THRESHOLD exactly → NOT flagged (strictly less than)
+        n = round(1 / OCCUPANCY_ANOMALY_THRESHOLD)
+        df = self._make_room_df(spark, [False] * (n - 1) + [True])
+        hourly_df = compute_hourly_occupancy(df)
+        result = detect_occupancy_anomalies(df, hourly_df, "job-test")
+        assert result.count() == 0
+
+
+class TestMain:
+    ENV = {
+        "S3_PROCESSED_PATH": "s3://bucket/processed",
+        "DB_HOST": "localhost",
+        "DB_NAME": "testdb",
+        "DB_USER": "user",
+        "DB_PASSWORD": "pass",
+        "SPARK_MASTER": "local[*]",
+    }
+
+    def test_exits_if_env_var_missing(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with pytest.raises(SystemExit):
+                main()
+
+    @patch("jobs.analyze.write_anomalies")
+    @patch("jobs.analyze.write_patterns")
+    @patch("jobs.analyze.read_processed")
+    @patch("jobs.analyze.build_spark")
+    def test_skips_write_if_no_data(
+        self, _spark, mock_read, mock_write_patterns, mock_write_anomalies
+    ):
+        mock_df = MagicMock()
+        mock_df.count.return_value = 0
+        mock_read.return_value = mock_df
+        with patch.dict(os.environ, self.ENV):
+            main()
+        mock_write_patterns.assert_not_called()
+        mock_write_anomalies.assert_not_called()
+
+    @patch("jobs.analyze.write_anomalies")
+    @patch("jobs.analyze.write_patterns")
+    @patch("jobs.analyze.detect_occupancy_anomalies")
+    @patch("jobs.analyze.detect_temperature_anomalies")
+    @patch("jobs.analyze.build_trend_pattern_rows")
+    @patch("jobs.analyze.compute_temperature_trends")
+    @patch("jobs.analyze.build_occupancy_pattern_rows")
+    @patch("jobs.analyze.compute_hourly_occupancy")
+    @patch("jobs.analyze.read_processed")
+    @patch("jobs.analyze.build_spark")
+    def test_runs_full_pipeline(
+        self,
+        _spark,
+        mock_read,
+        _hourly,
+        mock_occ_patterns,
+        _trends,
+        mock_trend_rows,
+        mock_temp_anomalies,
+        mock_occ_anomalies,
+        mock_write_patterns,
+        mock_write_anomalies,
+    ):
+        mock_df = MagicMock()
+        mock_df.count.return_value = 10
+        mock_read.return_value = mock_df
+        mock_occ_df = MagicMock()
+        mock_occ_df.count.return_value = 3
+        mock_occ_patterns.return_value = mock_occ_df
+        mock_trend_df = MagicMock()
+        mock_trend_df.count.return_value = 2
+        mock_trend_rows.return_value = mock_trend_df
+        mock_temp_df = MagicMock()
+        mock_temp_df.count.return_value = 1
+        mock_temp_anomalies.return_value = mock_temp_df
+        mock_occ_anom_df = MagicMock()
+        mock_occ_anom_df.count.return_value = 1
+        mock_occ_anomalies.return_value = mock_occ_anom_df
+        with patch.dict(os.environ, self.ENV):
+            main()
+        assert mock_write_patterns.call_count == 2
+        assert mock_write_anomalies.call_count == 2
+
+    @patch("jobs.analyze.write_anomalies")
+    @patch("jobs.analyze.write_patterns")
+    @patch("jobs.analyze.detect_occupancy_anomalies")
+    @patch("jobs.analyze.detect_temperature_anomalies")
+    @patch("jobs.analyze.build_trend_pattern_rows")
+    @patch("jobs.analyze.compute_temperature_trends")
+    @patch("jobs.analyze.build_occupancy_pattern_rows")
+    @patch("jobs.analyze.compute_hourly_occupancy")
+    @patch("jobs.analyze.read_processed")
+    @patch("jobs.analyze.build_spark")
+    def test_skips_anomaly_write_if_none_detected(
+        self,
+        _spark,
+        mock_read,
+        _hourly,
+        mock_occ_patterns,
+        _trends,
+        mock_trend_rows,
+        mock_temp_anomalies,
+        mock_occ_anomalies,
+        mock_write_patterns,
+        mock_write_anomalies,
+    ):
+        mock_df = MagicMock()
+        mock_df.count.return_value = 10
+        mock_read.return_value = mock_df
+        mock_occ_df = MagicMock()
+        mock_occ_df.count.return_value = 3
+        mock_occ_patterns.return_value = mock_occ_df
+        mock_trend_df = MagicMock()
+        mock_trend_df.count.return_value = 2
+        mock_trend_rows.return_value = mock_trend_df
+        mock_temp_df = MagicMock()
+        mock_temp_df.count.return_value = 0
+        mock_temp_anomalies.return_value = mock_temp_df
+        mock_occ_anom_df = MagicMock()
+        mock_occ_anom_df.count.return_value = 0
+        mock_occ_anomalies.return_value = mock_occ_anom_df
+        with patch.dict(os.environ, self.ENV):
+            main()
+        mock_write_anomalies.assert_not_called()
