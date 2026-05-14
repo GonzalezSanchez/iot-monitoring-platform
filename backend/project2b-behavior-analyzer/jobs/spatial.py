@@ -128,7 +128,7 @@ def get_connection() -> psycopg2.extensions.connection:  # pragma: no cover
     )
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover
     logging.basicConfig(
         level=os.getenv("LOG_LEVEL", "INFO"),
         format="%(levelname)s %(message)s",
