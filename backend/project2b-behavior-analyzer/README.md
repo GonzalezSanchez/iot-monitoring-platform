@@ -63,6 +63,7 @@ manage_partitions >> extract >> transform >> analyze
 - Occupancy schedule detectie — gemiddelde bezettingsgraad per (kamer, dag, uur) via window aggregatie
 - Temperature trend — stijgend/dalend/stabiel via `regr_slope` (lineaire regressie)
 - Anomalie detectie — z-score per kamer (populatie stddev); z ≥ 3 → medium, z ≥ 5 → high
+- Occupancy anomalie detectie — kamer bezet tijdens typisch lege uren (occupancy_rate < 20%) → unusual_activity (medium)
 
 ## Database Schema (PostgreSQL)
 
