@@ -37,10 +37,12 @@ en maakt directe Power BI verbinding mogelijk zonder extra AWS services (Athena,
 ## Setup (eerste keer)
 
 Prerequisites:
-- Docker Compose services draaien: `docker compose -f docker/docker-compose.yml up -d`
 - `.env` bestand aangemaakt (kopieer van `.env.example` en vul in)
-- AWS credentials geconfigureerd (`aws sts get-caller-identity` moet werken)
+- AWS credentials ingevuld in `.env` (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
 - S3 bucket aangemaakt: `cd infrastructure && terraform apply`
+
+> **Belangrijk:** altijd `--env-file .env` meegeven aan `docker compose`. De compose file staat in
+> `docker/` maar `.env` staat in de projectroot — Docker Compose vindt het anders niet.
 
 ```bash
 cd backend/project2b-behavior-analyzer
@@ -48,8 +50,8 @@ cd backend/project2b-behavior-analyzer
 # Activeer de virtual environment
 source .venv/bin/activate
 
-# 1. Start services (PostgreSQL)
-docker compose -f docker/docker-compose.yml up -d
+# 1. Start services (PostgreSQL + Airflow)
+docker compose -f docker/docker-compose.yml --env-file .env up -d
 
 # 2. Maak database tabellen aan
 python scripts/migrate.py
@@ -110,5 +112,18 @@ python scripts/manage_partitions.py --months-ahead 3 --dry-run
 
 - **Lokaal:** Docker Compose op je eigen machine — voor development en testen
 - **acer-server:** Docker Compose op `ags@acer.gonzalezsanchez.dev` — permanente deployment
-  - Deploy: `git pull && docker compose -f docker/docker-compose.yml up -d`
+  - Airflow UI: bereikbaar via SSH tunnel of lokaal netwerk op poort 8080 (niet publiek exposed)
+  - Containers herstarten automatisch na server reboot (`restart: unless-stopped`)
   - Nooit committen op de server — alleen `git pull`
+
+```bash
+# Deployen op de server
+ssh ags@acer.gonzalezsanchez.dev
+cd ~/Portfolio/projects/iot-monitoring-platform/backend/project2b-behavior-analyzer
+git pull origin main
+docker compose -f docker/docker-compose.yml --env-file .env up -d
+
+# Airflow UI bekijken via SSH tunnel (op je dev machine)
+ssh -L 8080:localhost:8080 ags@acer.gonzalezsanchez.dev
+# Open http://localhost:8080 — user: admin
+```
