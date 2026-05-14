@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: anomaly_detail
+    description: >
+      Anomalies joined with room metadata. One row per anomaly event.
+      Used by Power BI page 2 (Anomalies).
+    columns:
+      - name: id
+        description: Primary key from anomalies table
+        tests: [unique, not_null]
+      - name: room_id
+        tests: [not_null]
+      - name: building_id
+        tests: [not_null]
+      - name: anomaly_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: [temperature, unusual_activity]
+      - name: severity
+        tests:
+          - not_null
+          - accepted_values:
+              values: [medium, high]
+      - name: detected_at
+        tests: [not_null]
+
+  - name: pattern_detail
+    description: >
+      Patterns joined with room metadata. One row per pattern record.
+      Used by Power BI page 3 (Patterns).
+    columns:
+      - name: id
+        description: Primary key from patterns table
+        tests: [unique, not_null]
+      - name: room_id
+        tests: [not_null]
+      - name: building_id
+        tests: [not_null]
+      - name: pattern_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: [occupancy_schedule, temperature_trend]
+      - name: period_start
+        tests: [not_null]
+      - name: period_end
+        tests: [not_null]
+
+  - name: building_summary
+    description: >
+      Aggregated anomaly counts per building across all jobs.
+      Used by Power BI page 1 (Spatial Overview) summary cards.
+    columns:
+      - name: building_id
+        tests: [unique, not_null]
+      - name: building_name
+        tests: [not_null]
+      - name: lat
+        tests: [not_null]
+      - name: lon
+        tests: [not_null]
+      - name: anomaly_count
+        tests: [not_null]
+      - name: high_count
+        tests: [not_null]
+      - name: medium_count
+        tests: [not_null]

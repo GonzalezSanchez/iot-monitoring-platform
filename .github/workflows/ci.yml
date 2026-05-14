@@ -165,6 +165,27 @@ jobs:
           AIRFLOW_HOME: /tmp/airflow
           AIRFLOW__CORE__LOAD_EXAMPLES: "False"
 
+  test-project2b-dbt:
+    name: project2b dbt parse
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/project2b-behavior-analyzer
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dbt
+        run: pip install "dbt-postgres>=1.7.0,<2.0.0"
+
+      - name: dbt parse
+        run: dbt parse --project-dir dbt --profiles-dir dbt
+
   terraform-project2b:
     name: project2b terraform validate
     runs-on: ubuntu-latest
