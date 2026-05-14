@@ -2,6 +2,8 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     restart: unless-stopped
+    env_file:
+      - ../.env
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -13,6 +15,8 @@ services:
 
   airflow:
     restart: unless-stopped
+    env_file:
+      - ../.env
     build:
       context: ..
       dockerfile: docker/Dockerfile
