@@ -49,7 +49,7 @@ def _insert_anomaly(job_id: str, entity_id: str) -> None:
                 INSERT INTO anomalies
                     (job_id, entity_type, entity_id, anomaly_type,
                      detected_at, severity, data)
-                VALUES (%s, 'room', %s, 'temperature_spike',
+                VALUES (%s, 'room', %s, 'temperature',
                         '2026-01-05T09:00:00+00:00', 'medium', %s)
                 """,
                 (job_id, entity_id, json.dumps({})),

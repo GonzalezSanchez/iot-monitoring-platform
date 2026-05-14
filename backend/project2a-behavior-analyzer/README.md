@@ -25,7 +25,7 @@ To destroy: `cd infrastructure && terraform destroy`
 
 - ETL pipeline: Extract (DynamoDB → Aurora) → Transform (validatie + normalisatie) → Analyze (pattern + anomaly detection)
 - Pattern detection: `occupancy_schedule`, `temperature_trend`
-- Anomaly detection: `temperature_spike` (> mean + 3σ), `unusual_activity` (beweging buiten typische bezettingsuren)
+- Anomaly detection: `temperature` (z ≥ 3σ → medium, z ≥ 5σ → high, populatie stddev), `unusual_activity` (beweging buiten typische bezettingsuren, medium)
 - Scheduled batch processing via EventBridge + Step Functions
 - REST API voor het ophalen van resultaten per entity
 
@@ -100,10 +100,10 @@ Haal alle patterns en anomalieën op voor één entity (kamer of device).
       "job_id": "...",
       "entity_type": "room",
       "entity_id": "conference-a1",
-      "anomaly_type": "temperature_spike",
+      "anomaly_type": "temperature",
       "detected_at": "2026-01-10T14:00:00Z",
       "severity": "high",
-      "data": { "value": 38.2, "mean": 22.1, "stddev": 1.8 }
+      "data": { "temperature": 38.2, "mean": 22.1, "stddev": 1.8, "z_score": 5.2 }
     }
   ]
 }
@@ -150,9 +150,9 @@ CREATE TABLE anomalies (
     job_id       TEXT        NOT NULL,
     entity_type  TEXT        NOT NULL,  -- 'room' | 'device'
     entity_id    TEXT        NOT NULL,
-    anomaly_type TEXT        NOT NULL,  -- 'temperature_spike' | 'unusual_activity'
+    anomaly_type TEXT        NOT NULL,  -- 'temperature' | 'unusual_activity'
     detected_at  TIMESTAMPTZ NOT NULL,
-    severity     TEXT        NOT NULL,  -- 'low' | 'medium' | 'high'
+    severity     TEXT        NOT NULL,  -- 'medium' | 'high'
     data         JSONB       NOT NULL,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

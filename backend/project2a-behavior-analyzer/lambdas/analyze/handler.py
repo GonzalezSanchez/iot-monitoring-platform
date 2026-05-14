@@ -10,7 +10,7 @@ Patterns detected:
   - temperature_trend  : rising/falling/stable mean temperature over the window
 
 Anomalies detected:
-  - temperature_spike  : reading > mean + 3*stddev
+  - temperature        : reading > mean + 3*stddev (population)
   - unusual_activity   : motion outside the typical occupancy window
 
 Step Functions input (from Transform output):
@@ -46,7 +46,8 @@ from shared.db import get_connection
 log = logging.getLogger(__name__)
 log.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
-SPIKE_STDDEV_THRESHOLD = 3.0
+Z_MEDIUM = 3.0
+Z_HIGH = 5.0
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -166,20 +167,23 @@ def detect_temperature_trend(rows: list[dict]) -> list[dict]:
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def detect_temperature_spikes(rows: list[dict]) -> list[dict]:
-    """Flag readings that are > mean + 3*stddev for that room."""
+def detect_temperature_anomalies(rows: list[dict]) -> list[dict]:
+    """Flag readings that deviate > Z_MEDIUM stddev from the room mean (population stddev).
+
+    z >= Z_MEDIUM (3) → severity 'medium'
+    z >= Z_HIGH  (5) → severity 'high'
+    """
     room_temps: dict[str, list[float]] = defaultdict(list)
     for row in rows:
         if row.get("temperature") is not None:
             room_temps[row["room_id"]].append(row["temperature"])
 
-    # Pre-compute mean/stddev per room
     stats: dict[str, tuple[float, float]] = {}
     for room_id, temps in room_temps.items():
         if len(temps) >= 4:
             mean = statistics.mean(temps)
-            stdev = statistics.stdev(temps)
-            stats[room_id] = (mean, stdev)
+            stddev = statistics.pstdev(temps)
+            stats[room_id] = (mean, stddev)
 
     anomalies = []
     for row in rows:
@@ -188,11 +192,11 @@ def detect_temperature_spikes(rows: list[dict]) -> list[dict]:
         room = row["room_id"]
         if room not in stats:
             continue
-        mean, stdev = stats[room]
-        if stdev == 0:
+        mean, stddev = stats[room]
+        if stddev == 0:
             continue
-        z = (row["temperature"] - mean) / stdev
-        if abs(z) >= SPIKE_STDDEV_THRESHOLD:
+        z = (row["temperature"] - mean) / stddev
+        if abs(z) >= Z_MEDIUM:
             ts = row["ts"]
             if isinstance(ts, str):
                 ts = datetime.fromisoformat(ts.replace("Z", "+00:00"))
@@ -200,14 +204,14 @@ def detect_temperature_spikes(rows: list[dict]) -> list[dict]:
                 {
                     "entity_type": "room",
                     "entity_id": room,
-                    "anomaly_type": "temperature_spike",
+                    "anomaly_type": "temperature",
                     "detected_at": ts.isoformat(),
-                    "severity": "high" if abs(z) >= 5 else "medium",
+                    "severity": "high" if abs(z) >= Z_HIGH else "medium",
                     "data": json.dumps(
                         {
                             "temperature": row["temperature"],
                             "mean": round(mean, 2),
-                            "stdev": round(stdev, 2),
+                            "stddev": round(stddev, 2),
                             "z_score": round(z, 2),
                         }
                     ),
@@ -250,7 +254,7 @@ def detect_unusual_activity(rows: list[dict], occupancy_patterns: list[dict]) ->
                     "entity_id": room,
                     "anomaly_type": "unusual_activity",
                     "detected_at": ts.isoformat(),
-                    "severity": "low",
+                    "severity": "medium",
                     "data": json.dumps(
                         {
                             "weekday": ts.weekday(),
@@ -340,7 +344,7 @@ def handler(event: dict, context: Any) -> dict:
         temp_patterns = detect_temperature_trend(rows)
         all_patterns = occupancy_patterns + temp_patterns
 
-        temp_anomalies = detect_temperature_spikes(rows)
+        temp_anomalies = detect_temperature_anomalies(rows)
         activity_anomalies = detect_unusual_activity(rows, occupancy_patterns)
         all_anomalies = temp_anomalies + activity_anomalies
 

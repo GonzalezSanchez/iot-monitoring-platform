@@ -31,11 +31,11 @@ class TestIsValid:
     def test_valid_row_passes(self) -> None:
         assert _is_valid(self._row()) is True
 
-    def test_none_temperature_is_valid(self) -> None:
-        assert _is_valid(self._row(temperature=None)) is True
+    def test_none_temperature_rejected(self) -> None:
+        assert _is_valid(self._row(temperature=None)) is False
 
-    def test_none_humidity_is_valid(self) -> None:
-        assert _is_valid(self._row(humidity=None)) is True
+    def test_none_humidity_rejected(self) -> None:
+        assert _is_valid(self._row(humidity=None)) is False
 
     def test_temperature_too_high_rejected(self) -> None:
         assert _is_valid(self._row(temperature=61.0)) is False
