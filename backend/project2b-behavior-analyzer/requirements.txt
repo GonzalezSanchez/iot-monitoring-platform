@@ -8,6 +8,6 @@ shapely==2.0.3
 pandas==2.1.4
 dbt-core==1.11.10
 dbt-postgres==1.10.0
-protobuf==6.28.2
+protobuf==6.33.6
 opentelemetry-sdk==1.41.1
 opentelemetry-exporter-otlp-proto-http==1.41.1
