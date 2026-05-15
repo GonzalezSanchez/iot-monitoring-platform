@@ -77,6 +77,8 @@ services:
       S3_PROCESSED_PATH: ${S3_PROCESSED_PATH}
       # OTel — custom job metrics
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      # sys.path fix: spark-submit only adds jobs/ dir, not the parent
+      PYTHONPATH: /opt/airflow
     ports:
       - "8080:8080"
     volumes:
