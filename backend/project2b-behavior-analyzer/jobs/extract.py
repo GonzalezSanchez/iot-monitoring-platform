@@ -31,6 +31,8 @@ from pyspark.sql.types import (
     TimestampType,
 )
 
+from jobs.metrics import init_meter, shutdown
+
 load_dotenv()
 
 log = logging.getLogger(__name__)
@@ -193,6 +195,11 @@ def main() -> None:
     log.info("Writing %d events to S3: %s", count, s3_path)
     write_parquet(df, s3_path)
     log.info("Extract complete.")
+
+    meter = init_meter("p2b.extract")
+    meter.create_counter("p2b.extract.records_scanned").add(len(items))
+    meter.create_counter("p2b.extract.records_written").add(count)
+    shutdown()
 
     spark.stop()
 

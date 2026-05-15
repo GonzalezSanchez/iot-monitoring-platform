@@ -45,6 +45,8 @@ from pyspark.sql.functions import (
 )
 from pyspark.sql.types import DoubleType
 
+from jobs.metrics import init_meter, shutdown
+
 load_dotenv()
 
 log = logging.getLogger(__name__)
@@ -300,6 +302,14 @@ def main() -> None:
         write_anomalies(occ_anomalies_df, jdbc_url, jdbc_props)
 
     log.info("Analyze complete. job_id=%s", job_id)
+
+    meter = init_meter("p2b.analyze")
+    meter.create_counter("p2b.analyze.anomalies_detected").add(anomaly_count + occ_anomaly_count)
+    meter.create_counter("p2b.analyze.patterns_detected").add(
+        occupancy_patterns.count() + trend_patterns.count()
+    )
+    shutdown()
+
     spark.stop()
 
 

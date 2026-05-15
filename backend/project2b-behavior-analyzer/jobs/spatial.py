@@ -32,6 +32,8 @@ import psycopg2.extensions
 from dotenv import load_dotenv
 from shapely.geometry import Point
 
+from jobs.metrics import init_meter, shutdown
+
 load_dotenv()
 
 log = logging.getLogger(__name__)
@@ -162,6 +164,10 @@ def main() -> None:  # pragma: no cover
         log.info("Writing %d spatial insight rows (one per building)...", len(rows))
         write_insights(conn, rows)
         log.info("Spatial analysis complete. job_id=%s", job_id)
+
+        meter = init_meter("p2b.spatial")
+        meter.create_counter("p2b.spatial.buildings_processed").add(len(rows))
+        shutdown()
     finally:
         conn.close()
 

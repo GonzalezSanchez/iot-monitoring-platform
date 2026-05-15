@@ -21,6 +21,8 @@ from dotenv import load_dotenv
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col, month, year
 
+from jobs.metrics import init_meter, shutdown
+
 load_dotenv()
 
 log = logging.getLogger(__name__)
@@ -127,6 +129,12 @@ def main() -> None:
     log.info("Writing %d cleaned events to %s...", new_count, s3_processed)
     write_processed(df, s3_processed)
     log.info("Transform complete.")
+
+    meter = init_meter("p2b.transform")
+    meter.create_counter("p2b.transform.records_raw").add(raw_count)
+    meter.create_counter("p2b.transform.records_processed").add(new_count)
+    meter.create_counter("p2b.transform.records_dropped").add(raw_count - new_count)
+    shutdown()
 
     spark.stop()
 
