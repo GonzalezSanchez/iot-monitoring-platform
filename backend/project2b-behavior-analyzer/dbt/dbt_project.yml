@@ -6,6 +6,8 @@ profile: behavior_analyzer
 
 model-paths: ["models"]
 test-paths: ["tests"]
+log-path: "/opt/airflow/logs/dbt"
+target-path: "/opt/airflow/logs/dbt-target"
 
 models:
   behavior_analyzer:
