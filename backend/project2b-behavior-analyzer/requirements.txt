@@ -6,6 +6,7 @@ boto3==1.34.51
 geopandas==1.1.3
 shapely==2.0.3
 pandas==2.1.4
+dbt-core==1.10.0
 dbt-postgres==1.10.0
 opentelemetry-sdk==1.41.1
 opentelemetry-exporter-otlp-proto-http==1.41.1
