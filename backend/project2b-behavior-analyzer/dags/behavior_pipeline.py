@@ -7,7 +7,8 @@ from airflow.utils.context import Context
 
 SPARK_MASTER = os.environ.get("SPARK_MASTER", "local[*]")
 SPARK_CONF = "--conf spark.driver.memory=1g --conf spark.executor.memory=1g"
-_submit = f"spark-submit --master {SPARK_MASTER} {SPARK_CONF}"
+SPARK_PACKAGES = "org.apache.hadoop:hadoop-aws:3.4.2,com.amazonaws:aws-java-sdk-bundle:1.12.262"
+_submit = f"spark-submit --master {SPARK_MASTER} {SPARK_CONF} --packages {SPARK_PACKAGES}"
 
 
 def on_failure(context: Context) -> None:
