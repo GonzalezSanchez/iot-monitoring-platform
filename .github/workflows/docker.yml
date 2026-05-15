@@ -3,6 +3,9 @@ name: Build and Push Docker Images
 on:
   push:
     branches: [main, develop]
+    paths:
+      - 'backend/project1b-smart-room-monitor-fastapi/**'
+      - 'frontend/**'
 
 jobs:
   build-and-push:
