@@ -1,5 +1,5 @@
 const POWERBI_URL =
-  'https://app.powerbi.com/view?r=eyJrIjoiODFiMjdhOTItYTM2MC00MTQ1LThiYWYtMDk1MzcwMzI4N2Q5IiwidCI6IjA5YWYzNGNmLTZkY2QtNGFhNS04ZTY1LTVlNDdhODczNGJjOCIsImMiOjl9';
+  'https://app.powerbi.com/view?r=eyJrIjoiMmIwODEyOTEtZDkyMy00ZDRhLTk5M2YtYmM2ZmEzZDI0NWQ5IiwidCI6IjA5YWYzNGNmLTZkY2QtNGFhNS04ZTY1LTVlNDdhODczNGJjOCIsImMiOjl9';
 
 function PowerBIDashboard() {
   return (
