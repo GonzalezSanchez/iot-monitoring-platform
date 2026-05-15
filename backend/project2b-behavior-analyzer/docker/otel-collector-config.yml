@@ -1,0 +1,40 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  statsd:
+    endpoint: 0.0.0.0:8125
+    aggregation_interval: 60s
+
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: postgres
+          scrape_interval: 30s
+          static_configs:
+            - targets: ["postgres-exporter:9187"]
+
+processors:
+  batch:
+    timeout: 10s
+
+exporters:
+  otlphttp:
+    endpoint: ${GRAFANA_OTLP_ENDPOINT}
+    headers:
+      authorization: Basic ${GRAFANA_OTLP_TOKEN}
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp, statsd, prometheus]
+      processors: [batch]
+      exporters: [otlphttp]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp]

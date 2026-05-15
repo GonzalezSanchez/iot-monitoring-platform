@@ -14,6 +14,7 @@ Zelfde analytisch doel als project 2a — bewust opnieuw geïmplementeerd met ee
 - **Orchestration:** Apache Airflow 2.x (DAG met BashOperators)
 - **Storage:** AWS S3 (data lake — raw + processed Parquet), PostgreSQL (resultaten)
 - **Visualization:** Power BI (direct connect op PostgreSQL — map visual, bar charts, heatmap)
+- **Observability:** OpenTelemetry (custom job metrics + Airflow StatsD) → OTel Collector → Grafana Cloud (Mimir metrics + Loki logs), postgres-exporter voor PostgreSQL metrics
 - **IaC:** Terraform (S3 bucket + IAM)
 - **CI/CD:** GitHub Actions (CI) + Jenkins (CD)
 - **Testing:** pytest + PySpark in-process
@@ -74,6 +75,7 @@ manage_partitions >> extract >> transform >> analyze >> spatial >> dbt_run
 - Occupancy anomalie detectie — kamer bezet tijdens typisch lege uren (occupancy_rate < 20%) → unusual_activity (medium)
 - Spatiale analyse — GeoPandas aggregeert anomalieën per gebouw (lat/lon), schrijft naar `spatial_insights` voor Power BI map visual
 - dbt rapportagelaag — staging views + gematerialiseerde marts (`anomaly_detail`, `pattern_detail`, `building_summary`) met source tests
+- Observability — OTel counters per pipeline stap, Airflow StatsD metrics, PostgreSQL metrics via postgres-exporter → Grafana Cloud
 
 **Note:** de spatiale analyse (`jobs/spatial.py`) is specifiek voor project 2b. Project 2a exposeert resultaten via een REST API; Power BI kan daar rechtstreeks de `rooms` tabel voor gebruiken. GeoPandas past in de Data Engineering stack van project 2b (Python jobs pipeline), niet in de AWS Lambda architectuur van 2a.
 
@@ -187,6 +189,35 @@ building_id | building_name | lat | lon | anomaly_count | high_count | medium_co
 | **Geschreven door** | `jobs/spatial.py` (GeoPandas) | dbt mart |
 | **Scope** | Per job (job_id aanwezig) | Alle jobs gecumuleerd |
 | **Doel** | Power BI map visual (bubble per gebouw per run) | Overzicht over alle runs heen |
+
+## Observability
+
+**Architectuur:** OTel Collector ontvangt metrics van drie bronnen en stuurt naar Grafana Cloud.
+
+```
+Airflow (StatsD)  ──►┐
+jobs/*.py (OTLP)  ──►│  OTel Collector  ──►  Grafana Cloud (Mimir + Loki)
+postgres-exporter ──►┘
+```
+
+**Airflow StatsD** — DAG run duration, task success/failure, retry counts per taak.
+
+**Custom job metrics** (OTel counters via `jobs/metrics.py`):
+
+| Metric | Job |
+|---|---|
+| `p2b.extract.records_scanned` | DynamoDB items gelezen |
+| `p2b.extract.records_written` | Records geschreven naar S3/raw |
+| `p2b.transform.records_raw` | Raw records gelezen |
+| `p2b.transform.records_processed` | Valide records naar S3/processed |
+| `p2b.transform.records_dropped` | Gefilterde records (null, out-of-range) |
+| `p2b.analyze.anomalies_detected` | Totaal anomalieën per run |
+| `p2b.analyze.patterns_detected` | Totaal patronen per run |
+| `p2b.spatial.buildings_processed` | Gebouwen in spatial_insights |
+
+**PostgreSQL metrics** — `postgres-exporter` container scrapt query latency, connections, table sizes via Prometheus endpoint → OTel Collector.
+
+`jobs/metrics.py` is een no-op als `OTEL_EXPORTER_OTLP_ENDPOINT` niet gezet is — jobs draaien gewoon zonder metrics in lokale dev omgeving.
 
 ## Installatie & Gebruik
 
