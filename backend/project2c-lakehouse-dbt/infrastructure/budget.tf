@@ -6,7 +6,7 @@
 
 resource "azurerm_consumption_budget_resource_group" "main" {
   name              = "${var.project}-${var.environment}-budget"
-  resource_group_id = data.azurerm_resource_group.main.id
+  resource_group_id = azurerm_resource_group.main.id
 
   amount     = var.budget_alert_amount
   time_grain = "Monthly"

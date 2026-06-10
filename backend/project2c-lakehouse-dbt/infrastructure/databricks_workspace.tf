@@ -4,8 +4,8 @@
 
 resource "azurerm_databricks_workspace" "main" {
   name                = "${var.project}-${var.environment}-workspace"
-  resource_group_name = data.azurerm_resource_group.main.name
-  location            = data.azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
 
   # premium is required for Unity Catalog; standard does not support it
   sku = "premium"
@@ -29,8 +29,8 @@ resource "azurerm_databricks_workspace" "main" {
 
 resource "azurerm_databricks_access_connector" "main" {
   name                = "${var.project}-${var.environment}-access-connector"
-  resource_group_name = data.azurerm_resource_group.main.name
-  location            = data.azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
 
   identity {
     type = "SystemAssigned"

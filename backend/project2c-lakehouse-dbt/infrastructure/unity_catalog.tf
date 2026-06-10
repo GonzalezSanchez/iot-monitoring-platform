@@ -9,7 +9,7 @@ resource "databricks_metastore" "main" {
   provider      = databricks.account
   name          = "${var.project}-${var.environment}-metastore"
   storage_root  = "abfss://metastore@${azurerm_storage_account.adls.name}.dfs.core.windows.net/"
-  region        = data.azurerm_resource_group.main.location
+  region        = azurerm_resource_group.main.location
   force_destroy = true
 }
 
