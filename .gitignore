@@ -58,6 +58,6 @@ htmlcov/
 # Terraform
 .terraform/
 *.tfstate
-*.tfstate.backup
+*.tfstate.*
 .terraform.lock.hcl
 terraform.tfvars
