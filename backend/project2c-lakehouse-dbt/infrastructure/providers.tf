@@ -22,16 +22,10 @@ provider "azurerm" {
   }
 }
 
-# Workspace-level provider — SQL Warehouse, secret scope, Unity Catalog schemas
-# Authentication: Azure CLI (az login) or DATABRICKS_TOKEN environment variable
+# Workspace-level provider — all Databricks resources
+# Authentication: Azure CLI (az login)
+# Azure auto-creates and assigns the Unity Catalog metastore for new workspaces,
+# so the account-level provider (accounts.azuredatabricks.net) is not needed.
 provider "databricks" {
   host = var.databricks_host
-}
-
-# Account-level provider — metastore creation and metastore assignment
-# Separate from the workspace provider: host is always accounts.azuredatabricks.net
-provider "databricks" {
-  alias      = "account"
-  host       = "https://accounts.azuredatabricks.net"
-  account_id = var.databricks_account_id
 }

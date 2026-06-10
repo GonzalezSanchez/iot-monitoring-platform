@@ -43,11 +43,6 @@ variable "databricks_host" {
   default     = ""
 }
 
-variable "databricks_account_id" {
-  type        = string
-  description = "Databricks account ID (from accounts.azuredatabricks.net)"
-}
-
 variable "budget_alert_amount" {
   type        = number
   default     = 150

@@ -1,28 +1,26 @@
 # ─────────────────────────────────────────────
-# Unity Catalog — metastore
-# One metastore per Azure region. If a metastore already exists in the
-# account for this region, import it instead of creating a new one:
-#   terraform import databricks_metastore.main <metastore-id>
+# Unity Catalog — metastore (Azure-managed, niet aangemaakt door Terraform)
+#
+# Azure maakt automatisch één regionale metastore aan bij elke nieuwe
+# Unity Catalog workspace. Er is precies één metastore per regio,
+# gedeeld over alle workspaces in het account.
+#
+# Terraform-principe: beheer alleen wat je zelf aanmaakt.
+# data source = "ik gebruik dit" / resource = "ik maak dit aan"
+#
+# Alternatief (verkeerd): databricks_metastore resource aanmaken
+# → faalt: metastore bestaat al voor westeurope
+# → vereist account-level provider (accounts.azuredatabricks.net)
+# → accounts.azuredatabricks.net vereist organisatieaccount, niet personal Microsoft account
 # ─────────────────────────────────────────────
 
-resource "databricks_metastore" "main" {
-  provider      = databricks.account
-  name          = "${var.project}-${var.environment}-metastore"
-  storage_root  = "abfss://metastore@${azurerm_storage_account.adls.name}.dfs.core.windows.net/"
-  region        = azurerm_resource_group.main.location
-  force_destroy = true
-}
-
-resource "databricks_metastore_assignment" "main" {
-  provider     = databricks.account
-  metastore_id = databricks_metastore.main.id
-  workspace_id = azurerm_databricks_workspace.main.workspace_id
-}
+data "databricks_current_metastore" "main" {}
 
 # ─────────────────────────────────────────────
 # Storage credential
-# Links the Access Connector Managed Identity to Unity Catalog.
-# Unity Catalog uses this credential to read/write Delta tables in ADLS.
+# Links de Access Connector Managed Identity aan Unity Catalog.
+# Unity Catalog gebruikt deze credential voor lezen/schrijven in ADLS.
+# Geen keys of secrets — Managed Identity is best practice.
 # ─────────────────────────────────────────────
 
 resource "databricks_storage_credential" "adls" {
@@ -32,14 +30,13 @@ resource "databricks_storage_credential" "adls" {
     access_connector_id = azurerm_databricks_access_connector.main.id
   }
 
-  comment    = "Managed Identity credential for ADLS Gen2 access — no keys or secrets"
-  depends_on = [databricks_metastore_assignment.main]
+  comment = "Managed Identity credential for ADLS Gen2 access — no keys or secrets"
 }
 
 # ─────────────────────────────────────────────
 # External location
-# Registers the ADLS root path as a governed location inside Unity Catalog.
-# All Bronze/Silver/Gold tables are created under this location.
+# Registreert het ADLS root pad als governed locatie in Unity Catalog.
+# Alle Bronze/Silver/Gold tabellen worden onder deze locatie aangemaakt.
 # ─────────────────────────────────────────────
 
 resource "databricks_external_location" "adls_root" {
@@ -51,28 +48,28 @@ resource "databricks_external_location" "adls_root" {
 
 # ─────────────────────────────────────────────
 # Catalogs
-# One catalog per environment. SQL path: catalog.schema.table
-# e.g. p2c_dev.silver.sensor_events
+# Één catalog per environment. SQL pad: catalog.schema.table
+# bv. p2c_dev.silver.sensor_events
 # ─────────────────────────────────────────────
 
 resource "databricks_catalog" "dev" {
-  metastore_id = databricks_metastore.main.id
+  metastore_id = data.databricks_current_metastore.main.id
   name         = "p2c_dev"
   comment      = "Development catalog for project 2c"
 
+  # storage_root moet onder een geregistreerde external location vallen
+  # depends_on verplicht: external location moet aangemaakt zijn voor de catalog
   storage_root = "abfss://bronze@${azurerm_storage_account.adls.name}.dfs.core.windows.net/catalogs/dev"
-
-  depends_on = [databricks_metastore_assignment.main]
+  depends_on   = [databricks_external_location.adls_root]
 }
 
 resource "databricks_catalog" "prod" {
-  metastore_id = databricks_metastore.main.id
+  metastore_id = data.databricks_current_metastore.main.id
   name         = "p2c_prod"
   comment      = "Production catalog for project 2c"
 
   storage_root = "abfss://bronze@${azurerm_storage_account.adls.name}.dfs.core.windows.net/catalogs/prod"
-
-  depends_on = [databricks_metastore_assignment.main]
+  depends_on   = [databricks_external_location.adls_root]
 }
 
 # ─────────────────────────────────────────────

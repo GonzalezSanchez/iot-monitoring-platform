@@ -28,28 +28,28 @@ resource "azurerm_storage_account" "adls" {
 # Metastore root storage — Unity Catalog writes its own metadata here
 resource "azurerm_storage_container" "metastore" {
   name                  = "metastore"
-  storage_account_name  = azurerm_storage_account.adls.name
+  storage_account_id = azurerm_storage_account.adls.id
   container_access_type = "private"
 }
 
 # Bronze — raw JSON from the sensor generator, written by Auto Loader
 resource "azurerm_storage_container" "bronze" {
   name                  = "bronze"
-  storage_account_name  = azurerm_storage_account.adls.name
+  storage_account_id = azurerm_storage_account.adls.id
   container_access_type = "private"
 }
 
 # Silver — cleansed Delta tables; quarantine table lives here too
 resource "azurerm_storage_container" "silver" {
   name                  = "silver"
-  storage_account_name  = azurerm_storage_account.adls.name
+  storage_account_id = azurerm_storage_account.adls.id
   container_access_type = "private"
 }
 
 # Gold — dbt-built fact + dim tables, served via SQL Warehouse to Power BI
 resource "azurerm_storage_container" "gold" {
   name                  = "gold"
-  storage_account_name  = azurerm_storage_account.adls.name
+  storage_account_id = azurerm_storage_account.adls.id
   container_access_type = "private"
 }
 

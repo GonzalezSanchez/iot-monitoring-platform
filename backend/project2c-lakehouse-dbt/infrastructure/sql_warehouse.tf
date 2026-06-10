@@ -26,5 +26,5 @@ resource "databricks_sql_endpoint" "main" {
     }
   }
 
-  depends_on = [databricks_metastore_assignment.main]
+  depends_on = [data.databricks_current_metastore.main]
 }
