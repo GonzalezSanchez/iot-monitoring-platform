@@ -314,6 +314,12 @@ Grafana Cloud
 
 ---
 
+## Toekomstige uitbreidingen
+- Integratie tests toevoegen (LocalStack + PostgreSQL) — unit tests dekken pipeline logica, I/O functies nog niet
+- Test coverage percentage vermelden in README (consistent met project 2a)
+- Grafana Cloud screenshots toevoegen (Mimir/Loki/Tempo dashboard)
+- Korte operations sectie: handmatige DAG trigger, pipeline herstel na mislukte stap, Jenkins rollback
+
 ## Power BI Rapport
 
 - **Verbinding:** DirectQuery op PostgreSQL (`patterns` + `anomalies` tabellen)

@@ -60,6 +60,8 @@ FastAPI (opentelemetry-instrument uvicorn)
 Zie `temp/stappen_observability_project1b.md` voor de volledige implementatie.
 
 ## 8. Toekomstige uitbreidingen
-- Authenticatie/authorisatie
+- Authenticatie/authorisatie (JWT via Cognito — zie Project 3)
 - Meer endpoints (bijv. voor sensoren)
 - Overstap observability naar Grafana Stack (Tempo + Loki + Prometheus) na Datadog trial
+- Docs uitbreiden: OTel/Datadog setup, nginx reverse proxy, docker-compose productie-architectuur
+- Korte operations sectie: redeploy procedure, Cloudflare tunnel herstel
