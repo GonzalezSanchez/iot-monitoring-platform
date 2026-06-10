@@ -1,0 +1,41 @@
+# Virtual environment
+.venv/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Test output
+.pytest_cache/
+htmlcov/
+.coverage
+
+# dbt
+dbt/target/
+dbt/logs/
+dbt/.user.yml
+
+# Terraform
+infrastructure/.terraform/
+infrastructure/*.tfstate
+infrastructure/*.tfstate.backup
+infrastructure/*.tfvars
+!infrastructure/*.tfvars.example
+infrastructure/.terraform.lock.hcl
+
+# Databricks
+.databricks/
+bundle.lock
+
+# IDE
+.vscode/
+.idea/

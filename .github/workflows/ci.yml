@@ -206,3 +206,72 @@ jobs:
 
       - name: Terraform validate
         run: terraform validate
+
+  test-project2c:
+    name: project2c tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/project2c-lakehouse-dbt
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run ruff
+        run: ruff check scripts/ jobs/ tests/
+
+      - name: Run mypy
+        run: mypy scripts/ jobs/ tests/ --ignore-missing-imports
+
+      - name: Run tests with coverage
+        run: pytest tests/unit/ -v --cov=scripts --cov=jobs --cov-report=term-missing --cov-fail-under=80
+
+  test-project2c-dbt:
+    name: project2c dbt parse
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/project2c-lakehouse-dbt
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dbt-databricks
+        run: pip install "dbt-databricks==1.9.5" "dbt-core==1.9.4"
+
+      - name: dbt parse
+        run: dbt parse --project-dir dbt --profiles-dir dbt
+
+  terraform-project2c:
+    name: project2c terraform validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/project2c-lakehouse-dbt/infrastructure
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.14.8"
+
+      - name: Terraform init (no backend)
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        run: terraform validate
