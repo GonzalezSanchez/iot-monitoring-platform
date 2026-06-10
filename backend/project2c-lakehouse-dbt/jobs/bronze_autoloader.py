@@ -60,8 +60,8 @@ def run(spark: SparkSession, catalog: str, account_name: str, container: str) ->
         .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
         .option("cloudFiles.inferColumnTypes", "true")
         .load(source_path)
-        # Metadata columns for lineage and debugging
-        .withColumn("_source_file", F.input_file_name())
+        # _metadata.file_path is the Unity Catalog equivalent of input_file_name()
+        .withColumn("_source_file", F.col("_metadata.file_path"))
         .withColumn("_ingestion_time", F.current_timestamp())
         .writeStream.format("delta")
         .outputMode("append")
