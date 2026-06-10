@@ -34,16 +34,28 @@ resource "databricks_storage_credential" "adls" {
 }
 
 # ─────────────────────────────────────────────
-# External location
-# Registreert het ADLS root pad als governed locatie in Unity Catalog.
-# Alle Bronze/Silver/Gold tabellen worden onder deze locatie aangemaakt.
+# External locations
+#
+# Twee aparte locaties zijn verplicht:
+# 1. bronze — exclusief voor raw JSON ingestion (cloudFiles source path)
+# 2. metastore — exclusief voor catalog managed storage
+#
+# Ze mogen NIET overlappen: Unity Catalog gooit LOCATION_OVERLAP als
+# cloudFiles source path en catalog storage_root in dezelfde container zitten.
 # ─────────────────────────────────────────────
 
-resource "databricks_external_location" "adls_root" {
-  name            = "${var.project}-${var.environment}-adls-root"
+resource "databricks_external_location" "adls_bronze" {
+  name            = "${var.project}-${var.environment}-bronze"
   url             = "abfss://bronze@${azurerm_storage_account.adls.name}.dfs.core.windows.net/"
   credential_name = databricks_storage_credential.adls.name
-  comment         = "ADLS Gen2 root — Bronze ingestion container"
+  comment         = "Bronze container — raw JSON ingestion only, never used for managed catalog storage"
+}
+
+resource "databricks_external_location" "adls_metastore" {
+  name            = "${var.project}-${var.environment}-metastore"
+  url             = "abfss://metastore@${azurerm_storage_account.adls.name}.dfs.core.windows.net/"
+  credential_name = databricks_storage_credential.adls.name
+  comment         = "Metastore container — catalog managed storage only, never used for raw data"
 }
 
 # ─────────────────────────────────────────────
@@ -56,20 +68,21 @@ resource "databricks_catalog" "dev" {
   metastore_id = data.databricks_current_metastore.main.id
   name         = "p2c_dev"
   comment      = "Development catalog for project 2c"
+  force_destroy = true
 
-  # storage_root moet onder een geregistreerde external location vallen
-  # depends_on verplicht: external location moet aangemaakt zijn voor de catalog
-  storage_root = "abfss://bronze@${azurerm_storage_account.adls.name}.dfs.core.windows.net/catalogs/dev"
-  depends_on   = [databricks_external_location.adls_root]
+  # Metastore container — gescheiden van bronze om LOCATION_OVERLAP te voorkomen
+  storage_root = "abfss://metastore@${azurerm_storage_account.adls.name}.dfs.core.windows.net/catalogs/dev"
+  depends_on   = [databricks_external_location.adls_metastore]
 }
 
 resource "databricks_catalog" "prod" {
   metastore_id = data.databricks_current_metastore.main.id
   name         = "p2c_prod"
   comment      = "Production catalog for project 2c"
+  force_destroy = true
 
-  storage_root = "abfss://bronze@${azurerm_storage_account.adls.name}.dfs.core.windows.net/catalogs/prod"
-  depends_on   = [databricks_external_location.adls_root]
+  storage_root = "abfss://metastore@${azurerm_storage_account.adls.name}.dfs.core.windows.net/catalogs/prod"
+  depends_on   = [databricks_external_location.adls_metastore]
 }
 
 # ─────────────────────────────────────────────
