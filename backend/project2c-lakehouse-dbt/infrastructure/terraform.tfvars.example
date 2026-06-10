@@ -1,0 +1,19 @@
+resource_group_name   = "rg-p2c-iot"
+location              = "westeurope"
+project               = "p2c"
+environment           = "dev"
+
+# Storage account names are globally unique, 3-24 chars, lowercase alphanumeric only
+storage_account_name  = "stp2cdeviot<suffix>"
+
+# Key Vault names are globally unique, 3-24 chars
+key_vault_name        = "kv-p2c-dev-<suffix>"
+
+# Databricks workspace URL — available after the first terraform apply
+# Run: terraform apply -target=azurerm_databricks_workspace.main
+# then fill in the URL and run terraform apply again for the remaining resources
+databricks_host       = "https://adb-<workspace-id>.azuredatabricks.net"
+databricks_account_id = "<databricks-account-id>"
+
+budget_alert_amount   = 150
+alert_email           = "your-email@example.com"
