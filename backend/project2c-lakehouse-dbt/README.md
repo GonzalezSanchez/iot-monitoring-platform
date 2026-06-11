@@ -116,7 +116,7 @@ CI runs on every push via GitHub Actions (`.github/workflows/ci.yml`):
 - `databricks bundle validate` — verifies DABs config
 - Terraform validate
 
-The DABs job runs on a monthly schedule (1st of every month, 06:00 Amsterdam time).
+The DABs job runs on a monthly schedule (1st of every month, 06:00 Brussels time).
 
 ## Differences from Project 2b
 
