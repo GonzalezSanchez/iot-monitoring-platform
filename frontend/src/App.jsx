@@ -16,7 +16,14 @@ function ComingSoon({ title, description }) {
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState('room-fastapi');
+  const [activeTab, setActiveTab] = useState(
+    () => localStorage.getItem('activeTab') || 'room-fastapi'
+  );
+
+  const handleTabChange = (tab) => {
+    localStorage.setItem('activeTab', tab);
+    setActiveTab(tab);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -41,7 +48,7 @@ function App() {
 
       {/* Sidebar + content */}
       <div className="flex flex-1">
-        <ProjectTabs active={activeTab} onChange={setActiveTab} />
+        <ProjectTabs active={activeTab} onChange={handleTabChange} />
 
         <main className="flex-1 overflow-auto">
           {(activeTab === 'room-lambda' || activeTab === 'room-fastapi') && (
