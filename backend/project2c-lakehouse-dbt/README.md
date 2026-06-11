@@ -92,15 +92,31 @@ ruff check scripts/ jobs/ tests/
 mypy scripts/ jobs/
 ```
 
+## Testing strategy
+
+| What | How | Where |
+|------|-----|-------|
+| `validate_batch()` — WAP business logic | Unit tests (PySpark local mode) | `tests/unit/test_silver_wap.py` |
+| `scripts/generate_sensor_data.py` | Unit tests | `tests/unit/test_generate_sensor_data.py` |
+| `scripts/validate.py` | Unit tests | `tests/unit/test_validate.py` |
+| `merge_good_records()`, `write_quarantine()`, `run()` | Not unit tested — require live Delta catalog | Integration tested manually after `terraform apply` |
+| `bronze_autoloader.py`, `optimize_vacuum.py` | Not unit tested — require Databricks Auto Loader | Integration tested manually after `terraform apply` |
+| dbt models | `dbt test` — 22 data tests on live SQL Warehouse | `dbt/models/staging/sources.yml`, `dbt/models/marts/_schema.yml` |
+
+**Why not mock the Delta functions?** Mocking `DeltaTable.merge()` would only verify that the mock is called correctly — not that the actual Delta operation works. Integration testing on a real cluster caught two real bugs during development (schema mismatch, missing SINGLE_USER mode). The unit tests cover all business logic; the integration layer is Databricks API calls with no branching logic.
+
+CI coverage (92%) reflects only the unit-testable code. The Delta-dependent functions are marked `# pragma: no cover`.
+
 ## CI/CD
 
 CI runs on every push via GitHub Actions (`.github/workflows/ci.yml`):
 - ruff + mypy on `scripts/` and `jobs/`
-- pytest with coverage
+- pytest with 80% coverage threshold
 - `dbt parse` — verifies model syntax without a live connection
+- `databricks bundle validate` — verifies DABs config
 - Terraform validate
 
-CD (Fase 7): `databricks bundle deploy --target prod` via DABs on push to `main`.
+The DABs job runs on a weekly schedule (every Monday 07:00 Amsterdam time).
 
 ## Differences from Project 2b
 
