@@ -184,6 +184,47 @@ PostgreSQL (self-hosted on acer-server via Docker)  ← patterns + anomalies →
 
 ---
 
+### Project 2c — Behavior Pattern Analyzer (Azure Databricks Lakehouse)
+
+Same analytics domain as Project 2b, rebuilt on a fully managed Azure stack with Databricks,
+Delta Lake, and dbt. Demonstrates cloud portability and modern lakehouse architecture.
+
+**Stack:** Python, PySpark, Azure Databricks, Delta Lake, Unity Catalog, dbt-databricks, ADLS Gen2, Terraform, Databricks Asset Bundles (DABs)
+**Infrastructure:** Full IaC via Terraform — ADLS Gen2, Databricks workspace (Premium), Access Connector (Managed Identity), Key Vault, Unity Catalog, SQL Warehouse, budget alert
+**Pipeline:** Bronze → Silver (WAP pattern, MERGE idempotent) → Gold (dbt incremental models)
+**Orchestration:** DABs job with weekly schedule (every Monday 07:00 Amsterdam)
+**CI:** GitHub Actions — ruff, mypy, pytest (43 tests, 92% coverage), dbt parse, bundle validate, terraform validate
+**Live:** Gold layer data served via FastAPI `/lakehouse/*` endpoints → visible in portfolio dashboard
+
+**Data architecture:**
+```
+Python script → ADLS Gen2 Bronze (JSON, Hive-partitioned)
+    ↓ Auto Loader (cloudFiles + checkpoint)
+Delta Lake Bronze  (p2c_dev.bronze.sensor_events)
+    ↓ PySpark WAP — validate, MERGE good records, append quarantine
+Delta Lake Silver  (p2c_dev.silver.sensor_events + sensor_events_quarantine)
+    ↓ dbt-databricks — incremental models, z-score anomaly detection
+Delta Lake Gold    (fact_anomalies, fact_patterns, dim_rooms, dim_buildings)
+    ↓ FastAPI /lakehouse/* → portfolio dashboard
+```
+
+**dbt Gold models:**
+
+| Model | Type | Description |
+|---|---|---|
+| `fact_anomalies` | incremental | Z-score per room + sensor type, `is_anomaly = \|z\| > 2.5` |
+| `fact_patterns` | incremental | Hourly aggregations (avg/min/max/count) |
+| `dim_rooms` | table | Room metadata |
+| `dim_buildings` | table | Building metadata |
+
+#### dbt lineage — Silver → Staging → Intermediate → Gold
+
+![dbt lineage diagram](docs/screenshots/project2c/p2c-lineage.png)
+
+[View project](backend/project2c-lakehouse-dbt/)
+
+---
+
 ### Project 3 — IoT Device Gateway Simulator *(planned)*
 
 Secure gateway for IoT device registration, authentication, and rate limiting.
@@ -285,9 +326,15 @@ End-to-end observability implemented with **zero manual instrumentation** — Op
 | CI/CD with GitHub Actions | project 1, 1b, 2a |
 | CI/CD with Jenkins (declarative pipeline, environment promotion) | project 2b |
 | Pydantic v2 models + validation | project 1, 1b, 2a |
-| Anomaly detection logic (threshold + z-score) | project 1, 1b, 2a, 2b |
-| pytest + moto (DynamoDB mocking), 80%+ coverage | project 1, 1b, 2a |
-| mypy + pre-commit hooks | project 1, 1b, 2a |
+| Anomaly detection logic (threshold + z-score) | project 1, 1b, 2a, 2b, 2c |
+| pytest + moto (DynamoDB mocking), 80%+ coverage | project 1, 1b, 2a, 2c |
+| mypy + pre-commit hooks | project 1, 1b, 2a, 2c |
+| Azure Databricks + Delta Lake (ACID, time travel, Liquid Clustering) | project 2c |
+| Unity Catalog (3-part SQL path, lineage, column descriptions) | project 2c |
+| dbt-databricks (incremental models, ephemeral CTEs, generate_schema_name) | project 2c |
+| Write-Audit-Publish (WAP) pattern — idempotent MERGE + quarantine | project 2c |
+| Databricks Asset Bundles (DABs) — job orchestration + scheduled pipeline | project 2c |
+| Azure IaC (ADLS Gen2, Key Vault, Access Connector, Managed Identity) | project 2c |
 | Cloudflare tunnel + production deployment | project 1b |
 | OpenTelemetry auto-instrumentation (traces, logs, metrics) | project 1b |
 | Datadog APM (distributed traces, Watchdog, log-trace correlation) | project 1b |
@@ -302,7 +349,8 @@ iot-monitoring-platform/
 │   ├── project1a-smart-room-monitor/          # AWS Lambda + API Gateway (live)
 │   ├── project1b-smart-room-monitor-fastapi/ # FastAPI + Docker (live)
 │   ├── project2a-behavior-analyzer/          # AWS native ETL pipeline (complete)
-│   ├── project2b-behavior-analyzer/          # Airflow + PySpark + S3 data lake (in progress)
+│   ├── project2b-behavior-analyzer/          # Airflow + PySpark + S3 data lake (live)
+│   ├── project2c-lakehouse-dbt/              # Azure Databricks + dbt Gold layer (live)
 │   └── project3-iot-gateway/                 # Device gateway (planned)
 ├── docs/                                      # Project specs and architecture
 ├── frontend/                                  # React dashboard

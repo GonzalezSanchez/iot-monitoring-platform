@@ -1,4 +1,4 @@
-# Project 2c — Azure Databricks Lakehouse + dbt
+# Project 2c — Azure Databricks Lakehouse + dbt Gold layer
 
 IoT sensor data pipeline on a fully managed Azure stack. Same domain as [project 2b](../../docs/project2b-behavior-analyzer.md) — 10 simulated rooms with temperature, CO₂, occupancy, and humidity sensors — but rebuilt on Azure Databricks with Delta Lake, Unity Catalog, and dbt.
 
@@ -32,6 +32,10 @@ Delta Lake Gold    (p2c_prod.gold.fact_anomalies, dim_rooms, ...)
     ↓ DirectQuery (Entra ID / OAuth)
 Power BI
 ```
+
+## dbt Lineage
+
+![dbt lineage — Silver → Gold](../../docs/screenshots/project2c/p2c-lineage.png)
 
 ## Bronze / Silver / Gold responsibilities
 
