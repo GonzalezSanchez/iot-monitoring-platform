@@ -1,4 +1,0 @@
-[run]
-omit =
-    jobs/bronze_autoloader.py
-    jobs/optimize_vacuum.py

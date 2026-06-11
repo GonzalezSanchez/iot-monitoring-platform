@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import RoomDashboard from './pages/RoomDashboard';
 import BehaviorDashboard from './pages/BehaviorDashboard';
-import LakehouseDashboard from './pages/LakehouseDashboard';
 import PowerBIDashboard from './pages/PowerBIDashboard';
 import ProjectTabs from './components/ProjectTabs';
 
@@ -49,7 +48,6 @@ function App() {
           )}
           {activeTab === 'behavior-aws' && <BehaviorDashboard />}
           {activeTab === 'behavior-spark' && <PowerBIDashboard />}
-          {activeTab === 'behavior-lakehouse' && <LakehouseDashboard />}
           {activeTab === 'llm' && (
             <ComingSoon
               title="AI Assistant"
