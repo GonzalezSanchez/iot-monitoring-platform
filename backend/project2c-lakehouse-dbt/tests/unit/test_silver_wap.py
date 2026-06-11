@@ -9,7 +9,7 @@ and are covered by integration tests run after terraform apply.
 """
 
 import pytest
-from pyspark.sql import Row, SparkSession
+from pyspark.sql import DataFrame, Row, SparkSession
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType, TimestampType
 
 from jobs.silver_wap import VALID_SENSOR_TYPES, validate_batch
@@ -42,7 +42,7 @@ def spark() -> SparkSession:
     )
 
 
-def _make_df(spark: SparkSession, rows: list[dict]) -> object:
+def _make_df(spark: SparkSession, rows: list[dict]) -> DataFrame:
     return spark.createDataFrame([Row(**r) for r in rows], schema=BRONZE_SCHEMA)
 
 
