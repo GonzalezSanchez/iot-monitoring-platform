@@ -1,6 +1,6 @@
 # IoT Monitoring Platform — Frontend
 
-React dashboard for the IoT Monitoring Platform. Connects to the project 1b FastAPI backend and the project 2a Behavior Analyzer API.
+React dashboard for the IoT Monitoring Platform. Connects to the project 1b FastAPI backend, the project 2a Behavior Analyzer API, and the project 2c Lakehouse endpoints.
 
 ## Stack
 
