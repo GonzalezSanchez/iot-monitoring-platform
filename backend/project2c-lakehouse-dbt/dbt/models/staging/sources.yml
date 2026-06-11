@@ -1,0 +1,30 @@
+version: 2
+
+sources:
+  - name: silver
+    catalog: p2c_dev
+    schema: silver
+    description: "Validated sensor events — output van de PySpark WAP pipeline"
+    tables:
+      - name: sensor_events
+        description: "Getypeerde, ontdubbelde sensor events. Alleen goedgekeurde records."
+        columns:
+          - name: event_id
+            description: "UUID — primary key"
+            data_tests:
+              - unique
+              - not_null
+          - name: room_id
+            data_tests:
+              - not_null
+          - name: sensor_type
+            data_tests:
+              - not_null
+              - accepted_values:
+                  values: [temperature, co2, occupancy, humidity]
+          - name: value
+            data_tests:
+              - not_null
+          - name: ts
+            data_tests:
+              - not_null

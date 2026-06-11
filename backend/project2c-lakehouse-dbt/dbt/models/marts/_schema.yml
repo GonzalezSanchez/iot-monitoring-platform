@@ -1,0 +1,62 @@
+version: 2
+
+models:
+  - name: fact_anomalies
+    description: >
+      Elk sensor event met z-score en anomalie-flag.
+      Z-score berekend t.o.v. de volledige distributie per room + sensor_type.
+      is_anomaly = true wanneer |z| > 2.5.
+    columns:
+      - name: event_id
+        data_tests:
+          - unique
+          - not_null
+      - name: room_id
+        data_tests:
+          - not_null
+      - name: sensor_type
+        data_tests:
+          - not_null
+      - name: z_score
+        data_tests:
+          - not_null
+      - name: is_anomaly
+        data_tests:
+          - not_null
+
+  - name: fact_patterns
+    description: >
+      Uurlijkse aggregaties per room + sensor_type.
+      avg/min/max/count per uur-venster.
+    columns:
+      - name: window_hour
+        data_tests:
+          - not_null
+      - name: room_id
+        data_tests:
+          - not_null
+      - name: sensor_type
+        data_tests:
+          - not_null
+      - name: avg_value
+        data_tests:
+          - not_null
+
+  - name: dim_rooms
+    description: "Statische kamer-metadata — 10 kamers verdeeld over 2 gebouwen."
+    columns:
+      - name: room_id
+        data_tests:
+          - unique
+          - not_null
+      - name: building_id
+        data_tests:
+          - not_null
+
+  - name: dim_buildings
+    description: "Statische gebouw-metadata."
+    columns:
+      - name: building_id
+        data_tests:
+          - unique
+          - not_null
