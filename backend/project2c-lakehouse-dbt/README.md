@@ -65,13 +65,11 @@ pip install -r requirements-dev.txt
 cp .env.example .env
 # Fill in DATABRICKS_HOST, DATABRICKS_TOKEN, DATABRICKS_HTTP_PATH, etc.
 
-# 3. Provision infrastructure (Fase 1)
+# 3. Provision infrastructure
 cd infrastructure
 cp terraform.tfvars.example terraform.tfvars
-# Fill in terraform.tfvars
-terraform init
-terraform plan
-terraform apply
+# Fill in terraform.tfvars, then see infrastructure/README.md for exact steps
+# (two-step apply required — workspace URL needed before other resources)
 
 # 4. Run dbt
 cd ../dbt
