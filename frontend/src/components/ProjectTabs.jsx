@@ -9,8 +9,9 @@ const tabGroups = [
   {
     group: 'Behavior analyzer',
     tabs: [
-      { key: 'behavior-aws',   label: 'Step Functions + Aurora', sub: 'project 2a' },
-      { key: 'behavior-spark', label: 'Spark + Airflow',         sub: 'project 2b' },
+      { key: 'behavior-aws',        label: 'Step Functions + Aurora', sub: 'project 2a' },
+      { key: 'behavior-spark',      label: 'Spark + Airflow',         sub: 'project 2b' },
+      { key: 'behavior-lakehouse',  label: 'Databricks + dbt',        sub: 'project 2c' },
     ],
   },
   {

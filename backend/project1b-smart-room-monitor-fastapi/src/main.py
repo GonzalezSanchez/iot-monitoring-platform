@@ -9,8 +9,10 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from models.lakehouse import Anomaly, DimRoom, LakehouseSummary
 from models.room import Room
 from models.sensor_event import SensorEvent
+from repositories import lakehouse_repository
 from repositories.event_repository import EventRepository
 from repositories.room_repository import RoomRepository
 from services.event_service import EventService, EventServiceError
@@ -24,6 +26,13 @@ tags_metadata = [
     {
         "name": "Health",
         "description": "Service health check. Use this to verify the API is running.",
+    },
+    {
+        "name": "Lakehouse",
+        "description": (
+            "Live data from the Azure Databricks Gold layer (project 2c). "
+            "Queries the SQL Warehouse — first request may take 30-60s if the warehouse is cold."
+        ),
     },
     {
         "name": "Events",
@@ -179,3 +188,55 @@ def get_room_events(room_id: str) -> List[SensorEvent]:
     except Exception as e:
         logger.error("Failed to get events for room %s: %s", room_id, e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Lakehouse (project 2c — Azure Databricks Gold layer)
+# ---------------------------------------------------------------------------
+
+
+def _lakehouse_configured() -> bool:
+    return all(
+        os.getenv(k) for k in ("DATABRICKS_HOST", "DATABRICKS_HTTP_PATH", "DATABRICKS_TOKEN")
+    )
+
+
+@app.get("/lakehouse/summary", response_model=LakehouseSummary, tags=["Lakehouse"])
+def get_lakehouse_summary() -> LakehouseSummary:
+    """Total event count, anomaly count, and last pipeline run time from the Gold layer."""
+    if not _lakehouse_configured():
+        raise HTTPException(status_code=503, detail="Lakehouse not configured on this server")
+    try:
+        data = lakehouse_repository.get_summary()
+        return LakehouseSummary(**data)
+    except Exception as e:
+        logger.error("Lakehouse summary failed: %s", e)
+        raise HTTPException(status_code=503, detail=f"SQL Warehouse unavailable: {e}")
+
+
+@app.get("/lakehouse/anomalies", response_model=List[Anomaly], tags=["Lakehouse"])
+def get_lakehouse_anomalies(limit: int = 50) -> List[Anomaly]:
+    """Recent anomalies from fact_anomalies (is_anomaly=true), newest first."""
+    if not _lakehouse_configured():
+        raise HTTPException(status_code=503, detail="Lakehouse not configured on this server")
+    if not 1 <= limit <= 200:
+        raise HTTPException(status_code=400, detail="limit must be between 1 and 200")
+    try:
+        rows = lakehouse_repository.get_anomalies(limit=limit)
+        return [Anomaly(**r) for r in rows]
+    except Exception as e:
+        logger.error("Lakehouse anomalies failed: %s", e)
+        raise HTTPException(status_code=503, detail=f"SQL Warehouse unavailable: {e}")
+
+
+@app.get("/lakehouse/rooms", response_model=List[DimRoom], tags=["Lakehouse"])
+def get_lakehouse_rooms() -> List[DimRoom]:
+    """Room metadata joined with building info from the Gold dimension tables."""
+    if not _lakehouse_configured():
+        raise HTTPException(status_code=503, detail="Lakehouse not configured on this server")
+    try:
+        rows = lakehouse_repository.get_rooms()
+        return [DimRoom(**r) for r in rows]
+    except Exception as e:
+        logger.error("Lakehouse rooms failed: %s", e)
+        raise HTTPException(status_code=503, detail=f"SQL Warehouse unavailable: {e}")

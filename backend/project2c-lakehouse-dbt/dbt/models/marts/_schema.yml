@@ -1,0 +1,102 @@
+version: 2
+
+models:
+  - name: fact_anomalies
+    description: >
+      Elk sensor event met z-score en anomalie-flag.
+      Z-score berekend t.o.v. de volledige distributie per room + sensor_type.
+      is_anomaly = true wanneer |z| > 2.5.
+    columns:
+      - name: event_id
+        description: "UUID — unieke sleutel per event, foreign key naar Silver"
+        data_tests:
+          - unique
+          - not_null
+      - name: room_id
+        description: "Kamer-ID — foreign key naar dim_rooms"
+        data_tests:
+          - not_null
+      - name: sensor_type
+        description: "Type sensor: temperature, co2, occupancy, humidity"
+        data_tests:
+          - not_null
+      - name: value
+        description: "Gemeten waarde — eenheid afhankelijk van sensor_type"
+      - name: ts
+        description: "Tijdstip van de meting (UTC)"
+      - name: mean_value
+        description: "Gemiddelde waarde voor deze room + sensor_type combinatie (over alle data)"
+      - name: stddev_value
+        description: "Standaarddeviatie van de waarde voor deze room + sensor_type combinatie"
+      - name: z_score
+        description: "Aantal standaarddeviaties van het gemiddelde: (value - mean) / stddev"
+        data_tests:
+          - not_null
+      - name: is_anomaly
+        description: "true wanneer |z_score| > 2.5 — statistisch significante afwijking"
+        data_tests:
+          - not_null
+
+  - name: fact_patterns
+    description: >
+      Uurlijkse aggregaties per room + sensor_type.
+      avg/min/max/count per uur-venster.
+    columns:
+      - name: window_hour
+        description: "Begin van het uur-venster (UTC) — bijv. 2025-01-01 14:00:00"
+        data_tests:
+          - not_null
+      - name: room_id
+        description: "Kamer-ID — foreign key naar dim_rooms"
+        data_tests:
+          - not_null
+      - name: sensor_type
+        description: "Type sensor: temperature, co2, occupancy, humidity"
+        data_tests:
+          - not_null
+      - name: avg_value
+        description: "Gemiddelde gemeten waarde in dit uur-venster"
+        data_tests:
+          - not_null
+      - name: min_value
+        description: "Minimale gemeten waarde in dit uur-venster"
+      - name: max_value
+        description: "Maximale gemeten waarde in dit uur-venster"
+      - name: event_count
+        description: "Aantal sensor events in dit uur-venster"
+      - name: _dbt_updated_at
+        description: "Tijdstip waarop dbt dit record voor het laatst heeft bijgewerkt"
+
+  - name: dim_rooms
+    description: "Statische kamer-metadata — 10 kamers verdeeld over 2 gebouwen."
+    columns:
+      - name: room_id
+        description: "Unieke kamer-ID (bijv. room_001)"
+        data_tests:
+          - unique
+          - not_null
+      - name: room_name
+        description: "Naam van de kamer (bijv. Meeting Room A)"
+      - name: building_id
+        description: "Foreign key naar dim_buildings"
+        data_tests:
+          - not_null
+      - name: floor
+        description: "Verdieping in het gebouw (1, 2, of 3)"
+      - name: capacity
+        description: "Maximale bezettingscapaciteit van de kamer"
+
+  - name: dim_buildings
+    description: "Statische gebouw-metadata — 2 gebouwen in Amsterdam."
+    columns:
+      - name: building_id
+        description: "Unieke gebouw-ID (bijv. building_001)"
+        data_tests:
+          - unique
+          - not_null
+      - name: building_name
+        description: "Naam van het gebouw (bijv. Main Office)"
+      - name: city
+        description: "Stad waar het gebouw zich bevindt"
+      - name: country
+        description: "Land waar het gebouw zich bevindt"
