@@ -90,21 +90,24 @@ resource "databricks_catalog" "prod" {
 # ─────────────────────────────────────────────
 
 resource "databricks_schema" "dev_bronze" {
-  catalog_name = databricks_catalog.dev.name
-  name         = "bronze"
-  comment      = "Raw sensor events — exact as received, no transformations"
+  catalog_name  = databricks_catalog.dev.name
+  name          = "bronze"
+  comment       = "Raw sensor events — exact as received, no transformations"
+  force_destroy = true
 }
 
 resource "databricks_schema" "dev_silver" {
-  catalog_name = databricks_catalog.dev.name
-  name         = "silver"
-  comment      = "Cleansed sensor events + quarantine table (WAP pattern)"
+  catalog_name  = databricks_catalog.dev.name
+  name          = "silver"
+  comment       = "Cleansed sensor events + quarantine table (WAP pattern)"
+  force_destroy = true
 }
 
 resource "databricks_schema" "dev_gold" {
-  catalog_name = databricks_catalog.dev.name
-  name         = "gold"
-  comment      = "dbt fact + dim models served via SQL Warehouse"
+  catalog_name  = databricks_catalog.dev.name
+  name          = "gold"
+  comment       = "dbt fact + dim models served via SQL Warehouse"
+  force_destroy = true
 }
 
 # ─────────────────────────────────────────────
@@ -112,19 +115,22 @@ resource "databricks_schema" "dev_gold" {
 # ─────────────────────────────────────────────
 
 resource "databricks_schema" "prod_bronze" {
-  catalog_name = databricks_catalog.prod.name
-  name         = "bronze"
-  comment      = "Raw sensor events — exact as received, no transformations"
+  catalog_name  = databricks_catalog.prod.name
+  name          = "bronze"
+  comment       = "Raw sensor events — exact as received, no transformations"
+  force_destroy = true
 }
 
 resource "databricks_schema" "prod_silver" {
-  catalog_name = databricks_catalog.prod.name
-  name         = "silver"
-  comment      = "Cleansed sensor events + quarantine table (WAP pattern)"
+  catalog_name  = databricks_catalog.prod.name
+  name          = "silver"
+  comment       = "Cleansed sensor events + quarantine table (WAP pattern)"
+  force_destroy = true
 }
 
 resource "databricks_schema" "prod_gold" {
-  catalog_name = databricks_catalog.prod.name
-  name         = "gold"
-  comment      = "dbt fact + dim models served via SQL Warehouse"
+  catalog_name  = databricks_catalog.prod.name
+  name          = "gold"
+  comment       = "dbt fact + dim models served via SQL Warehouse"
+  force_destroy = true
 }

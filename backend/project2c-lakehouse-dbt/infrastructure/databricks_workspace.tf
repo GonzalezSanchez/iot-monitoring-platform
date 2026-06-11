@@ -11,7 +11,10 @@ resource "azurerm_databricks_workspace" "main" {
   sku = "premium"
 
   custom_parameters {
-    no_public_ip = true
+    # false = cluster nodes krijgen publieke IPs → geen NAT Gateway → ~€1/dag besparing
+    # Bewuste keuze voor portfolio/dev: gesimuleerde data, geen compliance vereisten
+    # In productie: true gebruiken (Secure Cluster Connectivity, vereist NAT Gateway)
+    no_public_ip = false
   }
 
   tags = {
