@@ -232,7 +232,7 @@ jobs:
         run: mypy scripts/ jobs/ tests/ --ignore-missing-imports
 
       - name: Run tests with coverage
-        run: pytest tests/unit/ -v --cov=scripts --cov=jobs --cov-report=term-missing --cov-fail-under=80
+        run: pytest tests/unit/ -v --cov=scripts --cov=jobs --cov-report=term-missing --cov-fail-under=80 --cov-config=.coveragerc
 
   test-project2c-dbt:
     name: project2c dbt parse

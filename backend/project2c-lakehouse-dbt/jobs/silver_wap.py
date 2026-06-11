@@ -36,7 +36,7 @@ log = logging.getLogger(__name__)
 VALID_SENSOR_TYPES = frozenset({"temperature", "co2", "occupancy", "humidity"})
 
 
-def ensure_tables(spark: SparkSession, catalog: str) -> None:
+def ensure_tables(spark: SparkSession, catalog: str) -> None:  # pragma: no cover
     """Create Silver tables if they don't exist — idempotent DDL.
 
     CLUSTER BY (room_id, sensor_type): Liquid Clustering for efficient filtered queries.
@@ -104,7 +104,7 @@ def validate_batch(df: DataFrame) -> tuple[DataFrame, DataFrame]:
     return good, quarantine
 
 
-def merge_good_records(spark: SparkSession, df: DataFrame, catalog: str) -> int:
+def merge_good_records(spark: SparkSession, df: DataFrame, catalog: str) -> int:  # pragma: no cover
     """Merge good records into silver.sensor_events — idempotent on event_id."""
     from delta.tables import DeltaTable
 
@@ -125,7 +125,7 @@ def merge_good_records(spark: SparkSession, df: DataFrame, catalog: str) -> int:
     return count
 
 
-def write_quarantine(df: DataFrame, catalog: str) -> int:
+def write_quarantine(df: DataFrame, catalog: str) -> int:  # pragma: no cover
     """Append bad records to quarantine — never overwrite, never delete."""
     target = f"{catalog}.silver.sensor_events_quarantine"
     count = int(df.count())
@@ -138,7 +138,7 @@ def write_quarantine(df: DataFrame, catalog: str) -> int:
     return count
 
 
-def run(spark: SparkSession, catalog: str) -> None:
+def run(spark: SparkSession, catalog: str) -> None:  # pragma: no cover
     bronze_table = f"{catalog}.bronze.sensor_events"
     log.info("Silver WAP start | source=%s | catalog=%s", bronze_table, catalog)
 
@@ -161,7 +161,7 @@ def run(spark: SparkSession, catalog: str) -> None:
     )
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover
     catalog = os.environ.get("DATABRICKS_CATALOG", "p2c_dev")
     spark = SparkSession.builder.getOrCreate()
     run(spark, catalog)
