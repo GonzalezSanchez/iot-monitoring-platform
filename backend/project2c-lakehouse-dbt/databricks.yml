@@ -28,7 +28,7 @@ resources:
       name: "[${bundle.target}] iot-pipeline"
 
       schedule:
-        quartz_cron_expression: "0 0 6 ? * MON"
+        quartz_cron_expression: "0 0 6 1 * ?"
         timezone_id: "Europe/Amsterdam"
         pause_status: UNPAUSED
 

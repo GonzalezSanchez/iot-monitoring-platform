@@ -192,7 +192,7 @@ Delta Lake, and dbt. Demonstrates cloud portability and modern lakehouse archite
 **Stack:** Python, PySpark, Azure Databricks, Delta Lake, Unity Catalog, dbt-databricks, ADLS Gen2, Terraform, Databricks Asset Bundles (DABs)
 **Infrastructure:** Full IaC via Terraform — ADLS Gen2, Databricks workspace (Premium), Access Connector (Managed Identity), Key Vault, Unity Catalog, SQL Warehouse, budget alert
 **Pipeline:** Bronze → Silver (WAP pattern, MERGE idempotent) → Gold (dbt incremental models)
-**Orchestration:** DABs job with weekly schedule (every Monday 07:00 Amsterdam)
+**Orchestration:** DABs job with monthly schedule (1st of every month, 06:00 Amsterdam)
 **CI:** GitHub Actions — ruff, mypy, pytest (43 tests, 92% coverage), dbt parse, bundle validate, terraform validate
 **Live:** Gold layer data served via FastAPI `/lakehouse/*` endpoints → visible in portfolio dashboard
 
