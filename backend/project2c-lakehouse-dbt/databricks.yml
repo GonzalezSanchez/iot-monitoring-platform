@@ -1,0 +1,68 @@
+bundle:
+  name: p2c-iot-pipeline
+
+variables:
+  catalog:
+    default: p2c_dev
+  storage_account:
+    default: stp2cdeviotags
+  storage_container_bronze:
+    default: bronze
+
+targets:
+  dev:
+    default: true
+    workspace:
+      host: https://adb-7405609278521333.13.azuredatabricks.net
+    variables:
+      catalog: p2c_dev
+  prod:
+    workspace:
+      host: ${workspace.host}
+    variables:
+      catalog: p2c_prod
+
+resources:
+  jobs:
+    iot_pipeline:
+      name: "[${bundle.target}] iot-pipeline"
+
+      job_clusters:
+        - job_cluster_key: main
+          new_cluster:
+            spark_version: 15.4.x-scala2.12
+            node_type_id: Standard_D4s_v3
+            # Single-node cluster (driver only) — voldoende voor 1000 records, goedkoopste optie
+            num_workers: 0
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: local[*]
+            custom_tags:
+              ResourceClass: SingleNode
+            # SINGLE_USER: vereist voor Auto Loader streaming + Unity Catalog
+            data_security_mode: SINGLE_USER
+            spark_env_vars:
+              AZURE_STORAGE_ACCOUNT_NAME: ${var.storage_account}
+              AZURE_STORAGE_CONTAINER_BRONZE: ${var.storage_container_bronze}
+              DATABRICKS_CATALOG: ${var.catalog}
+
+      tasks:
+        - task_key: bronze_autoloader
+          description: "Auto Loader: ADLS Bronze JSON → Delta bronze.sensor_events"
+          job_cluster_key: main
+          spark_python_task:
+            python_file: ./jobs/bronze_autoloader.py
+          libraries:
+            - pypi:
+                package: python-dotenv==1.2.2
+
+        - task_key: silver_wap
+          description: "WAP: bronze.sensor_events → silver.sensor_events + quarantine"
+          depends_on:
+            - task_key: bronze_autoloader
+          job_cluster_key: main
+          spark_python_task:
+            python_file: ./jobs/silver_wap.py
+          libraries:
+            - pypi:
+                package: python-dotenv==1.2.2
