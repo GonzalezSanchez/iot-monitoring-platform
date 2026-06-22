@@ -116,7 +116,20 @@ CI runs on every push via GitHub Actions (`.github/workflows/ci.yml`):
 - `databricks bundle validate` — verifies DABs config
 - Terraform validate
 
-The DABs job runs on a monthly schedule (1st of every month, 06:00 Brussels time).
+The DABs job schedule is **paused** — runs are triggered manually via Databricks UI (Workflows → job → Run now) or `databricks bundle run p2c_weekly_pipeline`.
+
+## Infrastructure notes
+
+### Job cluster VM size
+The job cluster uses `Standard_D4s_v3` (4 vCPUs, 16 GB RAM, single-node).
+
+- This is the smallest supported VM in this Databricks workspace — `Standard_D2s_v3` is not on the supported node list.
+- Azure free trial accounts have a default regional vCPU quota of 4 cores, which is exactly the size of this VM. During trial expiry/transition, the quota can temporarily drop to 0 causing `AZURE_QUOTA_EXCEEDED_EXCEPTION`.
+- Fix: upgrade to pay-as-you-go in Azure Portal. Default quota becomes 10 vCPUs, which resolves the issue.
+- If you hit the quota again: Azure Portal → Subscriptions → Usage + Quotas → request increase.
+
+### Schedule
+Pipeline is intentionally paused (`pause_status: PAUSED` in `databricks.yml`). The cron expression is kept for reference: `"0 0 6 1 * ?"` (1st of every month, 06:00 Brussels). Re-enable by changing to `UNPAUSED` and running `databricks bundle deploy`.
 
 ## Differences from Project 2b
 
