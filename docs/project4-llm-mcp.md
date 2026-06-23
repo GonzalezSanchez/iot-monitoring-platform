@@ -73,6 +73,68 @@ Na project 3. Dit is het finale sluitstuk van het platform.
 
 ---
 
+## Databricks MCP integratie (uitbreiding 4d)
+
+### Wat is het?
+
+Naast `fastapi-mcp` op de IoT API bestaat er ook een **native Databricks MCP server** — onderdeel van de **Databricks AI Dev Kit**. Deze geeft een LLM directe toegang tot de Databricks workspace: Unity Catalog tabellen, SQL Warehouse, job runs, notebooks.
+
+Terwijl 4a/4b over de IoT API gaan, zou 4d over de lakehouse data gaan (project 2c):
+
+```
+Claude Agent
+    │
+    ├── fastapi-mcp (4a)          → IoT API: /rooms, /events, /insights
+    │
+    └── Databricks MCP (4d)       → Lakehouse: Gold tables, job runs, Unity Catalog
+            │
+            ├── SQL Warehouse     → SELECT * FROM gold.fact_anomalies
+            ├── Jobs API          → trigger/monitor pipeline runs
+            └── Unity Catalog     → schema discovery, lineage
+```
+
+**Voorbeeldvragen via Databricks MCP:**
+- "How many anomalies were detected in the last pipeline run?"
+- "Show me the Gold layer schema for fact_anomalies."
+- "Trigger a new pipeline run."
+
+### Databricks AI Dev Kit
+
+Meerdere Databricks MVPs (o.a. Jaco van Gelder) raden de **AI Dev Kit** aan als startpunt — bevat MCP server + prebuilt skills voor Databricks. Voordeel: geen eigen MCP implementatie nodig, gewoon configureren.
+
+Installatie:
+```bash
+uvx databricks-ai-dev-kit
+```
+
+Of via Claude Code MCP config:
+```json
+{
+  "mcpServers": {
+    "databricks": {
+      "command": "uvx",
+      "args": ["databricks-mcp-server"],
+      "env": {
+        "DATABRICKS_HOST": "https://adb-7405609278521333.13.azuredatabricks.net",
+        "DATABRICKS_TOKEN": "<PAT>"
+      }
+    }
+  }
+}
+```
+
+### Kanttekeningen (van LinkedIn discussie)
+
+- **Day 2 operations**: MCP is sterk voor scaffolding en prototyping — maar schema drift, unit tests en state management vereisen menselijke governance (Siva Kandula, Senior ML Engineer @ ServiceNow)
+- **Synthetic data**: hoge ML accuracy komt door schone synthetische data, niet door het model — in productie is data altijd messier
+- **Databricks Genie**: alternatief voor SQL-gebaseerde vragen direct in de workspace, zonder externe LLM
+
+### Wanneer
+
+Na 4a/4b. Vereist actieve Databricks workspace (project 2c).
+
+---
+
 ## RAG Implementatienotes
 
 *Gebaseerd op referentiegids: "Build a RAG AI Agent From Scratch" (Akhila G, 2026)*
