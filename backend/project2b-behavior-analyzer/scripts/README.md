@@ -119,7 +119,7 @@ python scripts/manage_partitions.py --months-ahead 3 --dry-run
 ```bash
 # Deployen op de server
 ssh ags@acer.gonzalezsanchez.dev
-cd ~/Portfolio/projects/iot-monitoring-platform/backend/project2b-behavior-analyzer
+cd ~/portfolio/projects/iot-monitoring-platform/backend/project2b-behavior-analyzer
 git pull origin main
 docker compose -f docker/docker-compose.yml --env-file .env up -d
 
