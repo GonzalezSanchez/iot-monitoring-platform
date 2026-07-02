@@ -1,6 +1,3 @@
-# Temporary files
-temp/
-
 # Node modules
 node_modules/
 npm-debug.log*
