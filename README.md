@@ -14,34 +14,6 @@ The platform ingests sensor data from conference rooms (temperature, humidity, o
 
 ## Architecture
 
-```
-IoT Sensor / API Client
-        │
-        ▼
- API Gateway (REST)
-        │
-   ┌────┴────────────────┐
-   │                     │
-   ▼                     ▼
-POST /events          GET /rooms
-(ingest_event)        (get_rooms / get_room_detail)
-   │                     │
-   ▼                     ▼
-EventService         RoomRepository
-   │
-   ├── AnomalyDetector (threshold checks)
-   ├── EventRepository (DynamoDB)
-   └── RoomRepository  (DynamoDB — state update)
-
-DynamoDB
-├── SensorEvents  (room_id + timestamp)
-└── RoomStatus    (room_id)
-```
-
----
-
-## Platform Architecture
-
 A real IoT system has three distinct layers. This platform covers all three:
 
 | Layer | Responsibility | Project |
