@@ -47,29 +47,68 @@ Het is ook het sluitstuk van het platform — elke laag is nu bereikbaar:
 ## Architectuur
 
 ```
-Gebruiker (natuurlijke taal)
+Gebruiker (natuurlijke taal, via frontend "LLM + MCP" tab)
         │
         ▼
-Claude / LLM Agent
-        │  (MCP protocol)
-        ▼
-fastapi-mcp server  ←── gemount op project 1b FastAPI
-        │
-        ├── GET /rooms          → lijst kamers + status
-        ├── GET /events         → sensor events opvragen
-        ├── GET /insights/...   → patterns + anomalies (project 2a)
-        └── POST /events        → sensor event injecteren
+nginx  /ai/*  ──►  project4-ai-assistant (aparte container)
+                        │
+                        ├── Claude API (Anthropic SDK, async + streaming)
+                        │
+                        └── MCP tools ──► HTTP ──► project 1b FastAPI
+                                                      ├── GET /rooms
+                                                      ├── GET /events
+                                                      ├── GET /insights/...   (project 2a)
+                                                      └── GET /lakehouse/...  (project 2c)
 ```
+
+## Ontwerpbeslissingen
+
+**Aparte service, niet gemount op 1b.** De AI-laag draait als eigen container
+(`project4-ai-assistant`) naast de bestaande productie-API, met een eigen nginx-route (`/ai`).
+De MCP tools roepen de 1b API aan via HTTP in plaats van directe function calls.
+Reden: blast radius — een bug of hangende LLM-call in de AI-laag kan de live demo op
+iot.gonzalezsanchez.dev niet meetrekken, en de `anthropic` dependency blijft uit de stabiele
+1b service. Elke iteratie aan project 4 deployt zonder de productie-API te herstarten.
+
+**Async vanaf dag één.** Drie redenen, anders dan bij project 3 (waar het om concurrente
+devices gaat):
+
+1. *Parallelle tool calls* — één vraag kan meerdere MCP tools tegelijk nodig hebben
+   (`asyncio.gather` over `/insights` + `/rooms`)
+2. *Streaming* — Claude's antwoord komt token per token binnen (5-30s); via SSE direct
+   doorsturen naar de frontend in plaats van wachten op het volledige antwoord
+3. *Trage I/O* — een LLM-call duurt seconden; een sync route zou al die tijd een thread
+   bezet houden
+
+**Modelkeuze: Claude Haiku 4.5** (`claude-haiku-4-5`, $1/$5 per miljoen tokens).
+Goedkoopste model, ruim voldoende voor tool-calling over een kleine API. Upgrade naar
+Sonnet is één regel config als tool-aanroepen te vaak missen. Geschatte kosten bij
+portfolio-verkeer: centen tot ~€1/maand. Vereist een eigen Anthropic API key
+(los van het Claude Code abonnement) — in `.env.prod`, nooit gecommit.
+
+**Kosten- en misbruikbescherming** (publiek endpoint, elke call kost geld):
+
+| Laag | Maatregel | Effect |
+|---|---|---|
+| 1. Rate limiting | `slowapi` per IP: 5/min, 20/dag | Bot geblokkeerd na 5 requests (429) |
+| 2. Token cap | `max_tokens=1024`, history max ~6 berichten | Doorgelaten request kost max ~halve cent |
+| 3. Spend limit | Anthropic Console maandbudget (~$5) | Harde ondergrens — API weigert daarboven |
+| 4. Cloudflare | Tunnel filtert bots/DDoS al vóór de server | Gratis eerste verdedigingslinie |
+
+Worst case: een agressieve bot kost maximaal het spend limit. Zelfde kostendiscipline als
+de Azure budget alert bij project 2c.
 
 ## Relatie met bestaande projecten
 
-- Bouwt bovenop **project 1b** (FastAPI) — geen wijzigingen aan de bestaande routes nodig
-- Haalt analytics data op via **project 2a** API (`/insights`)
-- Infrastructuur: lokaal via Docker, geen extra AWS resources nodig
+- Roept **project 1b** (FastAPI) aan via HTTP — geen wijzigingen aan de bestaande routes nodig
+- Haalt analytics data op via **project 2a** API (`/insights`) en **project 2c** (`/lakehouse/*`)
+- Frontend: de "LLM + MCP" tab bestaat al als ComingSoon-placeholder in `App.jsx`
+- Infrastructuur: extra container in `docker-compose.prod.yml` + nginx-route, geen extra AWS resources
 
 ## Wanneer
 
-Na project 3. Dit is het finale sluitstuk van het platform.
+Wordt vóór project 3 geïmplementeerd — kleiner in scope en sluit aan bij de AI-richting
+op de arbeidsmarkt. Volgorde: 4a (MCP tools) → 4b (chat + streaming + frontend tab) → 4c/4d later.
 
 ---
 

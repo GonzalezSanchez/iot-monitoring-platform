@@ -31,30 +31,30 @@ nginx (port 80 inside container, 3000 on host)
    ▼
 React SPA (built with Vite)
    │
-   ├── App.jsx              — root component, sidebar + routing
+   ├── App.jsx              — root component, routing + ComingSoon placeholder (project 4 tab)
    ├── components/
-   │   └── Sidebar.jsx      — navigation sidebar (5 tabs, grouped by project)
+   │   └── ProjectTabs.jsx  — navigation sidebar (6 tabs, grouped by project)
    └── pages/
-       ├── RoomDashboard.jsx        — project 1a (Lambda)
-       ├── FastApiDashboard.jsx     — project 1b (FastAPI)
+       ├── RoomDashboard.jsx        — project 1a (Lambda) én 1b (FastAPI, zelfde component)
        ├── BehaviorDashboard.jsx    — project 2a (AWS Step Functions)
        ├── PowerBIDashboard.jsx     — project 2b (Airflow + PySpark + Power BI)
-       └── AiAssistant.jsx          — project 4 (LLM/MCP, placeholder)
+       └── LakehouseDashboard.jsx   — project 2c (Databricks + dbt)
 ```
 
 ---
 
 ## Navigation
 
-5 tabs in a left sidebar (w-64, bg-blue-50):
+6 tabs in a left sidebar (`ProjectTabs.jsx`):
 
 | Tab | Project | Status |
 |-----|---------|--------|
-| Smart Room (Lambda) | 1a — AWS Lambda + API Gateway | Live |
-| Smart Room (FastAPI) | 1b — FastAPI + Docker | Live |
-| Behavior Analyzer (AWS) | 2a — Step Functions + Aurora | NotDeployed (on-demand) |
-| Behavior Analyzer (Spark) | 2b — Airflow + PySpark + Power BI | Live |
-| AI Assistant | 4 — LLM/MCP | Placeholder |
+| AWS Lambda | 1a — AWS Lambda + API Gateway | Live |
+| FastAPI | 1b — FastAPI + Docker | Live |
+| Step Functions + Aurora | 2a — Step Functions + Aurora | NotDeployed (on-demand) |
+| Spark + Airflow | 2b — Airflow + PySpark + Power BI | Live |
+| Databricks + dbt | 2c — Azure Databricks + dbt | Live |
+| LLM + MCP | 4 — LLM/MCP | ComingSoon placeholder |
 
 > Note: Project 3 (IoT Gateway) has no frontend tab — it is a backend-only project.
 
@@ -128,16 +128,15 @@ docker compose -f docker-compose.prod.yml up -d --force-recreate
 ```
 frontend/
 ├── src/
-│   ├── App.jsx                      — root component, sidebar + page routing
+│   ├── App.jsx                      — root component, page routing + ComingSoon (project 4)
 │   ├── index.jsx                    — entry point
 │   ├── components/
-│   │   └── Sidebar.jsx              — navigation sidebar (5 tabs, grouped labels)
+│   │   └── ProjectTabs.jsx          — navigation sidebar (6 tabs, grouped labels)
 │   └── pages/
-│       ├── RoomDashboard.jsx        — project 1a (Lambda)
-│       ├── FastApiDashboard.jsx     — project 1b (FastAPI)
+│       ├── RoomDashboard.jsx        — project 1a (Lambda) én 1b (FastAPI)
 │       ├── BehaviorDashboard.jsx    — project 2a (AWS)
 │       ├── PowerBIDashboard.jsx     — project 2b (Power BI iframe)
-│       └── AiAssistant.jsx          — project 4 (placeholder)
+│       └── LakehouseDashboard.jsx   — project 2c (Databricks + dbt)
 ├── Dockerfile                       — multi-stage build (node → nginx)
 ├── nginx.conf                       — nginx config for SPA routing
 ├── package.json

@@ -19,6 +19,14 @@ Net als project 1/1b en 2a/2b wordt project 3 in twee varianten gebouwd — zelf
 
 **Gekozen aanpak voor 3b:** optie 1 — API keys per device. Device registreert, ontvangt een gegenereerde key, elke request valideert via `Depends()`. Toont security thinking (hashing, least-privilege, rate limiting) zonder een volledige auth server. Past bij de portfolio filosofie: niet overengineeren, maar het principe aantonen.
 
+**Async als ontwerpprincipe (3b).** De gateway wordt vanaf dag één async gebouwd (`async def`
+routes + async I/O). Motivatie: een IoT-gateway is hét async-usecase — veel devices die
+tegelijk verbinden en veel gelijktijdige kleine requests (I/O-bound). Dit staat bewust in
+contrast met project 1b, dat sync is gebleven: bij die load volstaat de threadpool, en de
+herschrijving zou geen functionele winst opleveren. Bij de gateway zit de concurrency wél
+in het probleemdomein. (Project 4 gebruikt async om een andere reden: trage LLM I/O,
+parallelle tool calls en streaming — zie `project4-llm-mcp.md`.)
+
 ---
 
 ## Tech Stack
