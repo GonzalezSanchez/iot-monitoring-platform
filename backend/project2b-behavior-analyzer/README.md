@@ -1,16 +1,16 @@
 # Project 2b — Behavior Pattern Analyzer (Data Engineering stack)
 
-## Beschrijving
+## Description
 
-ETL pipeline die sensor data uit project 1a (DynamoDB) extraheert, transformeert en analyseert via PySpark. Detecteert gedragspatronen en anomalieën per kamer en schrijft resultaten naar PostgreSQL. Gevisualiseerd in Power BI.
+ETL pipeline that extracts, transforms, and analyzes sensor data from project 1a (DynamoDB) via PySpark. Detects behavior patterns and anomalies per room and writes results to PostgreSQL. Visualized in Power BI.
 
-Zelfde analytisch doel als project 2a — bewust opnieuw geïmplementeerd met een Data Engineering stack om het contrast te tonen: AWS native (Lambda + Step Functions) vs. PySpark + Airflow.
+Same analytical goal as project 2a — deliberately reimplemented with a Data Engineering stack to show the contrast: AWS native (Lambda + Step Functions) vs. PySpark + Airflow.
 
 ## Stack
 
 - **Processing:** PySpark 4.x (Spark SQL, window functions, `regr_slope`)
-- **Spatial analysis:** GeoPandas + Shapely (anomalie hotspots per gebouw, WGS84 coördinaten)
-- **Reporting layer:** dbt (staging views + marts voor Power BI)
+- **Spatial analysis:** GeoPandas + Shapely (anomaly hotspots per building, WGS84 coordinates)
+- **Reporting layer:** dbt (staging views + marts for Power BI)
 - **Orchestration:** Apache Airflow 2.x (DAG met BashOperators)
 - **Storage:** AWS S3 (data lake — raw + processed Parquet), PostgreSQL (resultaten)
 - **Visualization:** Power BI (direct connect op PostgreSQL — map visual, bar charts, heatmap)
@@ -21,63 +21,63 @@ Zelfde analytisch doel als project 2a — bewust opnieuw geïmplementeerd met ee
 
 ## Data Lake Architecture
 
-Drie lagen op S3 (Medallion architecture):
+Three layers on S3 (Medallion architecture):
 
 ```
 DynamoDB (prod-SensorEvents)
     │
     ▼  jobs/extract.py  (spark-submit)
-S3/raw        ← Bronze: ruwe Parquet, gepartitioneerd per jaar/maand
+S3/raw        ← Bronze: raw Parquet, partitioned by year/month
     │
     ▼  jobs/transform.py  (spark-submit)
-S3/processed  ← Silver: gevalideerd en opgeschoond Parquet
+S3/processed  ← Silver: validated and cleaned Parquet
     │
     ▼  jobs/analyze.py  (spark-submit)
-PostgreSQL    ← Gold: patronen + anomalieën (voor Power BI)
+PostgreSQL    ← Gold: patterns + anomalies (for Power BI)
     │
     ▼  jobs/spatial.py  (GeoPandas)
-PostgreSQL    ← Spatial: anomalie hotspots per gebouw (voor Power BI map visual)
+PostgreSQL    ← Spatial: anomaly hotspots per building (for Power BI map visual)
     │
     ▼  dbt run  (dbt-postgres)
-PostgreSQL    ← Marts: anomaly_detail, pattern_detail, building_summary (Power BI-klare tabellen)
+PostgreSQL    ← Marts: anomaly_detail, pattern_detail, building_summary (Power BI-ready tables)
 ```
 
-Idempotent: `partitionOverwriteMode=dynamic` — re-runnen overschrijft alleen de betreffende maandpartities.
+Idempotent: `partitionOverwriteMode=dynamic` — re-running only overwrites the affected month partitions.
 
 ## Design Decisions
 
-**Bronze laag bevat genormaliseerd Parquet, niet ruwe JSON**
+**The Bronze layer holds normalized Parquet, not raw JSON**
 
-In een strikte Medallion architectuur zou Bronze de DynamoDB items bewaren als ruwe JSON — exact zoals de bron ze levert. Hier schrijft `extract.py` al als Parquet naar Bronze, na een lichte normalisatie van twee event formaten (project 2b seed format + project 1b API format) naar één unified schema.
+In a strict Medallion architecture, Bronze would preserve the DynamoDB items as raw JSON — exactly as the source delivers them. Here, `extract.py` already writes to Bronze as Parquet, after a light normalization of two event formats (project 2b seed format + project 1b API format) into one unified schema.
 
-Trade-off: Parquet is gecomprimeerd en efficiënt leesbaar door Spark. Ruwe JSON in Bronze zou volledige herverwerking toelaten bij een bug in de extractie — dat is hier niet mogelijk. Voor een portfolio met beperkte dataset is dit aanvaardbaar; in productie zou ik Bronze als ruwe JSON bewaren.
+Trade-off: Parquet is compressed and efficiently readable by Spark. Raw JSON in Bronze would allow full reprocessing in case of a bug in extraction — that's not possible here. For a portfolio with a limited dataset this is acceptable; in production I would keep Bronze as raw JSON.
 
-**Gold laag in PostgreSQL, niet op S3**
+**The Gold layer lives in PostgreSQL, not on S3**
 
-`analyze.py` schrijft patronen en anomalieën naar PostgreSQL via JDBC in plaats van naar S3 Gold. Reden: Power BI verbindt eenvoudiger met een SQL database dan met S3 + Athena. In een volledig AWS-native setup zou Gold als Parquet op S3 staan en Athena de query-laag vormen.
+`analyze.py` writes patterns and anomalies to PostgreSQL via JDBC instead of to S3 Gold. Reason: Power BI connects more easily to a SQL database than to S3 + Athena. In a fully AWS-native setup, Gold would sit as Parquet on S3 with Athena as the query layer.
 
 ## Airflow DAG
 
-`dags/behavior_pipeline.py` — wekelijks elke maandag om 02:00:
+`dags/behavior_pipeline.py` — weekly every Monday at 02:00:
 
 ```
 manage_partitions >> extract >> transform >> analyze >> spatial >> dbt_run
 ```
 
-- `on_failure_callback` logt een `[ALERT]` na alle retries uitgeput
-- `SPARK_MASTER` configureerbaar via env var (default: `local[*]`)
+- `on_failure_callback` logs an `[ALERT]` after all retries are exhausted
+- `SPARK_MASTER` configurable via env var (default: `local[*]`)
 
 ## Features
 
-- Occupancy schedule detectie — gemiddelde bezettingsgraad per (kamer, dag, uur) via window aggregatie
-- Temperature trend — stijgend/dalend/stabiel via `regr_slope` (lineaire regressie)
-- Anomalie detectie — z-score per kamer (populatie stddev); z ≥ 3 → medium, z ≥ 5 → high
-- Occupancy anomalie detectie — kamer bezet tijdens typisch lege uren (occupancy_rate < 20%) → unusual_activity (medium)
-- Spatiale analyse — GeoPandas aggregeert anomalieën per gebouw (lat/lon), schrijft naar `spatial_insights` voor Power BI map visual
-- dbt rapportagelaag — staging views + gematerialiseerde marts (`anomaly_detail`, `pattern_detail`, `building_summary`) met source tests
-- Observability — OTel counters per pipeline stap, Airflow StatsD metrics, PostgreSQL metrics via postgres-exporter → Grafana Cloud
+- Occupancy schedule detection — average occupancy rate per (room, day, hour) via window aggregation
+- Temperature trend — rising/falling/stable via `regr_slope` (linear regression)
+- Anomaly detection — z-score per room (population stddev); z ≥ 3 → medium, z ≥ 5 → high
+- Occupancy anomaly detection — room occupied during typically empty hours (occupancy_rate < 20%) → unusual_activity (medium)
+- Spatial analysis — GeoPandas aggregates anomalies per building (lat/lon), writes to `spatial_insights` for the Power BI map visual
+- dbt reporting layer — staging views + materialized marts (`anomaly_detail`, `pattern_detail`, `building_summary`) with source tests
+- Observability — OTel counters per pipeline step, Airflow StatsD metrics, PostgreSQL metrics via postgres-exporter → Grafana Cloud
 
-**Note:** de spatiale analyse (`jobs/spatial.py`) is specifiek voor project 2b. Project 2a exposeert resultaten via een REST API; Power BI kan daar rechtstreeks de `rooms` tabel voor gebruiken. GeoPandas past in de Data Engineering stack van project 2b (Python jobs pipeline), niet in de AWS Lambda architectuur van 2a.
+**Note:** the spatial analysis (`jobs/spatial.py`) is specific to project 2b. Project 2a exposes results via a REST API; Power BI can use the `rooms` table directly there. GeoPandas fits the Data Engineering stack of project 2b (Python jobs pipeline), not the AWS Lambda architecture of 2a.
 
 ## Database Schema (PostgreSQL)
 
@@ -142,53 +142,53 @@ CREATE TABLE spatial_insights (
 );
 ```
 
-## dbt Rapportagelaag
+## dbt Reporting Layer
 
-`dbt run` materialiseert staging views en marts rechtstreeks in PostgreSQL — klaar voor Power BI DirectQuery.
+`dbt run` materializes staging views and marts directly in PostgreSQL — ready for Power BI DirectQuery.
 
-### Modellen
+### Models
 
-**Staging** (views — geen extra opslag):
+**Staging** (views — no extra storage):
 
-| Model | Bron | Transformatie |
+| Model | Source | Transformation |
 |---|---|---|
-| `stg_anomalies` | `anomalies` tabel | `entity_id` hernoemd naar `room_id` |
-| `stg_patterns` | `patterns` tabel | `entity_id` hernoemd naar `room_id` |
-| `stg_rooms` | `rooms` tabel | Geen transformatie |
+| `stg_anomalies` | `anomalies` table | `entity_id` renamed to `room_id` |
+| `stg_patterns` | `patterns` table | `entity_id` renamed to `room_id` |
+| `stg_rooms` | `rooms` table | No transformation |
 
-**Marts** (gematerialiseerde tabellen — Power BI-klaar):
+**Marts** (materialized tables — Power BI-ready):
 
-**`anomaly_detail`** — anomalies gejoined met rooms, inclusief tijdextracties:
+**`anomaly_detail`** — anomalies joined with rooms, including time extractions:
 ```sql
 room_id | building_id | building_name | lat | lon | anomaly_type | severity | detected_at | detected_hour | detected_dow
 ```
 
-**`pattern_detail`** — patterns gejoined met rooms:
+**`pattern_detail`** — patterns joined with rooms:
 ```sql
 room_id | building_id | building_name | pattern_type | period_start | period_end
 ```
 
-**`building_summary`** — aggregatie per gebouw over alle jobs:
+**`building_summary`** — aggregation per building across all jobs:
 ```sql
 building_id | building_name | lat | lon | anomaly_count | high_count | medium_count | dominant_type | last_anomaly_at
 ```
 
 ### Source tests (`dbt test`)
 
-| Test | Kolom |
+| Test | Column |
 |---|---|
 | unique + not_null | `anomalies.id`, `rooms.room_id` |
 | accepted_values | `anomalies.anomaly_type` → [temperature, unusual_activity] |
 | accepted_values | `anomalies.severity` → [medium, high] |
 | accepted_values | `patterns.pattern_type` → [occupancy_schedule, temperature_trend] |
 
-### Verschil met `spatial_insights`
+### Difference from `spatial_insights`
 
 | | `spatial_insights` | `building_summary` (dbt) |
 |---|---|---|
-| **Geschreven door** | `jobs/spatial.py` (GeoPandas) | dbt mart |
-| **Scope** | Per job (job_id aanwezig) | Alle jobs gecumuleerd |
-| **Doel** | Power BI map visual (bubble per gebouw per run) | Overzicht over alle runs heen |
+| **Written by** | `jobs/spatial.py` (GeoPandas) | dbt mart |
+| **Scope** | Per job (job_id present) | All jobs cumulated |
+| **Purpose** | Power BI map visual (bubble per building per run) | Overview across all runs |
 
 ## Power BI Dashboard
 
@@ -202,7 +202,7 @@ building_id | building_name | lat | lon | anomaly_count | high_count | medium_co
 
 ## Observability
 
-**Architectuur:** OTel Collector ontvangt metrics van drie bronnen en stuurt naar Grafana Cloud.
+**Architecture:** OTel Collector receives metrics from three sources and forwards them to Grafana Cloud.
 
 ```
 Airflow (StatsD)  ──►┐
@@ -210,73 +210,73 @@ jobs/*.py (OTLP)  ──►│  OTel Collector  ──►  Grafana Cloud (Mimir 
 postgres-exporter ──►┘
 ```
 
-**Airflow StatsD** — DAG run duration, task success/failure, retry counts per taak.
+**Airflow StatsD** — DAG run duration, task success/failure, retry counts per task.
 
 **Custom job metrics** (OTel counters via `jobs/metrics.py`):
 
 | Metric | Job |
 |---|---|
-| `p2b.extract.records_scanned` | DynamoDB items gelezen |
-| `p2b.extract.records_written` | Records geschreven naar S3/raw |
-| `p2b.transform.records_raw` | Raw records gelezen |
-| `p2b.transform.records_processed` | Valide records naar S3/processed |
-| `p2b.transform.records_dropped` | Gefilterde records (null, out-of-range) |
-| `p2b.analyze.anomalies_detected` | Totaal anomalieën per run |
-| `p2b.analyze.patterns_detected` | Totaal patronen per run |
-| `p2b.spatial.buildings_processed` | Gebouwen in spatial_insights |
+| `p2b.extract.records_scanned` | DynamoDB items read |
+| `p2b.extract.records_written` | Records written to S3/raw |
+| `p2b.transform.records_raw` | Raw records read |
+| `p2b.transform.records_processed` | Valid records to S3/processed |
+| `p2b.transform.records_dropped` | Filtered records (null, out-of-range) |
+| `p2b.analyze.anomalies_detected` | Total anomalies per run |
+| `p2b.analyze.patterns_detected` | Total patterns per run |
+| `p2b.spatial.buildings_processed` | Buildings in spatial_insights |
 
-**PostgreSQL metrics** — `postgres-exporter` container scrapt query latency, connections, table sizes via Prometheus endpoint → OTel Collector.
+**PostgreSQL metrics** — `postgres-exporter` container scrapes query latency, connections, table sizes via a Prometheus endpoint → OTel Collector.
 
-`jobs/metrics.py` is een no-op als `OTEL_EXPORTER_OTLP_ENDPOINT` niet gezet is — jobs draaien gewoon zonder metrics in lokale dev omgeving.
+`jobs/metrics.py` is a no-op if `OTEL_EXPORTER_OTLP_ENDPOINT` is not set — jobs simply run without metrics in the local dev environment.
 
-## Installatie & Gebruik
+## Installation & Usage
 
 ```bash
 cd backend/project2b-behavior-analyzer
 
-# Lokale database opzetten (PostgreSQL via Docker)
+# Set up local database (PostgreSQL via Docker)
 docker-compose -f docker/docker-compose.yml up -d postgres
 
-# Database migraties uitvoeren
+# Run database migrations
 python scripts/migrate.py
 
-# Kamers seeden met gebouwen en coördinaten
+# Seed rooms with buildings and coordinates
 python scripts/seed_rooms.py
 
-# Handmatig een job starten (vereist .env met AWS + DB credentials)
+# Manually start a job (requires .env with AWS + DB credentials)
 spark-submit --master local[*] jobs/extract.py
 spark-submit --master local[*] jobs/transform.py
 spark-submit --master local[*] jobs/analyze.py
 python jobs/spatial.py
 ```
 
-Zie `.env.example` voor de vereiste environment variabelen.
+See `.env.example` for the required environment variables.
 
 ## Testing
 
 ```bash
-# Virtual environment activeren
+# Activate virtual environment
 source .venv/bin/activate
 
 # Unit tests
 pytest tests/unit/
 
-# Coverage rapport
+# Coverage report
 pytest tests/unit/ --cov=jobs --cov=dags --cov-report=term-missing
 ```
 
-### Coverage aanpak
+### Coverage approach
 
-`pragma: no cover` staat **alleen** op functies die echte infrastructuur vereisen om te draaien:
+`pragma: no cover` is used **only** on functions that require real infrastructure to run:
 
-| Functie | Reden |
+| Function | Reason |
 |---|---|
-| `scan_dynamodb` | Vereist echte DynamoDB verbinding |
-| `write_parquet` | Vereist echte S3 verbinding |
-| `read_raw`, `read_processed` | Vereist echte S3 verbinding |
-| `write_patterns`, `write_anomalies` | Vereist echte PostgreSQL + JDBC |
-| `build_spark` | Vereist een Spark cluster |
+| `scan_dynamodb` | Requires a real DynamoDB connection |
+| `write_parquet` | Requires a real S3 connection |
+| `read_raw`, `read_processed` | Requires a real S3 connection |
+| `write_patterns`, `write_anomalies` | Requires real PostgreSQL + JDBC |
+| `build_spark` | Requires a Spark cluster |
 
-Pipeline orchestratie (`main()` in alle drie jobs) heeft **geen** `pragma: no cover` — dat wordt getest via mocks.
+Pipeline orchestration (`main()` in all three jobs) has **no** `pragma: no cover` — it's tested via mocks.
 
-Toekomstige uitbreiding: integratie tests via LocalStack (S3 mock) + lokale PostgreSQL om de I/O functies ook te dekken.
+Future extension: integration tests via LocalStack (S3 mock) + local PostgreSQL to also cover the I/O functions.

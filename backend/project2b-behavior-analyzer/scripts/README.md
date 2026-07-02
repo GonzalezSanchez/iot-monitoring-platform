@@ -8,67 +8,67 @@
 | `manage_partitions.py` | Creates monthly partitions for `raw_sensor_data` | Before first extract run, then automatically by Airflow DAG |
 | `seed_rooms.py` | Seeds 3 rooms with building names and coordinates | Once after migrate.py — required for spatial analysis |
 
-## Testdata
+## Test Data
 
-Project 2b leest van dezelfde DynamoDB tabel als project 2a (`prod-SensorEvents`).
+Project 2b reads from the same DynamoDB table as project 2a (`prod-SensorEvents`).
 
-Gebruik het seed script van project 2a om testdata te genereren:
+Use the project 2a seed script to generate test data:
 
 ```bash
 python backend/project2a-behavior-analyzer/scripts/seed_dynamodb.py
 ```
 
-Dit genereert 30 dagen aan sensor events voor 5 kamers. Zie project 2a scripts/README.md voor alle opties.
+This generates 30 days of sensor events for 5 rooms. See project 2a scripts/README.md for all options.
 
-## Architectuuroverzicht
+## Architecture Overview
 
-Data lake patroon met drie lagen:
+Data lake pattern with three layers:
 
-| Laag | Opslag | Job |
+| Layer | Storage | Job |
 |------|--------|-----|
 | Landing zone | `s3a://p2b-prod-sensor-events/raw/` | `extract.py` (DynamoDB → S3 Parquet) |
-| Staging | `s3a://p2b-prod-sensor-events/processed/` | `transform.py` (valideren, schoonmaken) |
-| Serving | PostgreSQL (`patterns` + `anomalies`) | `analyze.py` (patronen + anomalieën → Power BI) |
-| Spatial | PostgreSQL (`spatial_insights`) | `spatial.py` (GeoPandas — anomalieën per gebouw → Power BI map) |
+| Staging | `s3a://p2b-prod-sensor-events/processed/` | `transform.py` (validate, clean) |
+| Serving | PostgreSQL (`patterns` + `anomalies`) | `analyze.py` (patterns + anomalies → Power BI) |
+| Spatial | PostgreSQL (`spatial_insights`) | `spatial.py` (GeoPandas — anomalies per building → Power BI map) |
 
-PostgreSQL draait self-hosted op acer-server via Docker. Dit vermijdt AWS RDS kosten (~€15–20/maand)
-en maakt directe Power BI verbinding mogelijk zonder extra AWS services (Athena, Redshift).
+PostgreSQL runs self-hosted on acer-server via Docker. This avoids AWS RDS costs (~€15–20/month)
+and enables a direct Power BI connection without extra AWS services (Athena, Redshift).
 
-## Setup (eerste keer)
+## Setup (first time)
 
 Prerequisites:
-- `.env` bestand aangemaakt (kopieer van `.env.example` en vul in)
-- AWS credentials ingevuld in `.env` (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
-- S3 bucket aangemaakt: `cd infrastructure && terraform apply`
+- `.env` file created (copy from `.env.example` and fill in)
+- AWS credentials filled in `.env` (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
+- S3 bucket created: `cd infrastructure && terraform apply`
 
-> **Belangrijk:** altijd `--env-file .env` meegeven aan `docker compose`. De compose file staat in
-> `docker/` maar `.env` staat in de projectroot — Docker Compose vindt het anders niet.
+> **Important:** always pass `--env-file .env` to `docker compose`. The compose file lives in
+> `docker/` but `.env` lives in the project root — otherwise Docker Compose won't find it.
 
 ```bash
 cd backend/project2b-behavior-analyzer
 
-# Activeer de virtual environment
+# Activate the virtual environment
 source .venv/bin/activate
 
 # 1. Start services (PostgreSQL + Airflow)
 docker compose -f docker/docker-compose.yml --env-file .env up -d
 
-# 2. Maak database tabellen aan
+# 2. Create database tables
 python scripts/migrate.py
 
-# 3. Maak partities aan voor historische + toekomstige maanden
+# 3. Create partitions for historical + future months
 python scripts/manage_partitions.py --months-back 2 --months-ahead 3
 
-# 4. Seed testdata in DynamoDB (eenmalig — hergebruik project 2a script)
+# 4. Seed test data into DynamoDB (one-off — reuses project 2a script)
 python ../project2a-behavior-analyzer/scripts/seed_dynamodb.py
 
-# 5. Seed kamers met gebouwen en coördinaten
+# 5. Seed rooms with buildings and coordinates
 python scripts/seed_rooms.py
 
-# 6. Draai de pipeline
-#    Benodigde JAR pakketten:
-#      - hadoop-aws + aws-java-sdk-bundle: S3A connector (s3a:// schema voor Spark)
-#      - postgresql JDBC driver: voor JDBC write naar PostgreSQL (alleen analyze.py)
+# 6. Run the pipeline
+#    Required JAR packages:
+#      - hadoop-aws + aws-java-sdk-bundle: S3A connector (s3a:// schema for Spark)
+#      - postgresql JDBC driver: for JDBC write to PostgreSQL (analyze.py only)
 PACKAGES="org.apache.hadoop:hadoop-aws:3.4.2,com.amazonaws:aws-java-sdk-bundle:1.12.262,org.postgresql:postgresql:42.7.3"
 S3A="com.amazonaws.auth.DefaultAWSCredentialsProviderChain"
 
@@ -79,14 +79,14 @@ spark-submit --packages $PACKAGES --conf spark.hadoop.fs.s3a.aws.credentials.pro
 
 ## migrate.py
 
-Maakt de serving layer tabellen aan in PostgreSQL. Idempotent — veilig om meerdere keren te draaien.
+Creates the serving layer tables in PostgreSQL. Idempotent — safe to run multiple times.
 
-Aangemaakt:
-- `rooms` — statische kamer/gebouw registry met coördinaten — gevuld via `seed_rooms.py`
-- `patterns` — geaggregeerde patroonresultaten (occupancy_schedule, temperature_trend) — geschreven door `analyze.py`
-- `anomalies` — gedetecteerde anomalieën — geschreven door `analyze.py`
-- `spatial_insights` — anomalieën geaggregeerd per gebouw met coördinaten — geschreven door `spatial.py`
-- `raw_sensor_data` — gepartitioneerde tabel (S3 Parquet is de primaire opslag; deze tabel is aanwezig voor uitbreidingen)
+Created:
+- `rooms` — static room/building registry with coordinates — populated via `seed_rooms.py`
+- `patterns` — aggregated pattern results (occupancy_schedule, temperature_trend) — written by `analyze.py`
+- `anomalies` — detected anomalies — written by `analyze.py`
+- `spatial_insights` — anomalies aggregated per building with coordinates — written by `spatial.py`
+- `raw_sensor_data` — partitioned table (S3 Parquet is the primary storage; this table exists for future extensions)
 
 ```bash
 python scripts/migrate.py
@@ -94,36 +94,36 @@ python scripts/migrate.py
 
 ## manage_partitions.py
 
-Maakt maandelijkse partities aan voor de `raw_sensor_data` tabel. Airflow draait dit automatisch
-aan het begin van elke DAG run. Handmatig draaien is alleen nodig voor de eerste setup.
+Creates monthly partitions for the `raw_sensor_data` table. Airflow runs this automatically
+at the start of every DAG run. Running it manually is only needed for the first setup.
 
 ```bash
-# Maak partities voor de komende 3 maanden
+# Create partitions for the next 3 months
 python scripts/manage_partitions.py --months-ahead 3
 
-# Maak ook historische partities aan (voor bestaande of gebackfillde data)
+# Also create historical partitions (for existing or backfilled data)
 python scripts/manage_partitions.py --months-back 2 --months-ahead 3
 
-# Dry run — print SQL zonder uit te voeren
+# Dry run — print SQL without executing
 python scripts/manage_partitions.py --months-ahead 3 --dry-run
 ```
 
-## Lokale setup vs. acer-server
+## Local setup vs. acer-server
 
-- **Lokaal:** Docker Compose op je eigen machine — voor development en testen
-- **acer-server:** Docker Compose op `ags@acer.gonzalezsanchez.dev` — permanente deployment
-  - Airflow UI: bereikbaar via SSH tunnel of lokaal netwerk op poort 8080 (niet publiek exposed)
-  - Containers herstarten automatisch na server reboot (`restart: unless-stopped`)
-  - Nooit committen op de server — alleen `git pull`
+- **Local:** Docker Compose on your own machine — for development and testing
+- **acer-server:** Docker Compose on `ags@acer.gonzalezsanchez.dev` — permanent deployment
+  - Airflow UI: reachable via SSH tunnel or local network on port 8080 (not publicly exposed)
+  - Containers restart automatically after a server reboot (`restart: unless-stopped`)
+  - Never commit on the server — only `git pull`
 
 ```bash
-# Deployen op de server
+# Deploy on the server
 ssh ags@acer.gonzalezsanchez.dev
 cd ~/portfolio/projects/iot-monitoring-platform/backend/project2b-behavior-analyzer
 git pull origin main
 docker compose -f docker/docker-compose.yml --env-file .env up -d
 
-# Airflow UI bekijken via SSH tunnel (op je dev machine)
+# View Airflow UI via SSH tunnel (on your dev machine)
 ssh -L 8080:localhost:8080 ags@acer.gonzalezsanchez.dev
 # Open http://localhost:8080 — user: admin
 ```

@@ -1,27 +1,27 @@
 # Project 2b: Jenkins CD Pipeline
 
-## Beschrijving
+## Description
 
-Declaratieve Jenkins CD pipeline voor project 2b (Behavior Pattern Analyzer). Automatiseert
-het deployen van PySpark jobs, Airflow DAGs, en Terraform infrastructure, met environment
-promotie (dev → staging → prod). Jenkins draait lokaal via Docker voor portfolio demonstratie.
+Declarative Jenkins CD pipeline for project 2b (Behavior Pattern Analyzer). Automates
+deployment of PySpark jobs, Airflow DAGs, and Terraform infrastructure, with environment
+promotion (dev → staging → prod). Jenkins runs locally via Docker for portfolio demonstration.
 
-**CI/CD splitsing (bewuste architectuurkeuze):**
-- **CI** = GitHub Actions — linting, mypy, unit tests, terraform validate → snel, gratis,
-  draait op elke push
-- **CD** = Jenkins — terraform apply, DAG deploy, environment promotie → geeft controle over
-  deployment gates en rollback
+**CI/CD split (deliberate architecture choice):**
+- **CI** = GitHub Actions — linting, mypy, unit tests, terraform validate → fast, free,
+  runs on every push
+- **CD** = Jenkins — terraform apply, DAG deploy, environment promotion → provides control over
+  deployment gates and rollback
 
 ## Tech Stack
 
-- **Orkestratie:** Jenkins LTS (declarative pipeline, Groovy DSL)
+- **Orchestration:** Jenkins LTS (declarative pipeline, Groovy DSL)
 - **Containerization:** Docker + Docker Compose (Jenkins + agent)
 - **Infra:** Terraform (RDS PostgreSQL + S3 + IAM)
-- **Deploy:** Airflow CLI (DAG sync) + spark-submit (job validatie)
+- **Deploy:** Airflow CLI (DAG sync) + spark-submit (job validation)
 - **Secrets:** Jenkins Credentials Store (AWS keys, DB passwords)
-- **Notificaties:** Jenkins e-mail + pipeline status badges
+- **Notifications:** Jenkins email + pipeline status badges
 
-## Architectuur
+## Architecture
 
 ```
 Developer (git push)
@@ -40,58 +40,58 @@ Jenkins CD Pipeline (lokaal via Docker)
         │
         ├── Stage 3: Terraform Plan
         │   ├── terraform init
-        │   └── terraform plan -out=tfplan → opgeslagen als artifact
+        │   └── terraform plan -out=tfplan → saved as artifact
         │
-        ├── Stage 4: Approval Gate  ◀── handmatige bevestiging vereist
-        │   └── input("Deploy naar ${ENV}?")
+        ├── Stage 4: Approval Gate  ◀── manual confirmation required
+        │   └── input("Deploy to ${ENV}?")
         │
         ├── Stage 5: Terraform Apply
         │   └── terraform apply tfplan  (RDS PostgreSQL + S3 + IAM)
         │
-        ├── Stage 6: DB Migratie
+        ├── Stage 6: DB Migration
         │   └── python scripts/migrate.py  (raw_sensor_data, patterns, anomalies)
         │
         ├── Stage 7: Deploy Airflow DAGs
-        │   └── airflow dags sync → behavior_pipeline beschikbaar in Airflow UI
+        │   └── airflow dags sync → behavior_pipeline available in Airflow UI
         │
         ├── Stage 8: Smoke Test
         │   ├── airflow dags trigger behavior_pipeline --conf '{"days_back": 1}'
-        │   └── airflow dags state behavior_pipeline → verwacht: success
+        │   └── airflow dags state behavior_pipeline → expected: success
         │
         └── Stage 9: Notify
-            └── e-mail / console output met deployment samenvatting
+            └── email / console output with deployment summary
 ```
 
 ## Pipeline Parameters
 
-| Parameter | Default | Opties |
+| Parameter | Default | Options |
 |-----------|---------|--------|
 | `ENVIRONMENT` | `dev` | `dev`, `staging`, `prod` |
 | `PIPELINE_ACTION` | `deploy` | `deploy`, `destroy` |
 | `SKIP_TESTS` | `false` | `true`, `false` |
-| `DRY_RUN` | `false` | `true`, `false` (plan alleen, geen apply) |
+| `DRY_RUN` | `false` | `true`, `false` (plan only, no apply) |
 | `MIGRATE_DB` | `true` | `true`, `false` |
 
-> **`destroy`** draait `terraform destroy` om RDS + S3 te verwijderen en kosten te stoppen.
-> Zelfde patroon als project 2a — deploy wanneer nodig, destroy daarna.
+> **`destroy`** runs `terraform destroy` to remove RDS + S3 and stop costs.
+> Same pattern as project 2a — deploy when needed, destroy afterward.
 
-## Directory Structuur
+## Directory Structure
 
 ```
 backend/project2b-behavior-analyzer/
-├── Jenkinsfile                  ← declaratieve pipeline (hoofd-entrypoint)
+├── Jenkinsfile                  ← declarative pipeline (main entrypoint)
 ├── docker/
 │   └── docker-compose.yml       ← Jenkins LTS + Docker-in-Docker agent
 ├── scripts/
-│   ├── migrate.py               ← DB schema aanmaken (idempotent)
+│   ├── migrate.py               ← create DB schema (idempotent)
 │   ├── run_smoke_tests.sh       ← DAG trigger + status check
-│   └── notify.sh                ← notificatie helperfunctie
-├── shared-library/              ← Jenkins shared library (herbruikbare stappen)
+│   └── notify.sh                ← notification helper function
+├── shared-library/              ← Jenkins shared library (reusable steps)
 │   └── vars/
 │       ├── terraformPlan.groovy
 │       ├── terraformApply.groovy
 │       └── airflowDagSync.groovy
-├── requirements-dev.txt         ← pytest, ruff, mypy (voor test stage in pipeline)
+├── requirements-dev.txt         ← pytest, ruff, mypy (for test stage in pipeline)
 ├── README.md
 └── .env.example                 ← AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, etc.
 ```
@@ -122,13 +122,13 @@ pipeline {
                                   steps { sh 'pytest tests/unit/ --cov-fail-under=80' } }
         stage('TF Plan')        { when { expression { params.PIPELINE_ACTION == 'deploy' } }
                                   steps { sh 'terraform plan -out=tfplan' } }
-        stage('Approval')       { steps { input "${params.PIPELINE_ACTION.capitalize()} naar ${params.ENVIRONMENT}?" } }
+        stage('Approval')       { steps { input "${params.PIPELINE_ACTION.capitalize()} to ${params.ENVIRONMENT}?" } }
         stage('TF Apply')       { when { allOf {
                                       expression { params.PIPELINE_ACTION == 'deploy' }
                                       not { expression { params.DRY_RUN } }
                                   }}
                                   steps { sh 'terraform apply tfplan' } }
-        stage('DB Migratie')    { when { allOf {
+        stage('DB Migration')   { when { allOf {
                                       expression { params.PIPELINE_ACTION == 'deploy' }
                                       expression { params.MIGRATE_DB }
                                   }}
@@ -150,64 +150,64 @@ pipeline {
 
     post {
         always   { junit 'test-results/*.xml' }
-        success  { echo 'Deployment geslaagd' }
-        failure  { echo 'Deployment mislukt — rollback overwegen' }
+        success  { echo 'Deployment succeeded' }
+        failure  { echo 'Deployment failed — consider rollback' }
     }
 }
 ```
 
-## Lokale Jenkins Setup
+## Local Jenkins Setup
 
 ```bash
-# Jenkins starten via Docker Compose
+# Start Jenkins via Docker Compose
 cd backend/project2b-behavior-analyzer/docker
 docker compose up -d
 
-# Jenkins bereikbaar via browser
+# Jenkins reachable via browser
 open http://localhost:8080
 
-# Initial admin password ophalen
+# Retrieve initial admin password
 docker exec jenkins-lts cat /var/jenkins_home/secrets/initialAdminPassword
 ```
 
-## Secrets Configuratie (Jenkins Credentials Store)
+## Secrets Configuration (Jenkins Credentials Store)
 
-Voeg toe via Jenkins UI → Manage Jenkins → Credentials:
+Add via Jenkins UI → Manage Jenkins → Credentials:
 
-| ID | Type | Beschrijving |
+| ID | Type | Description |
 |----|------|--------------|
 | `aws-access-key-id` | Secret text | AWS Access Key ID |
 | `aws-secret-access-key` | Secret text | AWS Secret Access Key |
 | `db-password-dev` | Secret text | PostgreSQL password (dev) |
 | `db-password-prod` | Secret text | PostgreSQL password (prod) |
 
-**Nooit** AWS credentials in de `Jenkinsfile` of environment files committen.
+**Never** commit AWS credentials in the `Jenkinsfile` or environment files.
 
-## Environment Promotie Strategie
+## Environment Promotion Strategy
 
 ```
-feature branch → dev      (automatisch na CI groen)
-dev → staging             (handmatige approval via Jenkins input step)
-staging → prod            (handmatige approval + second-pair sign-off)
+feature branch → dev      (automatic after CI green)
+dev → staging             (manual approval via Jenkins input step)
+staging → prod            (manual approval + second-pair sign-off)
 ```
 
-## Installatie & Gebruik
+## Installation & Usage
 
 ```bash
 cd backend/project2b-behavior-analyzer
 
-# 1. Jenkins starten
+# 1. Start Jenkins
 docker compose -f docker/docker-compose.yml up -d
 
-# 2. Jenkins configureren (eerste keer)
-#    - Installeer plugins: Pipeline, Docker Pipeline, Credentials Binding
-#    - Voeg credentials toe (AWS keys, DB passwords)
-#    - Maak pipeline job aan → koppel aan deze repository
+# 2. Configure Jenkins (first time)
+#    - Install plugins: Pipeline, Docker Pipeline, Credentials Binding
+#    - Add credentials (AWS keys, DB passwords)
+#    - Create pipeline job → link to this repository
 
-# 3. Pipeline handmatig triggeren
+# 3. Manually trigger pipeline
 #    Jenkins UI → Pipeline → Build with Parameters
 
-# 4. Pipeline lokaal debuggen (zonder Jenkins)
+# 4. Debug pipeline locally (without Jenkins)
 terraform plan -out=tfplan
 terraform apply tfplan
 python scripts/migrate.py
@@ -218,11 +218,11 @@ bash scripts/run_smoke_tests.sh
 ## Testing
 
 ```bash
-# Shared library Groovy stappen testen (unit)
+# Test shared library Groovy steps (unit)
 cd shared-library
 ./gradlew test
 
-# Script testen (bash)
+# Test scripts (bash)
 bash -n scripts/run_smoke_tests.sh   # syntax check
 bash -n scripts/notify.sh
 ```
