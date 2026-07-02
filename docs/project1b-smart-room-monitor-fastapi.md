@@ -1,41 +1,41 @@
 # Project 1b — Smart Room Monitor (FastAPI)
 
-## Overzicht
-Dit document beschrijft de FastAPI-versie van de Smart Room Monitor backend (project1b). Het bevat uitleg over de architectuur, gebruikte technologieën, endpoints, en migratie vanuit de oorspronkelijke Lambda-implementatie.
+## Overview
+This document describes the FastAPI version of the Smart Room Monitor backend (project1b). It explains the architecture, technologies used, endpoints, and migration from the original Lambda implementation.
 
-## Inhoud
-- Doel en scope
-- Architectuuroverzicht
-- Verschillen t.o.v. Lambda-versie
-- API-endpoints
-- Hergebruikte code
-- Installatie en starten
-- Toekomstige uitbreidingen
+## Contents
+- Purpose and scope
+- Architecture overview
+- Differences from the Lambda version
+- API endpoints
+- Reused code
+- Installation and startup
+- Future extensions
 
-## 1. Doel en scope
-Deze backend biedt een REST API voor het monitoren van ruimtes en sensorgegevens, als alternatief voor de serverless Lambda-oplossing.
+## 1. Purpose and scope
+This backend provides a REST API for monitoring rooms and sensor data, as an alternative to the serverless Lambda solution.
 
-## 2. Architectuuroverzicht
+## 2. Architecture overview
 - **Framework:** FastAPI
 - **Database:** DynamoDB (via boto3)
-- **Structuur:** models/, repositories/, services/, utils/
-- **API:** REST endpoints voor rooms en events
+- **Structure:** models/, repositories/, services/, utils/
+- **API:** REST endpoints for rooms and events
 
-## 3. Verschillen t.o.v. Lambda-versie
-- Geen AWS Lambda, maar een eigen FastAPI-server
-- Eenvoudiger lokaal te testen en uit te breiden
-- Zelf verantwoordelijk voor hosting en scaling
+## 3. Differences from the Lambda version
+- No AWS Lambda, but a dedicated FastAPI server
+- Easier to test and extend locally
+- Responsible for its own hosting and scaling
 
-## 4. API-endpoints (voorbeeld)
-- `GET /rooms` — lijst van alle ruimtes
-- `GET /rooms/{room_id}` — details van één ruimte
-- `POST /events` — nieuw event toevoegen
+## 4. API endpoints (example)
+- `GET /rooms` — list of all rooms
+- `GET /rooms/{room_id}` — details of a single room
+- `POST /events` — add a new event
 
-## 5. Hergebruikte code
-- Models, repositories en services grotendeels overgenomen uit project1
-- Aanpassingen voor FastAPI routing en dependency injection
+## 5. Reused code
+- Models, repositories, and services mostly carried over from project1
+- Adjustments for FastAPI routing and dependency injection
 
-## 6. Installatie en starten
+## 6. Installation and startup
 ```bash
 cd backend/project1b-smart-room-monitor-fastapi
 pip install -r requirements.txt
@@ -51,17 +51,17 @@ FastAPI (opentelemetry-instrument uvicorn)
   → OTLP gRPC → OTel Collector → Datadog (datadoghq.eu)
 ```
 
-- **Auto-instrumentatie:** `opentelemetry-instrument` wikkelt uvicorn in — geen code-wijzigingen in `main.py`
-- **Traces:** elke HTTP request + DynamoDB calls als child spans
+- **Auto-instrumentation:** `opentelemetry-instrument` wraps uvicorn — no code changes in `main.py`
+- **Traces:** every HTTP request + DynamoDB calls as child spans
 - **Metrics:** request latency, throughput, error rate
-- **Logs:** trace ID correlatie via `OTEL_PYTHON_LOG_CORRELATION=true`
-- **Vendor-neutral:** backend stuurt OTLP, alleen de Collector config wijzigt bij overstap naar Grafana Stack
+- **Logs:** trace ID correlation via `OTEL_PYTHON_LOG_CORRELATION=true`
+- **Vendor-neutral:** backend sends OTLP, only the Collector config changes when switching to Grafana Stack
 
-Zie `temp/stappen_observability_project1b.md` voor de volledige implementatie.
+See `temp/stappen_observability_project1b.md` for the full implementation.
 
-## 8. Toekomstige uitbreidingen
-- Authenticatie/authorisatie (JWT via Cognito — zie Project 3)
-- Meer endpoints (bijv. voor sensoren)
-- Overstap observability naar Grafana Stack (Tempo + Loki + Prometheus) na Datadog trial
-- Docs uitbreiden: OTel/Datadog setup, nginx reverse proxy, docker-compose productie-architectuur
-- Korte operations sectie: redeploy procedure, Cloudflare tunnel herstel
+## 8. Future extensions
+- Authentication/authorization (JWT via Cognito — see Project 3)
+- More endpoints (e.g. for sensors)
+- Switch observability to Grafana Stack (Tempo + Loki + Prometheus) after the Datadog trial
+- Expand docs: OTel/Datadog setup, nginx reverse proxy, docker-compose production architecture
+- Short operations section: redeploy procedure, Cloudflare tunnel recovery

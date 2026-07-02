@@ -1,68 +1,68 @@
 # Jobs — Databricks PySpark pipeline
 
-De drie PySpark jobs vormen de Bronze → Silver pipeline. Ze draaien als Databricks Jobs via DABs (`databricks.yml`).
+The three PySpark jobs make up the Bronze → Silver pipeline. They run as Databricks Jobs via DABs (`databricks.yml`).
 
 ## Jobs
 
-| Job | Input | Output | Beschrijving |
+| Job | Input | Output | Description |
 |-----|-------|--------|--------------|
-| `bronze_autoloader.py` | ADLS Bronze (JSON) | `bronze.sensor_events` | Auto Loader leest nieuwe JSON bestanden incrementeel via `cloudFiles` |
-| `silver_wap.py` | `bronze.sensor_events` | `silver.sensor_events` + `silver.sensor_events_quarantine` | WAP patroon: valideer elke rij, goede records via MERGE, slechte naar quarantine |
-| `optimize_vacuum.py` | `silver.sensor_events` | — | `OPTIMIZE` (compaction) + `VACUUM` (oude bestanden opruimen) |
+| `bronze_autoloader.py` | ADLS Bronze (JSON) | `bronze.sensor_events` | Auto Loader incrementally reads new JSON files via `cloudFiles` |
+| `silver_wap.py` | `bronze.sensor_events` | `silver.sensor_events` + `silver.sensor_events_quarantine` | WAP pattern: validate each row, good records via MERGE, bad ones to quarantine |
+| `optimize_vacuum.py` | `silver.sensor_events` | — | `OPTIMIZE` (compaction) + `VACUUM` (cleaning up old files) |
 
-## Uitvoering
+## Execution
 
-Jobs draaien via DABs:
+Jobs run via DABs:
 ```bash
 databricks bundle run iot_pipeline
 ```
 
-Of individueel:
+Or individually:
 ```bash
 databricks bundle run iot_pipeline --task bronze_autoloader
 databricks bundle run iot_pipeline --task silver_wap
 ```
 
-## WAP patroon (`silver_wap.py`)
+## WAP pattern (`silver_wap.py`)
 
-Write-Audit-Publish garandeert datakwaliteit:
+Write-Audit-Publish guarantees data quality:
 
 ```
 Bronze batch
     ↓ validate_batch()
-    ├── good records  → MERGE INTO silver.sensor_events    (idempotent op event_id)
-    └── bad records   → APPEND silver.sensor_events_quarantine (nooit verwijderd)
+    ├── good records  → MERGE INTO silver.sensor_events    (idempotent on event_id)
+    └── bad records   → APPEND silver.sensor_events_quarantine (never deleted)
 ```
 
-Validatieregels:
-- `event_id`, `room_id`, `sensor_type`, `value` mogen niet null zijn
-- `room_id` mag niet leeg zijn
-- `sensor_type` moet een van: `temperature`, `co2`, `occupancy`, `humidity`
-- `timestamp` moet parseerbaar zijn als ISO-8601
+Validation rules:
+- `event_id`, `room_id`, `sensor_type`, `value` must not be null
+- `room_id` must not be empty
+- `sensor_type` must be one of: `temperature`, `co2`, `occupancy`, `humidity`
+- `timestamp` must be parseable as ISO-8601
 
-## Teststrategie
+## Test Strategy
 
-### Wat wel unit-getest wordt
+### What is unit-tested
 
-`validate_batch()` bevat alle business logica en is volledig unit-testbaar: pure PySpark transformaties, geen Delta of Azure verbinding nodig.
+`validate_batch()` contains all the business logic and is fully unit-testable: pure PySpark transformations, no Delta or Azure connection needed.
 
 ```bash
 pytest tests/unit/test_silver_wap.py -v
 ```
 
-43 tests, 94% coverage op `silver_wap.py`.
+43 tests, 94% coverage on `silver_wap.py`.
 
-### Wat niet unit-getest wordt
+### What isn't unit-tested
 
-| Functie | Reden |
+| Function | Reason |
 |---------|-------|
-| `ensure_tables()` | Vereist live Unity Catalog voor `CREATE TABLE IF NOT EXISTS` |
-| `merge_good_records()` | Vereist `DeltaTable.forName()` — live Delta catalog |
-| `write_quarantine()` | Vereist `df.write.format("delta").saveAsTable()` — live Delta |
-| `run()`, `main()` | Orchestratie van bovenstaande |
-| `bronze_autoloader.py` | Vereist `cloudFiles` (Auto Loader) — alleen op Databricks |
-| `optimize_vacuum.py` | Vereist `OPTIMIZE`/`VACUUM` SQL — alleen op Delta |
+| `ensure_tables()` | Requires a live Unity Catalog for `CREATE TABLE IF NOT EXISTS` |
+| `merge_good_records()` | Requires `DeltaTable.forName()` — live Delta catalog |
+| `write_quarantine()` | Requires `df.write.format("delta").saveAsTable()` — live Delta |
+| `run()`, `main()` | Orchestration of the above |
+| `bronze_autoloader.py` | Requires `cloudFiles` (Auto Loader) — Databricks only |
+| `optimize_vacuum.py` | Requires `OPTIMIZE`/`VACUUM` SQL — Delta only |
 
-**Waarom geen mocks?** `DeltaTable.merge()` mocken test alleen of de mock aangeroepen wordt — niet of de Delta operatie correct werkt. Tijdens ontwikkeling zijn twee echte bugs gevonden via integration testing die mocks nooit zouden vangen (schema mismatch, ontbrekende `SINGLE_USER` cluster mode).
+**Why no mocks?** Mocking `DeltaTable.merge()` only tests whether the mock gets called — not whether the Delta operation actually works correctly. During development, two real bugs were found via integration testing that mocks would never catch (schema mismatch, missing `SINGLE_USER` cluster mode).
 
-Deze functies zijn gemarkeerd met `# pragma: no cover` en integration-getest na `terraform apply`.
+These functions are marked with `# pragma: no cover` and integration-tested after `terraform apply`.

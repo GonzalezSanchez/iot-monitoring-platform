@@ -1,8 +1,8 @@
 # Project 2a — Behavior Pattern Analyzer (AWS native)
 
-## Beschrijving
+## Description
 
-ETL pipeline die historische sensor data uit project 1a (DynamoDB) leest, gedragspatronen en anomalieën detecteert per kamer, en de resultaten opslaat in Aurora PostgreSQL. Resultaten zijn opvraagbaar via een REST API.
+ETL pipeline that reads historical sensor data from project 1a (DynamoDB), detects behavior patterns and anomalies per room, and stores the results in Aurora PostgreSQL. Results are queryable via a REST API.
 
 ## Deployment
 
@@ -17,22 +17,22 @@ To destroy: `cd infrastructure && terraform destroy`
 - **Cloud Services:** AWS Lambda, Step Functions, EventBridge, Aurora Serverless v2 (PostgreSQL), Secrets Manager, API Gateway
 - **Database:** Aurora Serverless v2 (PostgreSQL — scales to zero when idle)
 - **IaC:** Terraform
-- **Containerization:** Docker (lokale ontwikkeling + CI)
+- **Containerization:** Docker (local development + CI)
 - **Testing:** pytest (unit, integration, regression)
 - **CI/CD:** GitHub Actions
 
 ## Features
 
-- ETL pipeline: Extract (DynamoDB → Aurora) → Transform (validatie + normalisatie) → Analyze (pattern + anomaly detection)
+- ETL pipeline: Extract (DynamoDB → Aurora) → Transform (validation + normalization) → Analyze (pattern + anomaly detection)
 - Pattern detection: `occupancy_schedule`, `temperature_trend`
-- Anomaly detection: `temperature` (z ≥ 3σ → medium, z ≥ 5σ → high, populatie stddev), `unusual_activity` (beweging buiten typische bezettingsuren, medium)
+- Anomaly detection: `temperature` (z ≥ 3σ → medium, z ≥ 5σ → high, population stddev), `unusual_activity` (motion outside typical occupancy hours, medium)
 - Scheduled batch processing via EventBridge + Step Functions
-- REST API voor het ophalen van resultaten per entity
+- REST API for retrieving results per entity
 
 ## API Endpoints
 
 ### POST /analyze/patterns
-Start een nieuwe ETL-job voor een tijdvenster.
+Start a new ETL job for a time window.
 
 **Request:**
 ```json
@@ -41,7 +41,7 @@ Start een nieuwe ETL-job voor een tijdvenster.
 }
 ```
 
-`days_back` is optioneel (default: 7).
+`days_back` is optional (default: 7).
 
 **Response (202):**
 ```json
@@ -54,7 +54,7 @@ Start een nieuwe ETL-job voor een tijdvenster.
 ---
 
 ### GET /analyze/patterns/{job_id}
-Haal alle gedetecteerde patterns op voor een specifieke job.
+Retrieve all detected patterns for a specific job.
 
 **Response (200):**
 ```json
@@ -77,7 +77,7 @@ Haal alle gedetecteerde patterns op voor een specifieke job.
 ---
 
 ### GET /insights/{entity_type}/{entity_id}
-Haal alle patterns en anomalieën op voor één entity (kamer of device).
+Retrieve all patterns and anomalies for a single entity (room or device).
 
 **Response (200):**
 ```json
@@ -111,7 +111,7 @@ Haal alle patterns en anomalieën op voor één entity (kamer of device).
 
 ## Database Schema (Aurora PostgreSQL)
 
-**Table:** `rooms` *(statische referentietabel — gevuld via `seed_rooms.py`)*
+**Table:** `rooms` *(static reference table — populated via `seed_rooms.py`)*
 ```sql
 CREATE TABLE rooms (
     room_id       TEXT             PRIMARY KEY,
@@ -170,7 +170,7 @@ CREATE TABLE anomalies (
 );
 ```
 
-## Architectuur
+## Architecture
 
 ```
 EventBridge (Scheduled) ──► Step Functions
@@ -188,11 +188,11 @@ API Gateway ──► Lambda (POST /analyze/patterns)  → Step Functions (start
             ──► Lambda (GET  /insights/{entity_type}/{entity_id}) → Aurora PostgreSQL
 ```
 
-**ETL stappen:**
+**ETL steps:**
 
-1. **Extract** — leest SensorEvents uit DynamoDB (project 1a) voor het opgegeven tijdvenster, schrijft naar `raw_sensor_data`
-2. **Transform** — valideert en normaliseert de ruwe data (deduplicatie, type casting)
-3. **Analyze** — detecteert patterns en anomalieën per kamer, schrijft naar `patterns` en `anomalies`
+1. **Extract** — reads SensorEvents from DynamoDB (project 1a) for the given time window, writes to `raw_sensor_data`
+2. **Transform** — validates and normalizes the raw data (deduplication, type casting)
+3. **Analyze** — detects patterns and anomalies per room, writes to `patterns` and `anomalies`
 
 ## Screenshots
 
@@ -208,28 +208,28 @@ API Gateway ──► Lambda (POST /analyze/patterns)  → Step Functions (start
 
 Intentionally excluded from this project — see [Project 3: IoT Device Gateway](project3-iot-gateway.md) for authentication with JWT via Cognito.
 
-Aurora credentials worden beheerd via AWS Secrets Manager (productie) of `.env` (lokaal).
+Aurora credentials are managed via AWS Secrets Manager (production) or `.env` (local).
 
-## Installatie & Gebruik
+## Installation & Usage
 
 ```bash
 cd backend/project2a-behavior-analyzer
 
-# Lokale database opzetten (PostgreSQL via Docker)
+# Set up local database (PostgreSQL via Docker)
 docker-compose up -d db
 
-# Database migraties uitvoeren
+# Run database migrations
 python scripts/migrate.py
 
-# Kamers seeden met gebouwen en coördinaten
+# Seed rooms with buildings and coordinates
 python scripts/seed_rooms.py
 
-# Deploy naar AWS (Terraform)
+# Deploy to AWS (Terraform)
 cd infrastructure
 terraform init
 terraform apply
 
-# Handmatig een analyse starten
+# Manually start an analysis
 curl -X POST https://<api-gateway-url>/analyze/patterns \
   -H "Content-Type: application/json" \
   -d '{"days_back": 7}'
@@ -238,10 +238,10 @@ curl -X POST https://<api-gateway-url>/analyze/patterns \
 ## Testing
 
 ```bash
-# Unit tests (gemockte AWS + DB)
+# Unit tests (mocked AWS + DB)
 pytest tests/unit/
 
-# Integration tests (vereist lokale PostgreSQL)
+# Integration tests (requires local PostgreSQL)
 pytest tests/integration/
 
 # Regression tests

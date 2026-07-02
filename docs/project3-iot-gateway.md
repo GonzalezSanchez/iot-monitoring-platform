@@ -4,28 +4,28 @@ Secure gateway for IoT device registration, authentication, and message delivery
 Simulates the device layer of a production IoT platform — how physical sensors
 authenticate and send data securely before it reaches the ingestion layer (Project 1).
 
-Secure gateway voor IoT devices met authenticatie, rate limiting, en message queuing. Simuleert een production-ready IoT platform met device management.
+Secure gateway for IoT devices with authentication, rate limiting, and message queuing. Simulates a production-ready IoT platform with device management.
 
-## Implementatievarianten
+## Implementation Variants
 
-Net als project 1/1b en 2a/2b wordt project 3 in twee varianten gebouwd — zelfde beveiligingsconcept, andere infrastructuur:
+Like project 1/1b and 2a/2b, project 3 is built in two variants — same security concept, different infrastructure:
 
 | | AWS variant (3a) | FastAPI variant (3b) |
 |---|---|---|
-| Device auth | Cognito + API Gateway authorizer | Custom API keys — gehashed in DynamoDB, gevalideerd via FastAPI `Depends()` |
-| JWT | Cognito uitreikt | `python-jose` — zelf implementeren |
-| Message queue | SQS | Lokaal: Redis of simpele DB queue |
+| Device auth | Cognito + API Gateway authorizer | Custom API keys — hashed in DynamoDB, validated via FastAPI `Depends()` |
+| JWT | Issued by Cognito | `python-jose` — implemented in-house |
+| Message queue | SQS | Local: Redis or simple DB queue |
 | Rate limiting | API Gateway built-in | Custom middleware in FastAPI |
 
-**Gekozen aanpak voor 3b:** optie 1 — API keys per device. Device registreert, ontvangt een gegenereerde key, elke request valideert via `Depends()`. Toont security thinking (hashing, least-privilege, rate limiting) zonder een volledige auth server. Past bij de portfolio filosofie: niet overengineeren, maar het principe aantonen.
+**Chosen approach for 3b:** option 1 — API keys per device. A device registers, receives a generated key, and every request is validated via `Depends()`. Demonstrates security thinking (hashing, least privilege, rate limiting) without a full auth server. Fits the portfolio philosophy: don't overengineer, but demonstrate the principle.
 
-**Async als ontwerpprincipe (3b).** De gateway wordt vanaf dag één async gebouwd (`async def`
-routes + async I/O). Motivatie: een IoT-gateway is hét async-usecase — veel devices die
-tegelijk verbinden en veel gelijktijdige kleine requests (I/O-bound). Dit staat bewust in
-contrast met project 1b, dat sync is gebleven: bij die load volstaat de threadpool, en de
-herschrijving zou geen functionele winst opleveren. Bij de gateway zit de concurrency wél
-in het probleemdomein. (Project 4 gebruikt async om een andere reden: trage LLM I/O,
-parallelle tool calls en streaming — zie `project4-llm-mcp.md`.)
+**Async as a design principle (3b).** The gateway is built async from day one (`async def`
+routes + async I/O). Rationale: an IoT gateway is the async use case par excellence — many devices
+connecting at once and lots of concurrent small requests (I/O-bound). This deliberately
+contrasts with project 1b, which stayed sync: at that load the threadpool is sufficient, and
+rewriting it wouldn't yield any functional gain. In the gateway, though, the concurrency really
+is inherent to the problem domain. (Project 4 uses async for a different reason: slow LLM I/O,
+parallel tool calls, and streaming — see `project4-llm-mcp.md`.)
 
 ---
 
@@ -256,21 +256,21 @@ project3-iot-gateway/
 └── README.md
 ```
 
-Configureerbaar per device type.
+Configurable per device type.
 
 ---
 
 ## Load Testing (locust)
 
-Rate limiting is alleen geloofwaardig als je het kunt bewijzen. Loadtesting met locust toont aan dat:
-- Device X geblokkeerd wordt na X requests/minuut (429 Too Many Requests)
-- Andere devices niet geraakt worden door het gedrag van één device
-- De gateway stabiel blijft onder burst traffic
+Rate limiting is only credible if you can prove it. Load testing with locust demonstrates that:
+- Device X gets blocked after X requests/minute (429 Too Many Requests)
+- Other devices are unaffected by one device's behavior
+- The gateway stays stable under burst traffic
 
-### Scenario's
+### Scenarios
 
-1. **Normal load** — 10 devices, elk 1 request/seconde → alles 200
-2. **Rate limit hit** — 1 device stuurt 200 requests/minuut → 429 na de drempel
-3. **Burst isolation** — 1 device bombarded, 9 andere ongestoord → bewijst per-device isolatie
+1. **Normal load** — 10 devices, each 1 request/second → all 200
+2. **Rate limit hit** — 1 device sends 200 requests/minute → 429 past the threshold
+3. **Burst isolation** — 1 device bombarded, 9 others unaffected → proves per-device isolation
 
-Dit is het sterkste argument voor loadtesting in project 3 — niet performance, maar correctheid van de rate limiting logica.
+This is the strongest argument for load testing in project 3 — not performance, but correctness of the rate limiting logic.

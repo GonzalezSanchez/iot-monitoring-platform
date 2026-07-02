@@ -2,37 +2,37 @@
 
 **LinkedIn post:** [Same analytics goal. Completely different stack.](https://www.linkedin.com/posts/gonzalezsanchez_dataengineering-apacheairflow-pyspark-ugcPost-7460192378834890752-nb33)
 
-## Beschrijving
+## Description
 
-Dezelfde analytics als Project 2a — gedragspatronen en anomalieën detecteren uit
-sensordata — maar nu geïmplementeerd met een data engineering stack. Een bewuste
-herhaling om te demonstreren dat dezelfde businesslogica met andere tools oplosbaar is.
+The same analytics as Project 2a — detecting behavior patterns and anomalies from
+sensor data — but now implemented with a data engineering stack. A deliberate
+repetition to demonstrate that the same business logic can be solved with different tools.
 
-**Vergelijking met Project 2a:**
+**Comparison with Project 2a:**
 
 | Aspect | Project 2a (AWS native) | Project 2b (Data Engineering) |
 |--------|------------------------|-------------------------------|
-| Orkestratie | AWS Step Functions | Apache Airflow |
-| Processing | Python (pandas) | PySpark (gedistribueerd) |
-| Tussenopslag | Aurora Serverless v2 | S3 Parquet (data lake) |
+| Orchestration | AWS Step Functions | Apache Airflow |
+| Processing | Python (pandas) | PySpark (distributed) |
+| Intermediate storage | Aurora Serverless v2 | S3 Parquet (data lake) |
 | Serving layer | Aurora Serverless v2 | PostgreSQL (self-hosted Docker) |
-| Visualisatie | REST API | Power BI (DirectQuery op PostgreSQL) |
+| Visualization | REST API | Power BI (DirectQuery on PostgreSQL) |
 | CD | — | Jenkins (dev → staging → prod) |
 
 ## Tech Stack
 
-- **Orkestratie:** Apache Airflow 2.x (Docker via officieel `apache/airflow` image)
-- **Processing:** PySpark 4.x (Spark SQL voor patroon- en anomaliedetectie)
-- **Data lake:** AWS S3 (`p2b-prod-sensor-events`) — raw en processed Parquet, gepartitioneerd op jaar/maand
-- **Database:** PostgreSQL via Docker Compose op acer-server — serving layer voor Power BI (self-hosted, geen AWS kosten) + pgvector extensie
-- **Visualisatie:** Power BI Desktop (DirectQuery op PostgreSQL)
+- **Orchestration:** Apache Airflow 2.x (Docker via official `apache/airflow` image)
+- **Processing:** PySpark 4.x (Spark SQL for pattern and anomaly detection)
+- **Data lake:** AWS S3 (`p2b-prod-sensor-events`) — raw and processed Parquet, partitioned by year/month
+- **Database:** PostgreSQL via Docker Compose on acer-server — serving layer for Power BI (self-hosted, no AWS costs) + pgvector extension
+- **Visualization:** Power BI Desktop (DirectQuery on PostgreSQL)
 - **Infra:** Terraform (S3 bucket + IAM)
 - **CI:** GitHub Actions (ruff, mypy, pytest, terraform validate)
-- **CD:** Jenkins (declaratief, lokaal via Docker — zie [docs/jenkins-cd-pipeline.md](jenkins-cd-pipeline.md))
+- **CD:** Jenkins (declarative, local via Docker — see [docs/jenkins-cd-pipeline.md](jenkins-cd-pipeline.md))
 
-## Architectuur
+## Architecture
 
-Data lake patroon met drie lagen: landing zone → staging → serving.
+Data lake pattern with three layers: landing zone → staging → serving.
 
 ```
 DynamoDB (prod-SensorEvents)
@@ -52,68 +52,68 @@ DynamoDB (prod-SensorEvents)
                                                   │
                               ┌───────────────────┘
                               ▼
-                    PostgreSQL (Docker, acer-server)    ← serving layer voor Power BI
+                    PostgreSQL (Docker, acer-server)    ← serving layer for Power BI
                     ├── patterns         (occupancy_schedule + temperature_trend)
                     └── anomalies        (temperature z-score anomalies)
                               │
                               ▼
-                    Power BI rapport (DirectQuery)
+                    Power BI report (DirectQuery)
 ```
 
-### Waarom S3 als tussenlaag?
+### Why S3 as an intermediate layer?
 
-Standaard data lake patroon — elke job leest en schrijft onafhankelijk:
+Standard data lake pattern — each job reads and writes independently:
 
-| Laag | S3 pad | Inhoud |
+| Layer | S3 path | Content |
 |------|--------|--------|
-| Landing zone | `s3a://p2b-prod-sensor-events/raw/` | Ruwe DynamoDB events als Parquet, gepartitioneerd op jaar/maand |
-| Staging | `s3a://p2b-prod-sensor-events/processed/` | Gevalideerde, schoongemaakte events |
-| Serving | PostgreSQL (`patterns` + `anomalies`) | Geaggregeerde resultaten voor Power BI |
+| Landing zone | `s3a://p2b-prod-sensor-events/raw/` | Raw DynamoDB events as Parquet, partitioned by year/month |
+| Staging | `s3a://p2b-prod-sensor-events/processed/` | Validated, cleaned events |
+| Serving | PostgreSQL (`patterns` + `anomalies`) | Aggregated results for Power BI |
 
-Beide S3 lagen zijn idempotent via dynamic partition overwrite: re-run overschrijft alleen de getroffen maandpartities, niet de volledige dataset.
+Both S3 layers are idempotent via dynamic partition overwrite: a re-run only overwrites the affected month partitions, not the full dataset.
 
-### Waarom PostgreSQL alleen aan het einde?
+### Why PostgreSQL only at the end?
 
-Power BI kan S3 Parquet niet rechtstreeks bevragen — het heeft een SQL endpoint nodig.
-Alternatieven zoals Amazon Athena of Redshift brengen extra AWS kosten met zich mee.
-PostgreSQL draait self-hosted op acer-server via Docker (altijd live, geen destroy cyclus)
-en vermijdt zo RDS kosten van ~€15–20/maand. Alleen de uiteindelijke aggregaten
-(`patterns` + `anomalies`) worden naar PostgreSQL geschreven — de bulkdata blijft in S3.
+Power BI can't query S3 Parquet directly — it needs a SQL endpoint.
+Alternatives like Amazon Athena or Redshift bring extra AWS costs.
+PostgreSQL runs self-hosted on acer-server via Docker (always live, no destroy cycle)
+and thereby avoids RDS costs of ~€15–20/month. Only the final aggregates
+(`patterns` + `anomalies`) are written to PostgreSQL — the bulk data stays in S3.
 
 ## PySpark Jobs
 
 ### Extract (`jobs/extract.py`)
 
-- Scant DynamoDB tabel `prod-SensorEvents` (met paginering)
-- Verwerkt twee event formats:
-  - Seed format: `payload` JSON veld met alle sensors per event
-  - Project 1b format: `sensor_type` + `value` per individueel event
-- Schrijft als Parquet naar S3 landing zone, gepartitioneerd op jaar/maand
-- Idempotent: dynamic partition overwrite — re-run overschrijft alleen de getroffen maandpartities
+- Scans DynamoDB table `prod-SensorEvents` (with pagination)
+- Handles two event formats:
+  - Seed format: `payload` JSON field with all sensors per event
+  - Project 1b format: `sensor_type` + `value` per individual event
+- Writes as Parquet to the S3 landing zone, partitioned by year/month
+- Idempotent: dynamic partition overwrite — a re-run only overwrites the affected month partitions
 
 ### Transform (`jobs/transform.py`)
 
-- Leest Parquet van S3 landing zone (`raw/`)
-- Filtert ongeldige sensorwaarden:
-  - Temperatuur: null of buiten −10°C – 60°C → verwijderd
-  - Vochtigheid: null of buiten 0–100% → verwijderd
-- Hernoemt kolommen naar verwerkt schema (`temperature` → `temperature_c`, `humidity` → `humidity_pct`)
-- Schrijft naar S3 processed layer (`processed/`), gepartitioneerd op jaar/maand
+- Reads Parquet from the S3 landing zone (`raw/`)
+- Filters invalid sensor values:
+  - Temperature: null or outside −10°C – 60°C → removed
+  - Humidity: null or outside 0–100% → removed
+- Renames columns to the processed schema (`temperature` → `temperature_c`, `humidity` → `humidity_pct`)
+- Writes to the S3 processed layer (`processed/`), partitioned by year/month
 - Idempotent: dynamic partition overwrite
 
 ### Analyze (`jobs/analyze.py`)
 
-- Leest verwerkte Parquet van S3 processed layer
-- **Patroondetectie via Spark SQL:**
-  - `occupancy_schedule`: gemiddelde bezetting per (kamer, dag van de week, uur) via `avg()` en window aggregatie
-  - `temperature_trend`: regressiehelling via `regr_slope(temperature_c, unix_seconds)` — equivalent aan MLlib LinearRegression, efficiënter voor per-groepsberekening
-- **Anomaliedetectie:**
-  - Populatie-stddev per kamer via Spark window functions
-  - Minimum 4 metingen per kamer vereist (statistisch minimum — zelfde als project 2a)
+- Reads processed Parquet from the S3 processed layer
+- **Pattern detection via Spark SQL:**
+  - `occupancy_schedule`: average occupancy per (room, day of week, hour) via `avg()` and window aggregation
+  - `temperature_trend`: regression slope via `regr_slope(temperature_c, unix_seconds)` — equivalent to MLlib LinearRegression, more efficient for per-group computation
+- **Anomaly detection:**
+  - Population stddev per room via Spark window functions
+  - Minimum 4 measurements per room required (statistical minimum — same as project 2a)
   - z-score ≥ 3 → severity `medium`; z-score ≥ 5 → severity `high`
-- Schrijft **uitsluitend** naar PostgreSQL serving layer via JDBC:
-  - `patterns` — occupancy_schedule + temperature_trend per kamer
-  - `anomalies` — individuele temperatuurafwijkingen met z-score
+- Writes **exclusively** to the PostgreSQL serving layer via JDBC:
+  - `patterns` — occupancy_schedule + temperature_trend per room
+  - `anomalies` — individual temperature deviations with z-score
 
 ## Airflow DAG
 
@@ -133,7 +133,7 @@ SUBMIT = f"spark-submit --packages {PACKAGES} --conf spark.hadoop.fs.s3a.aws.cre
 
 with DAG(
     dag_id="behavior_pipeline",
-    schedule="0 2 * * 1",          # elke maandag 02:00
+    schedule="0 2 * * 1",          # every Monday 02:00
     start_date=datetime(2026, 1, 1),
     catchup=False,
     default_args={"retries": 2, "retry_delay": timedelta(minutes=5)},
@@ -148,10 +148,10 @@ with DAG(
 
 ## Database Schema (PostgreSQL)
 
-PostgreSQL wordt uitsluitend gebruikt als serving layer — de bulkdata zit in S3 Parquet.
-Alleen geaggregeerde resultaten worden naar de database geschreven.
+PostgreSQL is used exclusively as a serving layer — the bulk data lives in S3 Parquet.
+Only aggregated results are written to the database.
 
-Zelfde schema als Project 2a — opzettelijk, om portabiliteit te demonstreren.
+Same schema as Project 2a — deliberately, to demonstrate portability.
 
 **patterns:**
 ```sql
@@ -187,12 +187,12 @@ CREATE INDEX idx_anomalies_entity ON anomalies (entity_type, entity_id);
 CREATE INDEX idx_anomalies_job_id ON anomalies (job_id);
 ```
 
-**raw_sensor_data** (gepartitioneerde tabel, aangemaakt door `migrate.py`):
+**raw_sensor_data** (partitioned table, created by `migrate.py`):
 ```sql
--- Maandelijks gepartitioneerd op ts — beheerd door manage_partitions.py
--- Geïnspireerd op fastapi-dbuploader/src/common/partitions.py
--- In de huidige pipeline dient S3 Parquet als de landing zone;
--- deze tabel is aanwezig voor compatibiliteit en eventuele uitbreidingen.
+-- Partitioned monthly on ts — managed by manage_partitions.py
+-- Inspired by fastapi-dbuploader/src/common/partitions.py
+-- In the current pipeline, S3 Parquet serves as the landing zone;
+-- this table is present for compatibility and possible future extensions.
 CREATE TABLE IF NOT EXISTS raw_sensor_data (
     id            BIGSERIAL,
     event_id      TEXT          NOT NULL,
@@ -214,37 +214,37 @@ CREATE INDEX IF NOT EXISTS idx_raw_sensor_data_event_id ON raw_sensor_data (even
 
 ## Partition Management
 
-Maandelijkse partities voor `raw_sensor_data` worden beheerd door `scripts/manage_partitions.py`.
-Airflow draait dit automatisch aan het begin van elke DAG run.
+Monthly partitions for `raw_sensor_data` are managed by `scripts/manage_partitions.py`.
+Airflow runs this automatically at the start of every DAG run.
 
 ```bash
-# Maak partities aan voor de komende 3 maanden
+# Create partitions for the next 3 months
 python scripts/manage_partitions.py --months-ahead 3
 
-# Maak ook historische partities aan (nuttig bij eerste setup met bestaande data)
+# Also create historical partitions (useful for first setup with existing data)
 python scripts/manage_partitions.py --months-back 2 --months-ahead 3
 
-# Dry run — print SQL zonder uit te voeren
+# Dry run — print SQL without executing
 python scripts/manage_partitions.py --months-ahead 3 --dry-run
 ```
 
-## Pipeline Resultaten (eerste productierun, mei 2026)
+## Pipeline Results (first production run, May 2026)
 
-| Stap | Resultaat |
+| Step | Result |
 |------|-----------|
-| Extract (DynamoDB → S3/raw) | 12.744 events |
-| Transform (S3/raw → S3/processed) | 12.715 events (29 verwijderd wegens ongeldige sensorwaarden) |
-| Analyze — occupancy patterns | 5 kamerrijen (per kamer 1 schedule) |
-| Analyze — temperature trends | 5 kamerrijen (per kamer 1 trend) |
-| Analyze — anomalies | 22 afwijkingen gedetecteerd |
+| Extract (DynamoDB → S3/raw) | 12,744 events |
+| Transform (S3/raw → S3/processed) | 12,715 events (29 removed due to invalid sensor values) |
+| Analyze — occupancy patterns | 5 room rows (1 schedule per room) |
+| Analyze — temperature trends | 5 room rows (1 trend per room) |
+| Analyze — anomalies | 22 anomalies detected |
 
-## Lokale Setup
+## Local Setup
 
 Prerequisites:
-- Docker Compose services draaien
-- `.env` bestand aangemaakt (kopieer van `.env.example` en vul in)
-- AWS credentials geconfigureerd (`aws sts get-caller-identity` moet werken)
-- S3 bucket aangemaakt (`cd infrastructure && terraform apply`)
+- Docker Compose services running
+- `.env` file created (copy from `.env.example` and fill in)
+- AWS credentials configured (`aws sts get-caller-identity` must work)
+- S3 bucket created (`cd infrastructure && terraform apply`)
 
 ```bash
 cd backend/project2b-behavior-analyzer
@@ -252,16 +252,16 @@ cd backend/project2b-behavior-analyzer
 # 1. Start services (PostgreSQL)
 docker compose -f docker/docker-compose.yml up -d
 
-# 2. Maak database tabellen aan
+# 2. Create database tables
 python scripts/migrate.py
 
-# 3. Maak partities aan voor historische + toekomstige maanden
+# 3. Create partitions for historical + future months
 python scripts/manage_partitions.py --months-back 2 --months-ahead 3
 
-# 4. Seed testdata in DynamoDB (eenmalig — hergebruik project 2a script)
+# 4. Seed test data into DynamoDB (one-off — reuses project 2a script)
 python ../project2a-behavior-analyzer/scripts/seed_dynamodb.py
 
-# 5. Draai de pipeline
+# 5. Run the pipeline
 PACKAGES="org.apache.hadoop:hadoop-aws:3.4.2,com.amazonaws:aws-java-sdk-bundle:1.12.262,org.postgresql:postgresql:42.7.3"
 S3A="com.amazonaws.auth.DefaultAWSCredentialsProviderChain"
 
@@ -273,10 +273,10 @@ spark-submit --packages $PACKAGES --conf spark.hadoop.fs.s3a.aws.credentials.pro
 ## Testing
 
 ```bash
-# Unit tests (geen echte DB of Spark vereist)
+# Unit tests (no real DB or Spark required)
 pytest tests/unit/ -v --cov=jobs --cov=dags --cov-fail-under=80
 
-# Integratie tests (vereist Docker services)
+# Integration tests (requires Docker services)
 docker compose -f docker/docker-compose.yml up -d
 pytest tests/integration/ -v --no-cov
 
@@ -285,18 +285,18 @@ ruff check jobs/ dags/ scripts/
 mypy jobs/ dags/
 ```
 
-Huidig: **65 unit tests**, alle groen.
+Current: **65 unit tests**, all green.
 
 ## Observability — OpenTelemetry + Grafana Cloud
 
-Zelfde OTel Collector laag als project 1b — alleen de backend wisselt van Datadog naar
-Grafana Cloud. Stack blijft altijd live (gratis tier, geen trial, geen destroy cyclus).
+Same OTel Collector layer as project 1b — only the backend switches from Datadog to
+Grafana Cloud. The stack stays live at all times (free tier, no trial, no destroy cycle).
 
 **Stack:**
 ```
 Airflow + PostgreSQL + Spark
         ↓
-OTel Collector (vendor-neutraal — zelfde aanpak als project 1b)
+OTel Collector (vendor-neutral — same approach as project 1b)
         ↓
 Grafana Cloud
   ├── Mimir   (metrics)
@@ -304,60 +304,60 @@ Grafana Cloud
   └── Tempo   (traces)
 ```
 
-**Wat wordt gemonitord:**
+**What gets monitored:**
 - **Airflow** — DAG run durations, task success/failure rates
 - **PostgreSQL** — query latency, connections, disk I/O
 - **Spark jobs** — job duration via Airflow task metrics
 - **Infrastructure** — Docker container CPU/memory
 
-> RAG interface (LLM + pgvector) is onderdeel van **Project 4**, niet 2b.
+> The RAG interface (LLM + pgvector) is part of **Project 4**, not 2b.
 
 ---
 
-## Toekomstige uitbreidingen
-- Integratie tests toevoegen (LocalStack + PostgreSQL) — unit tests dekken pipeline logica, I/O functies nog niet
-- Test coverage percentage vermelden in README (consistent met project 2a)
-- Grafana Cloud screenshots toevoegen (Mimir/Loki/Tempo dashboard)
-- Korte operations sectie: handmatige DAG trigger, pipeline herstel na mislukte stap, Jenkins rollback
+## Future extensions
+- Add integration tests (LocalStack + PostgreSQL) — unit tests cover pipeline logic, I/O functions not yet
+- Include test coverage percentage in README (consistent with project 2a)
+- Add Grafana Cloud screenshots (Mimir/Loki/Tempo dashboard)
+- Short operations section: manual DAG trigger, pipeline recovery after a failed step, Jenkins rollback
 
-## Power BI Rapport
+## Power BI Report
 
-- **Verbinding:** DirectQuery op PostgreSQL (`patterns` + `anomalies` tabellen)
-- **Pagina's:**
-  - Overzicht — patroon frequentie per kamer per week (bar chart)
-  - Anomalieën — severity heatmap per kamer (matrix visualisatie)
-  - Temperatuurtrend — lijndiagram met confidence band
-- **Bestand:** `reports/behavior_analyzer.pbix` (gitignored — te groot voor Git)
-- **Screenshot:** opgenomen in README voor portfolio presentatie
+- **Connection:** DirectQuery on PostgreSQL (`patterns` + `anomalies` tables)
+- **Pages:**
+  - Overview — pattern frequency per room per week (bar chart)
+  - Anomalies — severity heatmap per room (matrix visualization)
+  - Temperature trend — line chart with confidence band
+- **File:** `reports/behavior_analyzer.pbix` (gitignored — too large for Git)
+- **Screenshot:** included in README for portfolio presentation
 
 ## CI/CD
 
-- **CI:** GitHub Actions — ruff, mypy, pytest unit, terraform validate (bij elke push)
-- **CD:** Jenkins declaratieve pipeline — packaging, terraform apply, environment promotie
-  - Dev → staging: handmatige approval in Jenkins UI
-  - Staging → prod: handmatige approval + second sign-off
-  - Zie [docs/jenkins-cd-pipeline.md](jenkins-cd-pipeline.md) voor Jenkins setup
+- **CI:** GitHub Actions — ruff, mypy, pytest unit, terraform validate (on every push)
+- **CD:** Jenkins declarative pipeline — packaging, terraform apply, environment promotion
+  - Dev → staging: manual approval in Jenkins UI
+  - Staging → prod: manual approval + second sign-off
+  - See [docs/jenkins-cd-pipeline.md](jenkins-cd-pipeline.md) for Jenkins setup
 
-## Directory Structuur
+## Directory Structure
 
 ```
 backend/project2b-behavior-analyzer/
 ├── dags/
-│   └── behavior_pipeline.py     ← Airflow DAG definitie
+│   └── behavior_pipeline.py     ← Airflow DAG definition
 ├── jobs/
 │   ├── extract.py               ← PySpark: DynamoDB → S3 raw Parquet
 │   ├── transform.py             ← PySpark: S3 raw → S3 processed Parquet
-│   └── analyze.py               ← PySpark: S3 processed → PostgreSQL (patronen + anomalieën)
+│   └── analyze.py               ← PySpark: S3 processed → PostgreSQL (patterns + anomalies)
 ├── infrastructure/
 │   ├── s3.tf                    ← S3 bucket (p2b-prod-sensor-events)
-│   ├── iam.tf                   ← IAM user voor Airflow worker (S3 + DynamoDB read)
+│   ├── iam.tf                   ← IAM user for Airflow worker (S3 + DynamoDB read)
 │   ├── variables.tf
 │   ├── outputs.tf
 │   └── terraform.tfvars
 ├── scripts/
-│   ├── migrate.py               ← DB schema aanmaken (patterns + anomalies)
-│   ├── manage_partitions.py     ← maandelijkse partities aanmaken (--months-back + --months-ahead)
-│   └── (geen seed script — hergebruik backend/project2a-behavior-analyzer/scripts/seed_dynamodb.py)
+│   ├── migrate.py               ← create DB schema (patterns + anomalies)
+│   ├── manage_partitions.py     ← create monthly partitions (--months-back + --months-ahead)
+│   └── (no seed script — reuses backend/project2a-behavior-analyzer/scripts/seed_dynamodb.py)
 ├── tests/
 │   ├── unit/
 │   │   ├── test_extract.py

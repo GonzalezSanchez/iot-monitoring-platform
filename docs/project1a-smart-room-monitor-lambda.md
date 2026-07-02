@@ -1,55 +1,55 @@
 # Project 1a — Smart Room Monitor (Serverless Lambda)
 
-## Overzicht
+## Overview
 
-Serverless REST API voor real-time ingestie van sensor events (temperatuur, vochtigheid, bezetting, beweging) uit conferentieruimtes, met drempelwaarde-gebaseerde anomaliedetectie.
+Serverless REST API for real-time ingestion of sensor events (temperature, humidity, occupancy, motion) from conference rooms, with threshold-based anomaly detection.
 
-## Architectuur
+## Architecture
 
 ```
 API Gateway → Lambda handlers → DynamoDB
 ```
 
 - **Runtime:** Python 3.12, AWS Lambda
-- **Database:** DynamoDB (PAY_PER_REQUEST) — tabellen: prod-RoomStatus, prod-SensorEvents
-- **Infrastructuur:** CloudFormation (volledig als code)
-- **Structuur:** clean layered architecture — models → services → repositories
-- **CI/CD:** GitHub Actions — tests + deploy op elke merge naar main
+- **Database:** DynamoDB (PAY_PER_REQUEST) — tables: prod-RoomStatus, prod-SensorEvents
+- **Infrastructure:** CloudFormation (fully as code)
+- **Structure:** clean layered architecture — models → services → repositories
+- **CI/CD:** GitHub Actions — tests + deploy on every merge to main
 
-## API-endpoints
+## API Endpoints
 
-- `GET /rooms` — lijst van alle ruimtes met sensor status
-- `GET /rooms/{room_id}` — details van één ruimte
-- `POST /events` — nieuw sensor event toevoegen
+- `GET /rooms` — list of all rooms with sensor status
+- `GET /rooms/{room_id}` — details of a single room
+- `POST /events` — add a new sensor event
 
 ## Deployment
 
-Volledig via GitHub Actions:
+Fully via GitHub Actions:
 ```bash
-# Lokaal deployen (indien nodig)
+# Deploy locally (if needed)
 cd backend/project1a-smart-room-monitor
 aws cloudformation deploy --template-file infrastructure/cloudformation.yaml \
   --stack-name smart-room-monitor --capabilities CAPABILITY_IAM
 ```
 
-API live op: `https://6c20a9bn61.execute-api.eu-central-1.amazonaws.com/dev/`
+API live at: `https://6c20a9bn61.execute-api.eu-central-1.amazonaws.com/dev/`
 
-## Verschillen t.o.v. project 1b
+## Differences from project 1b
 
 | | Project 1a | Project 1b |
 |---|---|---|
-| **Runtime** | AWS Lambda (event-driven) | FastAPI (altijd draaiend) |
-| **Hosting** | AWS managed | Docker op home server |
-| **Infrastructuur** | CloudFormation | Docker Compose |
+| **Runtime** | AWS Lambda (event-driven) | FastAPI (always running) |
+| **Hosting** | AWS managed | Docker on home server |
+| **Infrastructure** | CloudFormation | Docker Compose |
 | **Observability** | CloudWatch Logs | OTel → Datadog APM |
-| **Kosten** | Pay per request | Vaste serverkosten |
+| **Cost** | Pay per request | Fixed server costs |
 
-Dezelfde domeinlogica — bewust twee keer gebouwd om scheiding van businesslogica en infrastructuur te demonstreren.
+Same domain logic — deliberately built twice to demonstrate the separation of business logic and infrastructure.
 
 ## Tests
 
-105 tests, 84% coverage. Inclusief mypy type checking en ruff linting via CI.
+105 tests, 84% coverage. Includes mypy type checking and ruff linting via CI.
 
-## Toekomstige uitbreidingen
+## Future extensions
 
-Zie `temp/uitbreidingen.md` — Project 1a: CloudWatch alarms.
+See `temp/uitbreidingen.md` — Project 1a: CloudWatch alarms.

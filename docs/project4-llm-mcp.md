@@ -1,19 +1,19 @@
 # Project 4 — LLM / MCP Layer
 
-## Beschrijving
+## Description
 
-Een AI-integratie laag bovenop het bestaande IoT platform. Exposeert de FastAPI routes als MCP tools via `fastapi-mcp`, zodat een LLM (Claude of andere agent) het platform direct kan bevragen in natuurlijke taal.
+An AI integration layer on top of the existing IoT platform. Exposes the FastAPI routes as MCP tools via `fastapi-mcp`, so an LLM (Claude or another agent) can query the platform directly in natural language.
 
-**Voorbeeldvragen:**
+**Example questions:**
 - "Which rooms had anomalies this week?"
 - "What is the current temperature in conference-a1?"
 - "Show me the occupancy pattern for lab-d4 over the last 30 days."
 
-## Waarom dit een sterk portfolio project is
+## Why this is a strong portfolio project
 
-Beantwoordt de interviewvraag: *"Can you build AI-integrated systems?"*
+Answers the interview question: *"Can you build AI-integrated systems?"*
 
-Het is ook het sluitstuk van het platform — elke laag is nu bereikbaar:
+It's also the capstone of the platform — every layer is now reachable:
 - Project 1/1b → ingestion & API (backend)
 - Project 2a → batch ETL + patterns (data engineering + backend)
 - Project 2b → Airflow + PySpark (pure data engineering)
@@ -22,35 +22,35 @@ Het is ook het sluitstuk van het platform — elke laag is nu bereikbaar:
 
 ## Tech Stack
 
-- **`fastapi-mcp`** — exposeert FastAPI routes automatisch als MCP tools
+- **`fastapi-mcp`** — automatically exposes FastAPI routes as MCP tools
 - **Claude API** — natural language interface via Anthropic SDK
-- **RAG** — retrieval over historische sensordata (pgvector op Aurora PostgreSQL, of lokaal via Chroma)
-- **Docker** — lokale development
+- **RAG** — retrieval over historical sensor data (pgvector on Aurora PostgreSQL, or locally via Chroma)
+- **Docker** — local development
 
 ## Features
 
 ### 4a — MCP tools via fastapi-mcp
-- Mount MCP server op bestaande FastAPI (project 1b)
-- Elke route wordt automatisch een tool: `/rooms`, `/events`, `/insights`
-- Claude kan direct het IoT platform bevragen
+- Mount MCP server on existing FastAPI (project 1b)
+- Every route automatically becomes a tool: `/rooms`, `/events`, `/insights`
+- Claude can query the IoT platform directly
 
 ### 4b — Natural language interface
-- Chatbot die vragen over het platform beantwoordt
-- Gebruikt de MCP tools om live data op te halen
-- Voorbeeldvraag → tool call → gestructureerd antwoord
+- Chatbot that answers questions about the platform
+- Uses the MCP tools to fetch live data
+- Example question → tool call → structured answer
 
-### 4c — RAG op historische sensordata *(optioneel)*
-- Embeddings van historische events en patronen
-- Semantisch zoeken: "wanneer was het drukst in de vergaderzalen?"
-- Vector store: pgvector (Aurora) of Chroma (lokaal)
+### 4c — RAG over historical sensor data *(optional)*
+- Embeddings of historical events and patterns
+- Semantic search: "when were the meeting rooms busiest?"
+- Vector store: pgvector (Aurora) or Chroma (local)
 
-## Architectuur
+## Architecture
 
 ```
-Gebruiker (natuurlijke taal, via frontend "LLM + MCP" tab)
+User (natural language, via frontend "LLM + MCP" tab)
         │
         ▼
-nginx  /ai/*  ──►  project4-ai-assistant (aparte container)
+nginx  /ai/*  ──►  project4-ai-assistant (separate container)
                         │
                         ├── Claude API (Anthropic SDK, async + streaming)
                         │
@@ -61,64 +61,64 @@ nginx  /ai/*  ──►  project4-ai-assistant (aparte container)
                                                       └── GET /lakehouse/...  (project 2c)
 ```
 
-## Ontwerpbeslissingen
+## Design decisions
 
-**Aparte service, niet gemount op 1b.** De AI-laag draait als eigen container
-(`project4-ai-assistant`) naast de bestaande productie-API, met een eigen nginx-route (`/ai`).
-De MCP tools roepen de 1b API aan via HTTP in plaats van directe function calls.
-Reden: blast radius — een bug of hangende LLM-call in de AI-laag kan de live demo op
-iot.gonzalezsanchez.dev niet meetrekken, en de `anthropic` dependency blijft uit de stabiele
-1b service. Elke iteratie aan project 4 deployt zonder de productie-API te herstarten.
+**Separate service, not mounted on 1b.** The AI layer runs as its own container
+(`project4-ai-assistant`) alongside the existing production API, with its own nginx route (`/ai`).
+The MCP tools call the 1b API via HTTP instead of direct function calls.
+Reason: blast radius — a bug or hanging LLM call in the AI layer can't take down the live demo at
+iot.gonzalezsanchez.dev, and the `anthropic` dependency stays out of the stable
+1b service. Every iteration on project 4 deploys without restarting the production API.
 
-**Async vanaf dag één.** Drie redenen, anders dan bij project 3 (waar het om concurrente
-devices gaat):
+**Async from day one.** Three reasons, different from project 3 (which is about concurrent
+devices):
 
-1. *Parallelle tool calls* — één vraag kan meerdere MCP tools tegelijk nodig hebben
+1. *Parallel tool calls* — a single question may need several MCP tools at once
    (`asyncio.gather` over `/insights` + `/rooms`)
-2. *Streaming* — Claude's antwoord komt token per token binnen (5-30s); via SSE direct
-   doorsturen naar de frontend in plaats van wachten op het volledige antwoord
-3. *Trage I/O* — een LLM-call duurt seconden; een sync route zou al die tijd een thread
-   bezet houden
+2. *Streaming* — Claude's answer arrives token by token (5-30s); pipe it straight to the
+   frontend via SSE instead of waiting for the full response
+3. *Slow I/O* — an LLM call takes seconds; a sync route would keep a thread
+   occupied that whole time
 
-**Modelkeuze: Claude Haiku 4.5** (`claude-haiku-4-5`, $1/$5 per miljoen tokens).
-Goedkoopste model, ruim voldoende voor tool-calling over een kleine API. Upgrade naar
-Sonnet is één regel config als tool-aanroepen te vaak missen. Geschatte kosten bij
-portfolio-verkeer: centen tot ~€1/maand. Vereist een eigen Anthropic API key
-(los van het Claude Code abonnement) — in `.env.prod`, nooit gecommit.
+**Model choice: Claude Haiku 4.5** (`claude-haiku-4-5`, $1/$5 per million tokens).
+Cheapest model, more than sufficient for tool-calling over a small API. Upgrading to
+Sonnet is a one-line config change if tool calls start missing too often. Estimated cost at
+portfolio traffic: cents up to ~€1/month. Requires its own Anthropic API key
+(separate from the Claude Code subscription) — stored in `.env.prod`, never committed.
 
-**Kosten- en misbruikbescherming** (publiek endpoint, elke call kost geld):
+**Cost and abuse protection** (public endpoint, every call costs money):
 
-| Laag | Maatregel | Effect |
+| Layer | Measure | Effect |
 |---|---|---|
-| 1. Rate limiting | `slowapi` per IP: 5/min, 20/dag | Bot geblokkeerd na 5 requests (429) |
-| 2. Token cap | `max_tokens=1024`, history max ~6 berichten | Doorgelaten request kost max ~halve cent |
-| 3. Spend limit | Anthropic Console maandbudget (~$5) | Harde ondergrens — API weigert daarboven |
-| 4. Cloudflare | Tunnel filtert bots/DDoS al vóór de server | Gratis eerste verdedigingslinie |
+| 1. Rate limiting | `slowapi` per IP: 5/min, 20/day | Bot blocked after 5 requests (429) |
+| 2. Token cap | `max_tokens=1024`, history max ~6 messages | An accepted request costs at most ~half a cent |
+| 3. Spend limit | Anthropic Console monthly budget (~$5) | Hard floor — API refuses above it |
+| 4. Cloudflare | Tunnel filters bots/DDoS before the server | Free first line of defense |
 
-Worst case: een agressieve bot kost maximaal het spend limit. Zelfde kostendiscipline als
-de Azure budget alert bij project 2c.
+Worst case: an aggressive bot costs at most the spend limit. Same cost discipline as
+the Azure budget alert on project 2c.
 
-## Relatie met bestaande projecten
+## Relationship to existing projects
 
-- Roept **project 1b** (FastAPI) aan via HTTP — geen wijzigingen aan de bestaande routes nodig
-- Haalt analytics data op via **project 2a** API (`/insights`) en **project 2c** (`/lakehouse/*`)
-- Frontend: de "LLM + MCP" tab bestaat al als ComingSoon-placeholder in `App.jsx`
-- Infrastructuur: extra container in `docker-compose.prod.yml` + nginx-route, geen extra AWS resources
+- Calls **project 1b** (FastAPI) via HTTP — no changes needed to the existing routes
+- Fetches analytics data via the **project 2a** API (`/insights`) and **project 2c** (`/lakehouse/*`)
+- Frontend: the "LLM + MCP" tab already exists as a ComingSoon placeholder in `App.jsx`
+- Infrastructure: extra container in `docker-compose.prod.yml` + nginx route, no extra AWS resources
 
-## Wanneer
+## When
 
-Wordt vóór project 3 geïmplementeerd — kleiner in scope en sluit aan bij de AI-richting
-op de arbeidsmarkt. Volgorde: 4a (MCP tools) → 4b (chat + streaming + frontend tab) → 4c/4d later.
+Implemented before project 3 — smaller in scope and aligned with the AI direction
+in the job market. Order: 4a (MCP tools) → 4b (chat + streaming + frontend tab) → 4c/4d later.
 
 ---
 
-## Databricks MCP integratie (uitbreiding 4d)
+## Databricks MCP integration (extension 4d)
 
-### Wat is het?
+### What is it?
 
-Naast `fastapi-mcp` op de IoT API bestaat er ook een **native Databricks MCP server** — onderdeel van de **Databricks AI Dev Kit**. Deze geeft een LLM directe toegang tot de Databricks workspace: Unity Catalog tabellen, SQL Warehouse, job runs, notebooks.
+Alongside `fastapi-mcp` on the IoT API there's also a **native Databricks MCP server** — part of the **Databricks AI Dev Kit**. It gives an LLM direct access to the Databricks workspace: Unity Catalog tables, SQL Warehouse, job runs, notebooks.
 
-Terwijl 4a/4b over de IoT API gaan, zou 4d over de lakehouse data gaan (project 2c):
+While 4a/4b cover the IoT API, 4d would cover the lakehouse data (project 2c):
 
 ```
 Claude Agent
@@ -132,21 +132,21 @@ Claude Agent
             └── Unity Catalog     → schema discovery, lineage
 ```
 
-**Voorbeeldvragen via Databricks MCP:**
+**Example questions via Databricks MCP:**
 - "How many anomalies were detected in the last pipeline run?"
 - "Show me the Gold layer schema for fact_anomalies."
 - "Trigger a new pipeline run."
 
 ### Databricks AI Dev Kit
 
-Meerdere Databricks MVPs (o.a. Jaco van Gelder) raden de **AI Dev Kit** aan als startpunt — bevat MCP server + prebuilt skills voor Databricks. Voordeel: geen eigen MCP implementatie nodig, gewoon configureren.
+Several Databricks MVPs (including Jaco van Gelder) recommend the **AI Dev Kit** as a starting point — it includes an MCP server plus prebuilt skills for Databricks. Advantage: no need to build your own MCP implementation, just configure it.
 
-Installatie:
+Installation:
 ```bash
 uvx databricks-ai-dev-kit
 ```
 
-Of via Claude Code MCP config:
+Or via Claude Code MCP config:
 ```json
 {
   "mcpServers": {
@@ -162,29 +162,29 @@ Of via Claude Code MCP config:
 }
 ```
 
-### Kanttekeningen (van LinkedIn discussie)
+### Caveats (from LinkedIn discussion)
 
-- **Day 2 operations**: MCP is sterk voor scaffolding en prototyping — maar schema drift, unit tests en state management vereisen menselijke governance (Siva Kandula, Senior ML Engineer @ ServiceNow)
-- **Synthetic data**: hoge ML accuracy komt door schone synthetische data, niet door het model — in productie is data altijd messier
-- **Databricks Genie**: alternatief voor SQL-gebaseerde vragen direct in de workspace, zonder externe LLM
+- **Day 2 operations**: MCP is strong for scaffolding and prototyping — but schema drift, unit tests, and state management require human governance (Siva Kandula, Senior ML Engineer @ ServiceNow)
+- **Synthetic data**: high ML accuracy comes from clean synthetic data, not from the model — in production, data is always messier
+- **Databricks Genie**: an alternative for SQL-based questions directly in the workspace, without an external LLM
 
-### Wanneer
+### When
 
-Na 4a/4b. Vereist actieve Databricks workspace (project 2c).
+After 4a/4b. Requires an active Databricks workspace (project 2c).
 
 ---
 
-## RAG Implementatienotes
+## RAG Implementation Notes
 
-*Gebaseerd op referentiegids: "Build a RAG AI Agent From Scratch" (Akhila G, 2026)*
+*Based on reference guide: "Build a RAG AI Agent From Scratch" (Akhila G, 2026)*
 
-### Onze bron vs PDFs
+### Our source vs PDFs
 
-Haar gids gebruikt PDF-bestanden als kennisbron. Onze bron is historische sensordata in Aurora PostgreSQL (`raw_sensor_data`, `patterns`, `anomalies`). Het principe is identiek — de data moet gechuunkt en geëmbed worden voor vectorzoekopdrachten.
+Her guide uses PDF files as the knowledge source. Our source is historical sensor data in Aurora PostgreSQL (`raw_sensor_data`, `patterns`, `anomalies`). The principle is identical — the data needs to be chunked and embedded for vector search queries.
 
-### Chunking strategie
+### Chunking strategy
 
-Gebruik `tiktoken` voor token-gebaseerde chunking met overlap:
+Use `tiktoken` for token-based chunking with overlap:
 
 ```python
 import tiktoken
@@ -203,14 +203,14 @@ def chunk_sensor_data(text: str, chunk_tokens: int = 450,
     return chunks
 ```
 
-**Vuistregels:**
-- 450 tokens per chunk, 80 overlap — goed startpunt
-- Te groot → ongerichte antwoorden
-- Te klein → verlies van context
+**Rules of thumb:**
+- 450 tokens per chunk, 80 overlap — a good starting point
+- Too large → unfocused answers
+- Too small → loss of context
 
 ### Vector store: pgvector (Aurora)
 
-Geen aparte FAISS service nodig — pgvector is een PostgreSQL extensie die al op Aurora draait:
+No separate FAISS service needed — pgvector is a PostgreSQL extension that already runs on Aurora:
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -230,30 +230,30 @@ CREATE INDEX ON sensor_embeddings
 ### RAG flow
 
 ```
-Gebruikersvraag
+User question
     │
     ▼
-Embed query (Claude embeddings of open model)
+Embed query (Claude embeddings or open model)
     │
     ▼
-pgvector cosine search → top-k relevante chunks
+pgvector cosine search → top-k relevant chunks
     │
     ▼
-Context opbouwen (chunks samenvoegen)
+Build context (merge chunks)
     │
     ▼
-Claude API — antwoord genereren op basis van context
+Claude API — generate answer based on context
     │
     ▼
-Gegrond antwoord (geen hallucinaties)
+Grounded answer (no hallucinations)
 ```
 
-### Verschil met haar aanpak
+### Difference from her approach
 
-| Aspect | Referentie (Akhila G) | Project 4 |
+| Aspect | Reference (Akhila G) | Project 4 |
 |---|---|---|
-| Bron | PDF bestanden | Aurora PostgreSQL |
-| Vector store | FAISS (lokaal) | pgvector (Aurora — al aanwezig) |
-| Embeddings | OpenAI text-embedding-3-small | Claude of open model |
-| Generatie | GPT-4o | Claude API (Anthropic) |
-| Extra laag | — | MCP via fastapi-mcp |
+| Source | PDF files | Aurora PostgreSQL |
+| Vector store | FAISS (local) | pgvector (Aurora — already present) |
+| Embeddings | OpenAI text-embedding-3-small | Claude or open model |
+| Generation | GPT-4o | Claude API (Anthropic) |
+| Extra layer | — | MCP via fastapi-mcp |
