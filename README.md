@@ -211,25 +211,17 @@ Delta Lake Gold    (fact_anomalies, fact_patterns, dim_rooms, dim_buildings)
 
 ### Project 3 — IoT Device Gateway Simulator *(planned)*
 
-Secure gateway for IoT device registration, authentication, and rate limiting.
-Simulates how a production IoT platform manages devices — registration,
-command & control, reliable message delivery, and device status monitoring.
-
-**AWS variant (3a):** API Gateway, Lambda, Cognito, DynamoDB, SQS
-**FastAPI variant (3b):** FastAPI, API key auth (hashed, validated via Depends()), Docker
+Secure gateway for device registration, authentication and rate limiting — the layer that
+would own the shared `prod-SensorEvents` data contract.
+Full spec: [docs/project3-iot-gateway.md](docs/project3-iot-gateway.md)
 
 ---
 
 ### Project 4 — LLM / MCP Layer *(planned)*
 
-AI integration layer on top of the existing platform. Exposes the FastAPI routes as MCP
-tools via `fastapi-mcp`, enabling natural language queries over live sensor data.
-Uses `library-skills` to bundle FastAPI and Boto3 API knowledge directly into coding agents —
-so the agent understands the libraries the platform is built on without extra prompting.
-
-*"Which rooms had anomalies this week?" → Claude queries the IoT platform directly.*
-
-**Stack:** Python, fastapi-mcp, Claude API (Anthropic), library-skills, RAG, Docker
+AI layer exposing the FastAPI routes as MCP tools via `fastapi-mcp` — *"Which rooms had
+anomalies this week?"* answered by Claude querying the platform directly.
+Full spec: [docs/project4-llm-mcp.md](docs/project4-llm-mcp.md)
 
 ---
 
