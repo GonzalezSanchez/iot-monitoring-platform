@@ -230,12 +230,13 @@ More screenshots — service map, flame graphs, log patterns, log-trace correlat
 
 ## Operations
 
-All projects run in production. Merges to `main` are pulled to the server immediately — `main` is production.
+Merges to `main` are pulled to the server immediately — `main` is production. All projects run live except 2a, which deploys on-demand.
 
 | Project | Runs on | Deployment | Monitoring | Schedule |
 |---|---|---|---|---|
 | 1a | AWS Lambda + API Gateway | GitHub Actions on merge to main | CloudWatch | on-demand (API) |
 | 1b + frontend | Docker Compose, self-hosted server + Cloudflare tunnel | `git pull` + `docker compose up -d` | OTel → Datadog APM | always-on |
+| 2a | AWS Lambda + Step Functions + Aurora Serverless v2 | `terraform apply` / `destroy` | CloudWatch | on-demand — deployed for demos, destroyed after |
 | 2b | Airflow + PostgreSQL (Docker, self-hosted) | `git pull` + `docker compose up -d` | OTel → Grafana Cloud + postgres-exporter | weekly DAG (Mon 02:00) |
 | 2c | Azure Databricks + ADLS Gen2 | `databricks bundle deploy` | Databricks Jobs UI + Azure budget alert | paused — manual runs |
 
