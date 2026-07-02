@@ -194,6 +194,16 @@ API Gateway ──► Lambda (POST /analyze/patterns)  → Step Functions (start
 2. **Transform** — valideert en normaliseert de ruwe data (deduplicatie, type casting)
 3. **Analyze** — detecteert patterns en anomalieën per kamer, schrijft naar `patterns` en `anomalies`
 
+## Screenshots
+
+### Execution history — 7 runs, all Succeeded
+
+![Step Functions executions](../../docs/screenshots/project2-step-functions/project2a-step-functions-executions.png)
+
+### Behavior Pattern Analyzer dashboard — occupancy schedules and temperature trends per room
+
+![Behavior dashboard](../../docs/screenshots/project2-step-functions/project2a-behavior-dashboard.png)
+
 ## Security
 
 Intentionally excluded from this project — see [Project 3: IoT Device Gateway](project3-iot-gateway.md) for authentication with JWT via Cognito.

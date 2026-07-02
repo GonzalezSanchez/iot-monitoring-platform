@@ -190,6 +190,16 @@ building_id | building_name | lat | lon | anomaly_count | high_count | medium_co
 | **Scope** | Per job (job_id aanwezig) | Alle jobs gecumuleerd |
 | **Doel** | Power BI map visual (bubble per gebouw per run) | Overzicht over alle runs heen |
 
+## Power BI Dashboard
+
+### Temperature Trend per room — linear regression slope via PySpark regr_slope
+
+![Power BI temperature trend](../../docs/screenshots/project2b-PySpark/project2b-powerbi-temperature-trend.png)
+
+### Patterns Summary — occupancy schedule and temperature trend per room
+
+![Power BI patterns summary](../../docs/screenshots/project2b-PySpark/project2b-powerbi-patterns-summary.png)
+
 ## Observability
 
 **Architectuur:** OTel Collector ontvangt metrics van drie bronnen en stuurt naar Grafana Cloud.

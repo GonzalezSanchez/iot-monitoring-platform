@@ -113,15 +113,7 @@ stored in Aurora Serverless v2 and exposed via REST API.
 
 ![Step Functions graph](docs/screenshots/project2-step-functions/project2a-step-functions-graph.png)
 
-#### Execution history — 7 runs, all Succeeded
-
-![Step Functions executions](docs/screenshots/project2-step-functions/project2a-step-functions-executions.png)
-
-#### Behavior Pattern Analyzer dashboard — occupancy schedules and temperature trends per room
-
-![Behavior dashboard](docs/screenshots/project2-step-functions/project2a-behavior-dashboard.png)
-
-[View project](backend/project2a-behavior-analyzer/)
+[View project](backend/project2a-behavior-analyzer/) — more screenshots (execution history, dashboard) in the project README
 
 ---
 
@@ -158,17 +150,9 @@ PostgreSQL (self-hosted on acer-server via Docker)  ← patterns + anomalies →
 
 ![Power BI anomaly overview](docs/screenshots/project2b-PySpark/project2b-powerbi-anomaly-overview.png)
 
-#### Temperature Trend per room — linear regression slope via PySpark regr_slope
-
-![Power BI temperature trend](docs/screenshots/project2b-PySpark/project2b-powerbi-temperature-trend.png)
-
-#### Patterns Summary — occupancy schedule and temperature trend per room
-
-![Power BI patterns summary](docs/screenshots/project2b-PySpark/project2b-powerbi-patterns-summary.png)
-
 **LinkedIn post:** [Same analytics goal. Completely different stack.](https://www.linkedin.com/posts/gonzalezsanchez_dataengineering-apacheairflow-pyspark-ugcPost-7460192378834890752-nb33)
 
-[View project](backend/project2b-behavior-analyzer/)
+[View project](backend/project2b-behavior-analyzer/) — more screenshots (temperature trend, patterns summary) in the project README
 
 #### Project 2a vs 2b — same goal, different tools
 
@@ -268,76 +252,30 @@ End-to-end observability implemented with **zero manual instrumentation** — Op
 - Watchdog anomaly detection: Datadog auto-detected and resolved an error rate spike
 - Metrics: `http.server.active_requests` submitted via `opentelemetry.instrumentation.fastapi`
 
-**LinkedIn post:** [Zero manual instrumentation — OTel + Datadog on a live FastAPI service](https://www.linkedin.com/posts/activity-7455558039853645824-reu9)
-
----
-
 ### APM Services — Watchdog auto-detected an error rate spike on GET /rooms/{room_id}/events
 
 > Distributed tracing pinpointed the fault to FastAPI (98.1% error rate), not DynamoDB (0% error rate). [LinkedIn post →](https://www.linkedin.com/posts/activity-7455558039853645824-reu9)
 
 ![APM Services overview — Watchdog RESOLVED](docs/screenshots/datadog-project1b/datadog-apm-services-watchdog-resolved.png)
 
----
+More screenshots — service map, flame graphs, log patterns, log-trace correlation — in the [project README](backend/project1b-smart-room-monitor-fastapi/README.md#observability).
 
-### Service map — `iot-smart-room-monitor → dynamodb` dependency auto-detected from traces
-
-![Service map auto-detected from traces](docs/screenshots/datadog-project1b/datadog-service-map.png)
-
----
-
-### Flame graph — POST /events (149ms) with 3 automatic DynamoDB child spans
-
-![Flame graph — POST /events with DynamoDB child spans](docs/screenshots/datadog-project1b/datadog-flame-graph.png)
-
----
-
-### Log patterns — business logic visible in Datadog: anomaly detection, room state, event ingestion
-
-![Log patterns](docs/screenshots/datadog-project1b/datadog-log-patterns.png)
-
----
-
-### Log-trace correlation — flame graph embedded directly from a log entry
-
-![Log-trace correlation](docs/screenshots/datadog-project1b/datadog-log-trace-correlation.png)
+**LinkedIn post:** [Zero manual instrumentation — OTel + Datadog on a live FastAPI service](https://www.linkedin.com/posts/activity-7455558039853645824-reu9)
 
 ---
 
 ## Skills Demonstrated
 
-| Skill | Where |
-|-------|-------|
-| Python clean architecture (models → services → repositories) | project 1, 1b, 2a |
-| RESTful API design | project 1 (Lambda handlers), 1b (FastAPI), 2a |
-| AWS serverless (Lambda, API Gateway, CloudWatch) | project 1, 2a |
-| DynamoDB data modelling | project 1, 1b |
-| ETL pipeline design (Extract → Transform → Analyze) | project 2a, 2b |
-| Step Functions orchestration | project 2a |
-| Apache Airflow DAG orchestration | project 2b |
-| PySpark (Spark SQL, window functions, regr_slope) | project 2b |
-| S3 data lake (landing zone → staging → serving) | project 2b |
-| Aurora Serverless v2 + PostgreSQL schema design | project 2a, 2b |
-| Idempotent writes (ON CONFLICT DO NOTHING/UPDATE, dynamic partition overwrite) | project 2a, 2b |
-| Regression testing (documented production bugs) | project 2a |
-| Infrastructure as Code (CloudFormation) | project 1 |
-| Infrastructure as Code (Terraform) | project 2a, 2b |
-| Docker + nginx | project 1b, frontend |
-| CI/CD with GitHub Actions | project 1, 1b, 2a |
-| CI/CD with Jenkins (declarative pipeline, environment promotion) | project 2b |
-| Pydantic v2 models + validation | project 1, 1b, 2a |
-| Anomaly detection logic (threshold + z-score) | project 1, 1b, 2a, 2b |
-| pytest + moto (DynamoDB mocking), 80%+ coverage | project 1, 1b, 2a, 2c |
-| mypy + pre-commit hooks | project 1, 1b, 2a, 2c |
-| Azure Databricks + Delta Lake (ACID, time travel, Liquid Clustering) | project 2c |
-| Unity Catalog (3-part SQL path, lineage, column descriptions) | project 2c |
-| dbt-databricks (incremental models, ephemeral CTEs, generate_schema_name) | project 2c |
-| Write-Audit-Publish (WAP) pattern — idempotent MERGE + quarantine | project 2c |
-| Databricks Asset Bundles (DABs) — job orchestration + scheduled pipeline | project 2c |
-| Azure IaC (ADLS Gen2, Key Vault, Access Connector, Managed Identity) | project 2c |
-| Cloudflare tunnel + production deployment | project 1b |
-| OpenTelemetry auto-instrumentation (traces, logs, metrics) | project 1b |
-| Datadog APM (distributed traces, Watchdog, log-trace correlation) | project 1b |
+| Category | Skills | Where |
+|-------|-------|-------|
+| Python & API design | FastAPI, Pydantic v2, clean architecture (models → services → repositories), REST | 1, 1b, 2a |
+| AWS | Lambda, API Gateway, DynamoDB, Step Functions, EventBridge, Aurora Serverless v2, S3 data lake | 1, 1b, 2a, 2b |
+| Azure & Databricks | Databricks, Delta Lake, Unity Catalog, dbt-databricks, DABs, ADLS Gen2, Key Vault, Managed Identity | 2c |
+| Data engineering | Airflow, PySpark, ETL design, medallion architecture, WAP pattern, idempotent writes, anomaly detection (threshold + z-score) | 2a, 2b, 2c |
+| IaC & CI/CD | Terraform, CloudFormation, GitHub Actions, Jenkins (environment promotion), Docker, nginx | all projects |
+| Observability | OpenTelemetry auto-instrumentation, Datadog APM (traces, Watchdog, log-trace correlation), Grafana Cloud | 1b, 2b |
+| Testing & quality | pytest + moto, 80%+ coverage, regression tests, mypy, ruff, pre-commit | 1, 1b, 2a, 2b, 2c |
+| Production deployment | Cloudflare tunnel, self-hosted Docker Compose, Power BI reporting | 1b, 2b |
 
 ---
 

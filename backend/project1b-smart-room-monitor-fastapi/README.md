@@ -180,6 +180,28 @@ If the platform were to scale (multiple backend replicas, high availability, mul
 
 ---
 
+## Observability
+
+End-to-end observability with **zero manual instrumentation** — OpenTelemetry auto-instrumentation exports traces, logs and metrics through an OTel Collector into Datadog APM.
+
+### Service map — `iot-smart-room-monitor → dynamodb` dependency auto-detected from traces
+
+![Service map auto-detected from traces](../../docs/screenshots/datadog-project1b/datadog-service-map.png)
+
+### Flame graph — POST /events (149ms) with 3 automatic DynamoDB child spans
+
+![Flame graph — POST /events with DynamoDB child spans](../../docs/screenshots/datadog-project1b/datadog-flame-graph.png)
+
+### Log patterns — business logic visible in Datadog: anomaly detection, room state, event ingestion
+
+![Log patterns](../../docs/screenshots/datadog-project1b/datadog-log-patterns.png)
+
+### Log-trace correlation — flame graph embedded directly from a log entry
+
+![Log-trace correlation](../../docs/screenshots/datadog-project1b/datadog-log-trace-correlation.png)
+
+---
+
 ## Example Request
 
 ```bash
