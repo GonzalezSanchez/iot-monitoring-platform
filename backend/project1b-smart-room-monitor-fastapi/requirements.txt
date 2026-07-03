@@ -6,6 +6,7 @@ python-dotenv==1.0.0
 pydantic>=2.7.0
 python-ulid==2.2.0
 databricks-sql-connector>=3.0.0
+fastapi-mcp==0.4.0
 
 # OpenTelemetry — auto-instrumentation + OTLP gRPC exporter
 opentelemetry-distro>=0.44b0

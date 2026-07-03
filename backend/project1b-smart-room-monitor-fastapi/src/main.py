@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_mcp import FastApiMCP
 
 from models.lakehouse import Anomaly, DimRoom, LakehouseSummary
 from models.room import Room
@@ -102,7 +103,7 @@ def health_check() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-@app.get("/events", response_model=List[SensorEvent], tags=["Events"])
+@app.get("/events", response_model=List[SensorEvent], tags=["Events"], operation_id="get_events")
 def get_events(room_id: Optional[str] = None) -> List[SensorEvent]:
     """
     List sensor events.
@@ -144,7 +145,7 @@ def create_event(event: SensorEvent) -> SensorEvent:
 # ---------------------------------------------------------------------------
 
 
-@app.get("/rooms", response_model=List[Room], tags=["Rooms"])
+@app.get("/rooms", response_model=List[Room], tags=["Rooms"], operation_id="get_rooms")
 def get_rooms() -> List[Room]:
     """List all monitored rooms with their current sensor state."""
     try:
@@ -155,7 +156,7 @@ def get_rooms() -> List[Room]:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/rooms/{room_id}", response_model=Room, tags=["Rooms"])
+@app.get("/rooms/{room_id}", response_model=Room, tags=["Rooms"], operation_id="get_room")
 def get_room_detail(room_id: str) -> Room:
     """Get current state and status for a specific room."""
     try:
@@ -170,7 +171,12 @@ def get_room_detail(room_id: str) -> Room:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/rooms/{room_id}/events", response_model=List[SensorEvent], tags=["Rooms"])
+@app.get(
+    "/rooms/{room_id}/events",
+    response_model=List[SensorEvent],
+    tags=["Rooms"],
+    operation_id="get_room_events",
+)
 def get_room_events(room_id: str) -> List[SensorEvent]:
     """
     Get all sensor events for a specific room.
@@ -201,7 +207,12 @@ def _lakehouse_configured() -> bool:
     )
 
 
-@app.get("/lakehouse/summary", response_model=LakehouseSummary, tags=["Lakehouse"])
+@app.get(
+    "/lakehouse/summary",
+    response_model=LakehouseSummary,
+    tags=["Lakehouse"],
+    operation_id="get_lakehouse_summary",
+)
 def get_lakehouse_summary() -> LakehouseSummary:
     """Total event count, anomaly count, and last pipeline run time from the Gold layer."""
     if not _lakehouse_configured():
@@ -214,7 +225,12 @@ def get_lakehouse_summary() -> LakehouseSummary:
         raise HTTPException(status_code=503, detail=f"SQL Warehouse unavailable: {e}")
 
 
-@app.get("/lakehouse/anomalies", response_model=List[Anomaly], tags=["Lakehouse"])
+@app.get(
+    "/lakehouse/anomalies",
+    response_model=List[Anomaly],
+    tags=["Lakehouse"],
+    operation_id="get_lakehouse_anomalies",
+)
 def get_lakehouse_anomalies(limit: int = 50) -> List[Anomaly]:
     """Recent anomalies from fact_anomalies (is_anomaly=true), newest first."""
     if not _lakehouse_configured():
@@ -229,7 +245,12 @@ def get_lakehouse_anomalies(limit: int = 50) -> List[Anomaly]:
         raise HTTPException(status_code=503, detail=f"SQL Warehouse unavailable: {e}")
 
 
-@app.get("/lakehouse/rooms", response_model=List[DimRoom], tags=["Lakehouse"])
+@app.get(
+    "/lakehouse/rooms",
+    response_model=List[DimRoom],
+    tags=["Lakehouse"],
+    operation_id="get_lakehouse_rooms",
+)
 def get_lakehouse_rooms() -> List[DimRoom]:
     """Room metadata joined with building info from the Gold dimension tables."""
     if not _lakehouse_configured():
@@ -240,3 +261,29 @@ def get_lakehouse_rooms() -> List[DimRoom]:
     except Exception as e:
         logger.error("Lakehouse rooms failed: %s", e)
         raise HTTPException(status_code=503, detail=f"SQL Warehouse unavailable: {e}")
+
+
+# ---------------------------------------------------------------------------
+# MCP (project 4a — tool surface for the AI assistant)
+# ---------------------------------------------------------------------------
+
+# Allowlist, never a denylist: a route added later must not silently become a
+# tool. Writing routes (POST /events) stay out so prompt injection cannot write.
+# /mcp is internal-only: the nginx location regex must never include it.
+MCP_TOOL_ALLOWLIST = [
+    "get_rooms",
+    "get_room",
+    "get_room_events",
+    "get_events",
+    "get_lakehouse_summary",
+    "get_lakehouse_anomalies",
+    "get_lakehouse_rooms",
+]
+
+mcp = FastApiMCP(
+    app,
+    name="Smart Room Monitor MCP",
+    description="Read-only MCP tools over the Smart Room Monitor API.",
+    include_operations=MCP_TOOL_ALLOWLIST,
+)
+mcp.mount_http()
