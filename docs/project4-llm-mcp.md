@@ -98,6 +98,46 @@ portfolio traffic: cents up to ~€1/month. Requires its own Anthropic API key
 Worst case: an aggressive bot costs at most the spend limit. Same cost discipline as
 the Azure budget alert on project 2c.
 
+## Security
+
+The cost table above protects the wallet; this section protects the platform. An LLM with
+tools on a public endpoint has its own attack surface, and the defenses are structural —
+prompt instructions alone cannot prevent prompt injection.
+
+**Least-privilege tool surface.** Only read-only GET routes are exposed as MCP tools
+(`fastapi-mcp` include/exclude filters per route or tag). `POST /events` and any other
+writing route are explicitly excluded. Prompt injection ("send 1000 events to room-1")
+then has nothing to abuse: the brain can only read data that is already public via the
+dashboard. This is the single most important control.
+
+**MCP endpoint stays internal.** The MCP server mounted on the 1b API is reachable only
+inside the Docker network (for the AI service). It is never routed through nginx to the
+outside — otherwise anyone could bypass the rate limiting and spend controls by connecting
+their own agent directly to the MCP server.
+
+**Real client IP behind the Cloudflare tunnel.** All traffic arrives via the tunnel, so
+to `slowapi` every request appears to come from the same IP. Rate limiting must key on the
+`CF-Connecting-IP` header instead of the socket address — otherwise the whole world shares
+one 5/min budget and a single bot makes the chatbot unusable for everyone.
+
+**LLM output is untrusted frontend input.** The chat tab renders answers as plain
+text/markdown — never `dangerouslySetInnerHTML`. A prompt-injected answer containing
+`<script>` must render as text, not execute.
+
+**API key hygiene.** The Anthropic key lives in `.env.prod` (gitignored), is never
+committed, and never appears in logs or error responses — Anthropic SDK exceptions are
+caught and mapped to generic error messages before anything reaches the client. The
+Console spend limit is the hard backstop if the key ever leaks.
+
+**Operational hardening.**
+- Timeout on every Claude call, so a hanging request cannot pin an SSE connection open
+- Maximum length on the user message (input side of the existing `max_tokens` output cap)
+- Tool calls logged per client IP for abuse detection
+- Container runs as a non-root user
+
+**Out of scope by design:** user authentication (public portfolio demo — rate limits are
+the access control) and device security (project 3 scope).
+
 ## Relationship to existing projects
 
 - Calls **project 1b** (FastAPI) via HTTP — no changes needed to the existing routes
