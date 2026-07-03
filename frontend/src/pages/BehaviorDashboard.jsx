@@ -1,13 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import useFetch from '../hooks/useFetch';
+import usePostJson from '../hooks/usePostJson';
+import Badge from '../components/Badge';
+import CollapsibleForm, { Field, SubmitButton, ResultBanner } from '../components/CollapsibleForm';
 
 const P2A_BASE = import.meta.env.VITE_P2A_API_ENDPOINT || '';
 const API_BASE = import.meta.env.VITE_API_ENDPOINT || '';
 
 const SEVERITY_BADGE = {
-  low:    'text-green-700 bg-green-50 border-green-600',
-  medium: 'text-amber-700 bg-amber-50 border-amber-600',
-  high:   'text-red-700 bg-red-50 border-red-600',
+  low:    'text-green-700 bg-green-50 border border-green-600',
+  medium: 'text-amber-700 bg-amber-50 border border-amber-600',
+  high:   'text-red-700 bg-red-50 border border-red-600',
 };
+const DEFAULT_BADGE = 'text-gray-700 bg-gray-100 border border-gray-400';
 
 // ── Not deployed banner ───────────────────────────────────────────────────────
 
@@ -27,64 +32,36 @@ function NotDeployed() {
 // ── Trigger analysis form ─────────────────────────────────────────────────────
 
 function TriggerAnalysisForm() {
-  const [daysBack, setDaysBack]   = useState(7);
-  const [submitting, setSubmitting] = useState(false);
-  const [result, setResult]       = useState(null);
-  const [open, setOpen]           = useState(false);
+  const [daysBack, setDaysBack] = useState(7);
+  const { submit, submitting, result } = usePostJson(`${P2A_BASE}/analyze/patterns`);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setSubmitting(true);
-    setResult(null);
-    fetch(`${P2A_BASE}/analyze/patterns`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ days_back: parseInt(daysBack) }),
-    })
-      .then(res => res.json().then(data => ({ ok: res.ok, data })))
-      .then(({ ok, data }) => { setResult({ ok, data }); setSubmitting(false); })
-      .catch(err => { setResult({ ok: false, data: { error: err.message } }); setSubmitting(false); });
+    submit({ days_back: parseInt(daysBack) });
   };
 
   return (
-    <div className="mb-6 border border-gray-200 rounded-xl overflow-hidden">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className={`w-full px-4 py-3 bg-gray-50 text-left font-semibold text-sm text-gray-700 cursor-pointer border-none ${open ? 'border-b border-gray-200' : ''}`}
-      >
-        {open ? '▾' : '▸'} Trigger Analysis
-      </button>
-      {open && (
-        <form onSubmit={handleSubmit} className="p-4 flex flex-wrap gap-3 items-end">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Days back</label>
-            <input
-              type="number"
-              value={daysBack}
-              onChange={e => setDaysBack(e.target.value)}
-              min={1}
-              max={90}
-              required
-              className="px-2.5 py-1.5 border border-gray-300 rounded-md text-sm w-24"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={submitting}
-            className={`px-4 py-1.5 text-white border-none rounded-md font-semibold text-sm ${submitting ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 cursor-pointer'}`}
-          >
-            {submitting ? 'Starting…' : 'Run ETL'}
-          </button>
-          {result && (
-            <div className={`w-full mt-1 px-3 py-2 rounded-md text-xs ${result.ok ? 'bg-green-50 border border-green-300 text-green-700' : 'bg-red-50 border border-red-300 text-red-600'}`}>
-              {result.ok
-                ? `Job started — job_id: ${result.data.job_id}`
-                : `Error: ${result.data.error || 'Unknown error'}`}
-            </div>
-          )}
-        </form>
+    <CollapsibleForm title="Trigger Analysis" onSubmit={handleSubmit}>
+      <Field label="Days back">
+        <input
+          type="number"
+          value={daysBack}
+          onChange={e => setDaysBack(e.target.value)}
+          min={1}
+          max={90}
+          required
+          className="px-2.5 py-1.5 border border-gray-300 rounded-md text-sm w-24"
+        />
+      </Field>
+      <SubmitButton submitting={submitting} busyLabel="Starting…">Run ETL</SubmitButton>
+      {result && (
+        <ResultBanner ok={result.ok}>
+          {result.ok
+            ? `Job started — job_id: ${result.data.job_id}`
+            : `Error: ${result.data.error || 'Unknown error'}`}
+        </ResultBanner>
       )}
-    </div>
+    </CollapsibleForm>
   );
 }
 
@@ -142,8 +119,7 @@ function PatternCard({ pattern }) {
 // ── Anomaly row ───────────────────────────────────────────────────────────────
 
 function AnomalyRow({ anomaly }) {
-  const data     = anomaly.data || {};
-  const badgeCls = SEVERITY_BADGE[anomaly.severity] || 'text-gray-700 bg-gray-100 border-gray-400';
+  const data = anomaly.data || {};
 
   const renderData = () => {
     if (anomaly.anomaly_type === 'temperature_spike') {
@@ -163,9 +139,7 @@ function AnomalyRow({ anomaly }) {
       </td>
       <td className="px-3 py-2 text-xs font-medium text-gray-700">{anomaly.anomaly_type}</td>
       <td className="px-3 py-2">
-        <span className={`${badgeCls} border rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide`}>
-          {anomaly.severity}
-        </span>
+        <Badge color={SEVERITY_BADGE[anomaly.severity] || DEFAULT_BADGE}>{anomaly.severity}</Badge>
       </td>
       <td className="px-3 py-2">{renderData()}</td>
     </tr>
@@ -175,21 +149,7 @@ function AnomalyRow({ anomaly }) {
 // ── Room insights ─────────────────────────────────────────────────────────────
 
 function RoomInsights({ roomId }) {
-  const [data, setData]     = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState(null);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    fetch(`${P2A_BASE}/insights/room/${roomId}`)
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then(d => { setData(d); setLoading(false); })
-      .catch(err => { setError(err.message); setLoading(false); });
-  }, [roomId]);
+  const { data, loading, error } = useFetch(`${P2A_BASE}/insights/room/${roomId}`);
 
   if (loading) return <div className="p-4 text-gray-500 text-sm">Loading insights...</div>;
   if (error)   return <div className="p-4 text-red-600 text-sm">Could not load insights: {error}</div>;
@@ -245,15 +205,9 @@ function RoomInsights({ roomId }) {
 // ── Main dashboard ────────────────────────────────────────────────────────────
 
 function BehaviorDashboard() {
-  const [rooms, setRooms]               = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
-
-  useEffect(() => {
-    fetch(`${API_BASE}/rooms`)
-      .then(res => res.json())
-      .then(data => setRooms(Array.isArray(data) ? data : []))
-      .catch(() => setRooms([]));
-  }, []);
+  const { data: roomsData } = useFetch(`${API_BASE}/rooms`);
+  const rooms = Array.isArray(roomsData) ? roomsData : [];
 
   if (!P2A_BASE) return <NotDeployed />;
 

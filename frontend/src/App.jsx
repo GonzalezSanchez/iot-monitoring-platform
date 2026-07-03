@@ -52,7 +52,9 @@ function App() {
 
         <main className="flex-1 overflow-auto">
           {(activeTab === 'room-lambda' || activeTab === 'room-fastapi') && (
-            <RoomDashboard tab={activeTab} />
+            // key forces a remount when switching between the two room tabs,
+            // so fetch state and room selection reset to the new API
+            <RoomDashboard key={activeTab} tab={activeTab} />
           )}
           {activeTab === 'behavior-aws' && <BehaviorDashboard />}
           {activeTab === 'behavior-spark' && <PowerBIDashboard />}
