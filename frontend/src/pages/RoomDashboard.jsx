@@ -1,51 +1,37 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import useFetch from '../hooks/useFetch';
+import usePostJson from '../hooks/usePostJson';
+import Badge from '../components/Badge';
+import CollapsibleForm, { Field, SubmitButton, ResultBanner } from '../components/CollapsibleForm';
 
 const API_ENDPOINTS = {
   'room-fastapi': import.meta.env.VITE_API_ENDPOINT || 'http://localhost:8000',
   'room-lambda': import.meta.env.VITE_LAMBDA_API_ENDPOINT || 'https://6c20a9bn61.execute-api.eu-central-1.amazonaws.com/dev',
 };
 
-const STATUS_BADGE = {
-  normal:  'text-green-700 bg-green-50 border-green-600',
-  active:  'text-green-700 bg-green-50 border-green-600',
-  warning: 'text-amber-700 bg-amber-50 border-amber-600',
-  alert:   'text-red-700 bg-red-50 border-red-600',
-  offline: 'text-gray-500 bg-gray-50 border-gray-400',
+const STATUS_STYLES = {
+  normal:  { badge: 'text-green-700 bg-green-50 border border-green-600', card: 'border-green-600 bg-green-50' },
+  active:  { badge: 'text-green-700 bg-green-50 border border-green-600', card: 'border-green-600 bg-green-50' },
+  warning: { badge: 'text-amber-700 bg-amber-50 border border-amber-600', card: 'border-amber-600 bg-amber-50' },
+  alert:   { badge: 'text-red-700 bg-red-50 border border-red-600',       card: 'border-red-600 bg-red-50' },
+  offline: { badge: 'text-gray-500 bg-gray-50 border border-gray-400',    card: 'border-gray-400 bg-gray-50' },
 };
-
-const STATUS_CARD_BORDER = {
-  normal:  'border-green-600',
-  active:  'border-green-600',
-  warning: 'border-amber-600',
-  alert:   'border-red-600',
-  offline: 'border-gray-400',
-};
-
-const STATUS_CARD_BG = {
-  normal:  'bg-green-50',
-  active:  'bg-green-50',
-  warning: 'bg-amber-50',
-  alert:   'bg-red-50',
-  offline: 'bg-gray-50',
-};
+const DEFAULT_STYLE = { badge: 'text-gray-700 bg-gray-100 border border-gray-400', card: 'border-gray-300 bg-white' };
 
 function StatusBadge({ status }) {
-  const cls = STATUS_BADGE[status] || 'text-gray-700 bg-gray-100 border-gray-400';
-  return (
-    <span className={`${cls} border rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide`}>
-      {status}
-    </span>
-  );
+  const { badge } = STATUS_STYLES[status] || DEFAULT_STYLE;
+  return <Badge color={badge}>{status}</Badge>;
 }
 
 function RoomCard({ room, selected, onClick }) {
   const state = room.current_state || {};
   const isSelected = selected === room.room_id;
-  const border = isSelected ? 'border-blue-600' : (STATUS_CARD_BORDER[room.status] || 'border-gray-300');
-  const bg    = isSelected ? 'bg-blue-50'    : (STATUS_CARD_BG[room.status]    || 'bg-white');
+  const card = isSelected
+    ? 'border-blue-600 bg-blue-50'
+    : (STATUS_STYLES[room.status] || DEFAULT_STYLE).card;
 
   return (
-    <div onClick={onClick} className={`${border} ${bg} border-2 rounded-xl p-4 cursor-pointer min-w-[180px]`}>
+    <div onClick={onClick} className={`${card} border-2 rounded-xl p-4 cursor-pointer min-w-[180px]`}>
       <div className="flex justify-between items-center gap-2 mb-2.5">
         <strong className="text-base">{room.name || room.room_id}</strong>
         <span className="shrink-0"><StatusBadge status={room.status} /></span>
@@ -66,26 +52,24 @@ function RoomCard({ room, selected, onClick }) {
 
 function EventRow({ event }) {
   return (
-    <>
+    <tr className="border-t border-gray-100">
       <td className="px-3 py-1.5 text-xs text-gray-500 whitespace-nowrap">
         {new Date(event.timestamp).toLocaleTimeString()}
       </td>
       <td className="px-3 py-1.5 text-xs">{event.sensor_type}</td>
       <td className="px-3 py-1.5 text-xs font-semibold">{event.value} {event.unit}</td>
       <td className="px-3 py-1.5"><StatusBadge status={event.status} /></td>
-    </>
+    </tr>
   );
 }
 
 const SENSOR_DEFAULTS = { temperature: 22.5, humidity: 55, occupancy: 5, motion: 1 };
 
 function SendEventForm({ onEventSent, apiBase }) {
-  const [roomId, setRoomId]       = useState('room-1');
+  const [roomId, setRoomId]         = useState('room-1');
   const [sensorType, setSensorType] = useState('temperature');
-  const [value, setValue]         = useState(SENSOR_DEFAULTS.temperature);
-  const [submitting, setSubmitting] = useState(false);
-  const [result, setResult]       = useState(null);
-  const [open, setOpen]           = useState(false);
+  const [value, setValue]           = useState(SENSOR_DEFAULTS.temperature);
+  const { submit, submitting, result, setResult } = usePostJson(`${apiBase}/events`);
 
   const handleSensorChange = (type) => {
     setSensorType(type);
@@ -95,154 +79,76 @@ function SendEventForm({ onEventSent, apiBase }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setSubmitting(true);
-    setResult(null);
-    fetch(`${apiBase}/events`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        room_id: roomId,
-        sensor_type: sensorType,
-        value: parseFloat(value),
-        timestamp: new Date().toISOString(),
-      }),
-    })
-      .then(res => res.json().then(data => ({ ok: res.ok, data })))
-      .then(({ ok, data }) => {
-        setResult({ ok, data });
-        setSubmitting(false);
-        if (ok) onEventSent();
-      })
-      .catch(err => {
-        setResult({ ok: false, data: { detail: err.message } });
-        setSubmitting(false);
-      });
+    submit({
+      room_id: roomId,
+      sensor_type: sensorType,
+      value: parseFloat(value),
+      timestamp: new Date().toISOString(),
+    }, onEventSent);
   };
 
   return (
-    <div className="mb-6 border border-gray-200 rounded-xl overflow-hidden">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className={`w-full px-4 py-3 bg-gray-50 text-left font-semibold text-sm text-gray-700 cursor-pointer border-none ${open ? 'border-b border-gray-200' : ''}`}
-      >
-        {open ? '▾' : '▸'} Send Sensor Event
-      </button>
-      {open && (
-        <form onSubmit={handleSubmit} className="p-4 flex flex-wrap gap-3 items-end">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Room ID</label>
-            <input
-              value={roomId}
-              onChange={e => setRoomId(e.target.value)}
-              required
-              className="px-2.5 py-1.5 border border-gray-300 rounded-md text-sm w-28"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Sensor Type</label>
-            <select
-              value={sensorType}
-              onChange={e => handleSensorChange(e.target.value)}
-              className="px-2.5 py-1.5 border border-gray-300 rounded-md text-sm"
-            >
-              <option value="temperature">temperature</option>
-              <option value="humidity">humidity</option>
-              <option value="occupancy">occupancy</option>
-              <option value="motion">motion</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Value</label>
-            <input
-              type="number"
-              value={value}
-              onChange={e => setValue(e.target.value)}
-              required
-              step="0.1"
-              className="px-2.5 py-1.5 border border-gray-300 rounded-md text-sm w-20"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={submitting}
-            className={`px-4 py-1.5 text-white border-none rounded-md font-semibold text-sm ${submitting ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 cursor-pointer'}`}
-          >
-            {submitting ? 'Sending…' : 'Send'}
-          </button>
-          {result && (
-            <div className={`w-full mt-1 px-3 py-2 rounded-md text-xs ${result.ok ? 'bg-green-50 border border-green-300 text-green-700' : 'bg-red-50 border border-red-300 text-red-600'}`}>
-              {result.ok
-                ? `Status: ${result.data.status} — event saved for ${result.data.room_id}`
-                : `Error: ${result.data.detail || 'Unknown error'}`}
-            </div>
-          )}
-        </form>
+    <CollapsibleForm title="Send Sensor Event" onSubmit={handleSubmit}>
+      <Field label="Room ID">
+        <input
+          value={roomId}
+          onChange={e => setRoomId(e.target.value)}
+          required
+          className="px-2.5 py-1.5 border border-gray-300 rounded-md text-sm w-28"
+        />
+      </Field>
+      <Field label="Sensor Type">
+        <select
+          value={sensorType}
+          onChange={e => handleSensorChange(e.target.value)}
+          className="px-2.5 py-1.5 border border-gray-300 rounded-md text-sm"
+        >
+          {Object.keys(SENSOR_DEFAULTS).map(type => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Value">
+        <input
+          type="number"
+          value={value}
+          onChange={e => setValue(e.target.value)}
+          required
+          step="0.1"
+          className="px-2.5 py-1.5 border border-gray-300 rounded-md text-sm w-20"
+        />
+      </Field>
+      <SubmitButton submitting={submitting} busyLabel="Sending…">Send</SubmitButton>
+      {result && (
+        <ResultBanner ok={result.ok}>
+          {result.ok
+            ? `Status: ${result.data.status} — event saved for ${result.data.room_id}`
+            : `Error: ${result.data.detail || 'Unknown error'}`}
+        </ResultBanner>
       )}
-    </div>
+    </CollapsibleForm>
   );
 }
 
 function RoomDashboard({ tab = 'room-fastapi' }) {
   const API_BASE = API_ENDPOINTS[tab];
-  const [rooms, setRooms]               = useState([]);
-  const [loading, setLoading]           = useState(true);
-  const [error, setError]               = useState(null);
   const [selectedRoom, setSelectedRoom] = useState(null);
-  const [events, setEvents]             = useState([]);
-  const [eventsLoading, setEventsLoading] = useState(false);
 
-  const fetchRooms = () => {
-    fetch(`${API_BASE}/rooms`)
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then(data => {
-        const list = Array.isArray(data) ? data : (data.rooms || []);
-        setRooms(list);
-        setLoading(false);
-        setError(null);
-      })
-      .catch(err => {
-        setError(`Could not reach API: ${err.message}`);
-        setLoading(false);
-      });
-  };
+  const { data: roomsData, loading, error, refetch } = useFetch(`${API_BASE}/rooms`, { refreshMs: 30000 });
+  const rooms = Array.isArray(roomsData) ? roomsData : (roomsData?.rooms || []);
 
-  useEffect(() => {
-    fetchRooms();
-    const interval = setInterval(fetchRooms, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (!selectedRoom) { setEvents([]); return; }
-
-    const fetchEvents = () => {
-      setEventsLoading(true);
-      fetch(`${API_BASE}/rooms/${selectedRoom}/events`)
-        .then(res => {
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          return res.json();
-        })
-        .then(data => {
-          setEvents(Array.isArray(data) ? data.slice().reverse() : []);
-          setEventsLoading(false);
-        })
-        .catch(() => { setEvents([]); setEventsLoading(false); });
-    };
-
-    fetchEvents();
-    const interval = setInterval(fetchEvents, 30000);
-    return () => clearInterval(interval);
-  }, [selectedRoom]);
+  const { data: eventsData, loading: eventsLoading } = useFetch(
+    selectedRoom && `${API_BASE}/rooms/${selectedRoom}/events`,
+    { refreshMs: 30000 }
+  );
+  const events = Array.isArray(eventsData) ? [...eventsData].reverse() : [];
 
   if (loading) return <div className="p-8 text-gray-500">Loading rooms...</div>;
 
   if (error) return (
     <div className="p-8">
-      <p className="text-red-600">{error}</p>
-      <p className="text-sm text-gray-500">Make sure the FastAPI backend is running at <code>{API_BASE}</code></p>
+      <p className="text-red-600">Could not reach API: {error}</p>
+      <p className="text-sm text-gray-500">Make sure the backend is running at <code>{API_BASE}</code></p>
     </div>
   );
 
@@ -256,7 +162,7 @@ function RoomDashboard({ tab = 'room-fastapi' }) {
         <span className="text-sm text-gray-500">{rooms.length} room{rooms.length !== 1 ? 's' : ''}</span>
       </div>
 
-      <SendEventForm onEventSent={fetchRooms} apiBase={API_BASE} />
+      <SendEventForm onEventSent={refetch} apiBase={API_BASE} />
 
       {rooms.length === 0 ? (
         <div className="p-8 bg-gray-50 rounded-lg text-center text-gray-500">
@@ -299,11 +205,7 @@ function RoomDashboard({ tab = 'room-fastapi' }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {events.map((event, i) => (
-                    <tr key={i} className="border-t border-gray-100">
-                      <EventRow event={event} />
-                    </tr>
-                  ))}
+                  {events.map((event, i) => <EventRow key={i} event={event} />)}
                 </tbody>
               </table>
             </div>

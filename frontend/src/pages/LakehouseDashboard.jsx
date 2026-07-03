@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import useFetch from '../hooks/useFetch';
+import Badge from '../components/Badge';
+import PageHeader from '../components/PageHeader';
 
 const API = import.meta.env.VITE_API_ENDPOINT || 'http://localhost:8000';
 
@@ -19,11 +21,11 @@ function StatCard({ label, value, sub }) {
   );
 }
 
-function ZBadge({ z }) {
+function zColor(z) {
   const abs = Math.abs(z);
-  if (abs >= 4)   return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">{z}</span>;
-  if (abs >= 3)   return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">{z}</span>;
-  return              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">{z}</span>;
+  if (abs >= 4) return 'bg-red-100 text-red-700';
+  if (abs >= 3) return 'bg-orange-100 text-orange-700';
+  return 'bg-amber-100 text-amber-700';
 }
 
 function fmtTs(ts) {
@@ -35,38 +37,24 @@ function fmtTs(ts) {
 }
 
 export default function LakehouseDashboard() {
-  const [summary, setSummary]     = useState(null);
-  const [anomalies, setAnomalies] = useState(null);
-  const [error, setError]         = useState(null);
-
-  useEffect(() => {
-    Promise.all([
-      fetch(`${API}/lakehouse/summary`).then(r => r.json()),
-      fetch(`${API}/lakehouse/anomalies?limit=50`).then(r => r.json()),
-    ])
-      .then(([s, a]) => {
-        setSummary(s);
-        setAnomalies(Array.isArray(a) ? a : []);
-      })
-      .catch(e => setError(e.message));
-  }, []);
+  const { data: summary, error } = useFetch(`${API}/lakehouse/summary`);
+  const { data: anomaliesData } = useFetch(`${API}/lakehouse/anomalies?limit=50`);
+  const anomalies = Array.isArray(anomaliesData) ? anomaliesData : [];
 
   const loading = !summary && !error;
 
   return (
     <div className="flex flex-col h-full font-sans">
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200 bg-white shrink-0">
-        <h1 className="text-2xl font-bold text-gray-900">Azure Databricks Lakehouse</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          PySpark · Delta Lake · Unity Catalog · dbt Gold layer — weekly pipeline
-        </p>
+      <PageHeader
+        title="Azure Databricks Lakehouse"
+        subtitle="PySpark · Delta Lake · Unity Catalog · dbt Gold layer — weekly pipeline"
+      >
         <div className="mt-2 flex flex-wrap gap-2">
           {['Delta Lake', 'Unity Catalog', 'dbt', 'WAP pattern', 'Z-score'].map(t => (
             <span key={t} className="px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">{t}</span>
           ))}
         </div>
-      </div>
+      </PageHeader>
 
       <div className="flex-1 overflow-auto px-6 py-5">
         {loading && (
@@ -111,9 +99,9 @@ export default function LakehouseDashboard() {
                   Recent anomalies
                   <span className="ml-2 text-xs font-normal text-gray-400">Gold · fact_anomalies · is_anomaly = true</span>
                 </h2>
-                <span className="text-xs text-gray-400">{anomalies?.length} records</span>
+                <span className="text-xs text-gray-400">{anomalies.length} records</span>
               </div>
-              {anomalies?.length === 0 ? (
+              {anomalies.length === 0 ? (
                 <p className="px-5 py-6 text-sm text-gray-400">No anomalies found.</p>
               ) : (
                 <table className="w-full text-sm">
@@ -135,7 +123,7 @@ export default function LakehouseDashboard() {
                           {a.value} {SENSOR_UNIT[a.sensor_type] ?? ''}
                         </td>
                         <td className="px-5 py-2 text-right">
-                          <ZBadge z={a.z_score} />
+                          <Badge color={zColor(a.z_score)}>{a.z_score}</Badge>
                         </td>
                         <td className="px-5 py-2 text-gray-400 text-xs">{fmtTs(a.ts)}</td>
                       </tr>
