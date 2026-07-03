@@ -9,6 +9,21 @@ const API_ENDPOINTS = {
   'room-lambda': import.meta.env.VITE_LAMBDA_API_ENDPOINT || 'https://6c20a9bn61.execute-api.eu-central-1.amazonaws.com/dev',
 };
 
+// The two backends expose room events differently:
+// - FastAPI has GET /rooms/{id}/events, sorted oldest-first
+// - the Lambda API has no /events route; GET /rooms/{id} includes
+//   recent_events, sorted newest-first
+const EVENT_SOURCES = {
+  'room-fastapi': {
+    url: (base, roomId) => `${base}/rooms/${encodeURIComponent(roomId)}/events`,
+    extract: (data) => (Array.isArray(data) ? [...data].reverse() : []),
+  },
+  'room-lambda': {
+    url: (base, roomId) => `${base}/rooms/${encodeURIComponent(roomId)}`,
+    extract: (data) => data?.recent_events || [],
+  },
+};
+
 const STATUS_STYLES = {
   normal:  { badge: 'text-green-700 bg-green-50 border border-green-600', card: 'border-green-600 bg-green-50' },
   active:  { badge: 'text-green-700 bg-green-50 border border-green-600', card: 'border-green-600 bg-green-50' },
@@ -137,11 +152,12 @@ function RoomDashboard({ tab = 'room-fastapi' }) {
   const { data: roomsData, loading, error, refetch } = useFetch(`${API_BASE}/rooms`, { refreshMs: 30000 });
   const rooms = Array.isArray(roomsData) ? roomsData : (roomsData?.rooms || []);
 
+  const eventSource = EVENT_SOURCES[tab];
   const { data: eventsData, loading: eventsLoading } = useFetch(
-    selectedRoom && `${API_BASE}/rooms/${selectedRoom}/events`,
+    selectedRoom && eventSource.url(API_BASE, selectedRoom),
     { refreshMs: 30000 }
   );
-  const events = Array.isArray(eventsData) ? [...eventsData].reverse() : [];
+  const events = eventSource.extract(eventsData);
 
   if (loading) return <div className="p-8 text-gray-500">Loading rooms...</div>;
 
