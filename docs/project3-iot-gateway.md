@@ -14,7 +14,7 @@ Like project 1/1b and 2a/2b, project 3 is built in two variants — same securit
 |---|---|---|
 | Device auth | Cognito + API Gateway authorizer | Custom API keys — hashed in DynamoDB, validated via FastAPI `Depends()` |
 | JWT | Issued by Cognito | `python-jose` — implemented in-house |
-| Message queue | SQS | Local: Redis or simple DB queue |
+| Message queue | SQS | Kafka — Redpanda broker, `aiokafka` producer/consumer |
 | Rate limiting | API Gateway built-in | Custom middleware in FastAPI |
 
 **Chosen approach for 3b:** option 1 — API keys per device. A device registers, receives a generated key, and every request is validated via `Depends()`. Demonstrates security thinking (hashing, least privilege, rate limiting) without a full auth server. Fits the portfolio philosophy: don't overengineer, but demonstrate the principle.
@@ -26,6 +26,34 @@ contrasts with project 1b, which stayed sync: at that load the threadpool is suf
 rewriting it wouldn't yield any functional gain. In the gateway, though, the concurrency really
 is inherent to the problem domain. (Project 4 uses async for a different reason: slow LLM I/O,
 parallel tool calls, and streaming — see `project4-llm-mcp.md`.)
+
+**Kafka as the 3b message queue (decided 2026-07-04).** The queue slot in 3b is filled by
+Kafka rather than Redis or a DB-backed queue:
+
+- **Why Kafka:** it is the mirror of SQS in 3a — same role (decouple ingestion from
+  processing, absorb bursts, survive consumer failures) but with the semantics that matter
+  in data engineering: an append-only log with offsets, replayable by design, consumer
+  groups for parallelism, and a `device_id` partition key that guarantees per-device
+  ordering. It also completes the platform story: batch (Airflow, 2b), lakehouse
+  (Databricks, 2c), and now streaming.
+- **Why Redpanda as the broker:** Kafka-API-compatible, a single container, no JVM and no
+  ZooKeeper — light enough to run permanently on acer-server next to the existing stack.
+  The application code uses the plain Kafka protocol (`aiokafka`), so nothing is
+  Redpanda-specific; the broker could be swapped for Apache Kafka or MSK unchanged.
+- **Why `aiokafka`:** async producer/consumer matches the async-first design of the
+  gateway (see above) — publishing to Kafka inside an `async def` route without blocking
+  the event loop.
+- **Flow:** gateway authenticates + validates a device message, produces it to the
+  `sensor-events` topic (key = `device_id`), and returns `202 queued`. A separate consumer
+  service (own container, consumer group `gateway-normalizer`) reads the topic, normalises
+  the payload to the shared `prod-SensorEvents` contract, and writes to DynamoDB. This is
+  exactly the "project 3 owns the data contract" role described in the root README: after
+  3b, projects 1b and 2a consume one consistent format.
+- **Topics:** `sensor-events` (device → platform) and `device-commands` (platform →
+  device, polled by the simulator) — mirroring the two SQS queues in 3a.
+- **DLQ pattern:** messages that fail normalisation are produced to
+  `sensor-events.dlq` with the error attached — the Kafka equivalent of the SQS DLQ in 3a,
+  and the same never-lose-data philosophy as the 2c quarantine table.
 
 ---
 
@@ -55,6 +83,25 @@ API Gateway (HTTP) — JWT auth via Cognito authorizer
           ├── Devices table
           ├── Messages table
           └── RateLimits table
+```
+
+### Architecture (3b — FastAPI + Kafka)
+
+Same endpoints and security model, self-hosted infrastructure:
+
+```
+simulate_device.py (N devices)
+        │  API key → JWT
+        ▼
+Gateway (FastAPI, async) — auth, validation, rate limiting
+        │  produce (key = device_id)
+        ▼
+Redpanda broker ── topic sensor-events ──► consumer service (aiokafka,
+        │                                  group gateway-normalizer)
+        │                                        │ normalise to shared contract
+        │                                        ▼
+        │                                  DynamoDB prod-SensorEvents
+        └── topic sensor-events.dlq  ◄── records that fail normalisation
 ```
 
 ## Key Design Decisions
