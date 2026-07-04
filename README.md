@@ -213,6 +213,10 @@ Browser chat tab ── POST /ai/chat (SSE) ──► ai-assistant container
                                     DynamoDB + lakehouse Gold layer
 ```
 
+#### AI Assistant chat — Claude answers from the live data via the `get_rooms` MCP tool
+
+![AI assistant chat tab](docs/screenshots/project4/project4-ai-chat.png)
+
 [View project](backend/project4-ai-assistant/)
 
 ---
