@@ -9,6 +9,8 @@ Built in two parts:
 
 Full design contract: [docs/project4-prd.md](../../docs/project4-prd.md).
 
+![AI assistant chat tab — Claude answers from the live data via the get_rooms MCP tool](../../docs/screenshots/project4/project4-ai-chat.png)
+
 ## Stack
 
 | Layer | Tool | Purpose |
