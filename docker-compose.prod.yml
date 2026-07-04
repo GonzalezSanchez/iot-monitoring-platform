@@ -20,10 +20,21 @@ services:
     expose:
       - "8000"
 
+  ai-assistant:
+    image: ghcr.io/gonzalezsanchez/iot-ai-assistant:latest
+    env_file:
+      - ./backend/project4-ai-assistant/.env.prod
+    depends_on:
+      - backend
+    restart: unless-stopped
+    expose:
+      - "8001"
+
   frontend:
     image: ghcr.io/gonzalezsanchez/iot-frontend:latest
     ports:
       - "3000:80"
     depends_on:
       - backend
+      - ai-assistant
     restart: unless-stopped

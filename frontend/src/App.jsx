@@ -3,17 +3,8 @@ import RoomDashboard from './pages/RoomDashboard';
 import BehaviorDashboard from './pages/BehaviorDashboard';
 import LakehouseDashboard from './pages/LakehouseDashboard';
 import PowerBIDashboard from './pages/PowerBIDashboard';
+import AiDashboard from './pages/AiDashboard';
 import ProjectTabs from './components/ProjectTabs';
-
-function ComingSoon({ title, description }) {
-  return (
-    <div className="py-24 px-6 text-center font-sans">
-      <div className="text-4xl mb-3">🚧</div>
-      <h2 className="text-xl font-semibold text-gray-700 mb-2">{title}</h2>
-      <p className="text-sm text-gray-500">{description}</p>
-    </div>
-  );
-}
 
 function App() {
   const [activeTab, setActiveTab] = useState(
@@ -59,12 +50,7 @@ function App() {
           {activeTab === 'behavior-aws' && <BehaviorDashboard />}
           {activeTab === 'behavior-spark' && <PowerBIDashboard />}
           {activeTab === 'behavior-lakehouse' && <LakehouseDashboard />}
-          {activeTab === 'llm' && (
-            <ComingSoon
-              title="AI Assistant"
-              description="Natural language queries over live sensor data — planned for project 4"
-            />
-          )}
+          {activeTab === 'llm' && <AiDashboard />}
         </main>
       </div>
 

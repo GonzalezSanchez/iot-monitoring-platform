@@ -1,0 +1,13 @@
+# Local development: run the AI assistant against a locally running project 1b
+# (uvicorn on the host, port 8000). Needs ../.env with ANTHROPIC_API_KEY.
+services:
+  ai-assistant:
+    build: ..
+    ports:
+      - "8001:8001"
+    env_file:
+      - ../.env
+    environment:
+      - MCP_SERVER_URL=http://host.docker.internal:8000/mcp
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
