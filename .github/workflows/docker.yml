@@ -5,6 +5,7 @@ on:
     branches: [main, develop]
     paths:
       - 'backend/project1b-smart-room-monitor-fastapi/**'
+      - 'backend/project4-ai-assistant/**'
       - 'frontend/**'
   workflow_dispatch:
 
@@ -32,6 +33,13 @@ jobs:
           push: true
           tags: ghcr.io/gonzalezsanchez/iot-backend:latest
 
+      - name: Build and push AI assistant image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/project4-ai-assistant
+          push: true
+          tags: ghcr.io/gonzalezsanchez/iot-ai-assistant:latest
+
       - name: Build and push frontend image
         uses: docker/build-push-action@v5
         with:
@@ -41,3 +49,4 @@ jobs:
           build-args: |
             VITE_API_ENDPOINT=${{ secrets.VITE_API_ENDPOINT }}
             VITE_P2A_API_ENDPOINT=${{ secrets.VITE_P2A_API_ENDPOINT }}
+            VITE_AI_ENDPOINT=${{ secrets.VITE_AI_ENDPOINT }}

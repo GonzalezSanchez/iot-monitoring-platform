@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import anthropic
 from anthropic.types import MessageParam
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -60,6 +61,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="AI Assistant", version="1.0.0", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "https://iot.gonzalezsanchez.dev",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.state.limiter = limiter
 # slowapi's handler signature is narrower than Starlette's protocol expects
 app.add_exception_handler(RateLimitExceeded, cast(Callable, _rate_limit_exceeded_handler))
