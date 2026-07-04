@@ -21,6 +21,7 @@ A real IoT system has three distinct layers. This platform covers all three:
 | **Device layer** | How devices authenticate and send data securely | Project 3 |
 | **Ingestion layer** | How sensor events are processed and stored | Project 1 / 1b |
 | **Analytics layer** | What patterns emerge from the data over time | Project 2a / 2b |
+| **AI layer** | Natural-language access to the live data via LLM + MCP tools | Project 4 |
 
 Projects 1 and 2 are each implemented twice — deliberately — to demonstrate that the same business logic can be solved with different infrastructure choices.
 
@@ -189,11 +190,30 @@ Full spec: [docs/project3-iot-gateway.md](docs/project3-iot-gateway.md)
 
 ---
 
-### Project 4 — LLM / MCP Layer *(planned)*
+### Project 4 — AI Assistant (Claude + MCP)
 
-AI layer exposing the FastAPI routes as MCP tools via `fastapi-mcp` — *"Which rooms had
-anomalies this week?"* answered by Claude querying the platform directly.
-Full spec: [docs/project4-llm-mcp.md](docs/project4-llm-mcp.md)
+Conversational AI layer over the live platform — *"Which room is the warmest right now?"*
+answered by Claude calling the platform's own REST APIs as MCP tools, with the answer
+streamed token-by-token into the dashboard's chat tab.
+
+**Stack:** Python, Claude Haiku 4.5 (Anthropic SDK), MCP (`fastapi-mcp` server + official `mcp` client), FastAPI, SSE, slowapi, Docker, React
+**Live:** [iot.gonzalezsanchez.dev](https://iot.gonzalezsanchez.dev) — "LLM + MCP" tab
+**Architecture:** two parts — **4a**: the project 1b routes exposed as 7 read-only MCP tools (internal Docker network only); **4b**: a separate `ai-assistant` container running a bounded agent loop (max 8 steps) with SSE token streaming
+**Security:** least-privilege container (only the Anthropic key — no AWS/Databricks credentials), read-only tool allowlist, per-IP rate limiting keyed on `CF-Connecting-IP` (5/min, 20/day), generic error events, plain-text rendering of model output
+**CI:** GitHub Actions — mypy + pytest (12 tests, 84% coverage) on every push
+**Spec:** [docs/project4-llm-mcp.md](docs/project4-llm-mcp.md) · PRD: [docs/project4-prd.md](docs/project4-prd.md)
+
+```
+Browser chat tab ── POST /ai/chat (SSE) ──► ai-assistant container
+                                                │ Claude API (streaming agent loop)
+                                                ▼
+                                    backend container /mcp (7 GET tools)
+                                                │
+                                                ▼
+                                    DynamoDB + lakehouse Gold layer
+```
+
+[View project](backend/project4-ai-assistant/)
 
 ---
 
@@ -239,6 +259,7 @@ Merges to `main` are pulled to the server immediately — `main` is production. 
 | 2a | AWS Lambda + Step Functions + Aurora Serverless v2 | `terraform apply` / `destroy` | CloudWatch | on-demand — deployed for demos, destroyed after |
 | 2b | Airflow + PostgreSQL (Docker, self-hosted) | `git pull` + `docker compose up -d` | OTel → Grafana Cloud + postgres-exporter | weekly DAG (Mon 02:00) |
 | 2c | Azure Databricks + ADLS Gen2 | `databricks bundle deploy` | Databricks Jobs UI + Azure budget alert | paused — manual runs |
+| 4 | Docker Compose (`ai-assistant` container), self-hosted server | `git pull` + `docker compose up -d` | `/ai/health` + container logs | always-on (rate limited) |
 
 **Cost control:** project 2a deploys on-demand and is destroyed after demos; project 2c has a paused schedule with an Azure budget alert (~€8/month idle).
 **Secrets:** all credentials live in `.env` / `.env.prod` on the server only — never committed.
@@ -255,8 +276,9 @@ Merges to `main` are pulled to the server immediately — `main` is production. 
 | Data engineering | Airflow, PySpark, ETL design, medallion architecture, WAP pattern, idempotent writes, anomaly detection (threshold + z-score) | 2a, 2b, 2c |
 | IaC & CI/CD | Terraform, CloudFormation, GitHub Actions, Jenkins (environment promotion), Docker, nginx | all projects |
 | Observability | OpenTelemetry auto-instrumentation, Datadog APM (traces, Watchdog, log-trace correlation), Grafana Cloud | 1b, 2b |
-| Testing & quality | pytest + moto, 80%+ coverage, regression tests, mypy, ruff, pre-commit | 1, 1b, 2a, 2b, 2c |
-| Production deployment | Cloudflare tunnel, self-hosted Docker Compose, Power BI reporting | 1b, 2b |
+| LLM & MCP | Claude API (streaming, tool use), MCP server + client, agent loop design, SSE, prompt hygiene, LLM cost/abuse controls | 4 |
+| Testing & quality | pytest + moto, 80%+ coverage, regression tests, mypy, ruff, pre-commit | 1, 1b, 2a, 2b, 2c, 4 |
+| Production deployment | Cloudflare tunnel, self-hosted Docker Compose, Power BI reporting | 1b, 2b, 4 |
 
 ---
 
@@ -270,7 +292,8 @@ iot-monitoring-platform/
 │   ├── project2a-behavior-analyzer/          # AWS native ETL pipeline (complete)
 │   ├── project2b-behavior-analyzer/          # Airflow + PySpark + S3 data lake (live)
 │   ├── project2c-lakehouse-dbt/              # Azure Databricks + dbt Gold layer (live)
-│   └── project3-iot-gateway/                 # Device gateway (planned)
+│   ├── project3-iot-gateway/                 # Device gateway (planned)
+│   └── project4-ai-assistant/                # Claude + MCP chat service (live)
 ├── docs/                                      # Project specs and architecture
 ├── frontend/                                  # React dashboard
 ├── docker-compose.prod.yml                    # Production deployment
