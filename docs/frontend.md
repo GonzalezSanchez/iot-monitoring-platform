@@ -31,14 +31,15 @@ nginx (port 80 inside container, 3000 on host)
    ▼
 React SPA (built with Vite)
    │
-   ├── App.jsx              — root component, routing + ComingSoon placeholder (project 4 tab)
+   ├── App.jsx              — root component, page routing
    ├── components/
    │   └── ProjectTabs.jsx  — navigation sidebar (6 tabs, grouped by project)
    └── pages/
        ├── RoomDashboard.jsx        — project 1a (Lambda) én 1b (FastAPI, zelfde component)
        ├── BehaviorDashboard.jsx    — project 2a (AWS Step Functions)
        ├── PowerBIDashboard.jsx     — project 2b (Airflow + PySpark + Power BI)
-       └── LakehouseDashboard.jsx   — project 2c (Databricks + dbt)
+       ├── LakehouseDashboard.jsx   — project 2c (Databricks + dbt)
+       └── AiDashboard.jsx          — project 4 (Claude + MCP chat, SSE streaming)
 ```
 
 ---
@@ -54,7 +55,7 @@ React SPA (built with Vite)
 | Step Functions + Aurora | 2a — Step Functions + Aurora | NotDeployed (on-demand) |
 | Spark + Airflow | 2b — Airflow + PySpark + Power BI | Live |
 | Databricks + dbt | 2c — Azure Databricks + dbt | Live |
-| LLM + MCP | 4 — LLM/MCP | ComingSoon placeholder |
+| LLM + MCP | 4 — AI Assistant (Claude + MCP) | Live |
 
 > Note: Project 3 (IoT Gateway) has no frontend tab — it is a backend-only project.
 
@@ -80,6 +81,14 @@ React SPA (built with Vite)
   - Occupancy patterns per room (period_start/end)
 - Public iframe URL from app.powerbi.com
 
+**AI Assistant (project 4):**
+- Chat interface over the live sensor data — Claude answers via MCP tools
+- Tokens streamed live via SSE (`POST /ai/chat`, parsed with `res.body.getReader()`)
+- Tool badges show which MCP tool Claude called (e.g. 🔧 get_rooms)
+- Suggestion chips for first-time visitors
+- Plain-text rendering only — model output is never injected as HTML
+- Friendly error message on rate limit (429)
+
 ---
 
 ## Environment Variables
@@ -88,6 +97,7 @@ React SPA (built with Vite)
 |----------|-------------|
 | `VITE_API_ENDPOINT` | Project 1b FastAPI base URL |
 | `VITE_P2A_API_ENDPOINT` | Project 2a API Gateway URL (commented out when AWS destroyed) |
+| `VITE_AI_ENDPOINT` | Project 4 AI assistant base URL (`/ai/*` routes) |
 
 Set in `.env` for local development. In production, injected at build time via GitHub Actions secrets as Docker build args.
 
@@ -128,7 +138,7 @@ docker compose -f docker-compose.prod.yml up -d --force-recreate
 ```
 frontend/
 ├── src/
-│   ├── App.jsx                      — root component, page routing + ComingSoon (project 4)
+│   ├── App.jsx                      — root component, page routing
 │   ├── index.jsx                    — entry point
 │   ├── components/
 │   │   └── ProjectTabs.jsx          — navigation sidebar (6 tabs, grouped labels)
@@ -136,7 +146,8 @@ frontend/
 │       ├── RoomDashboard.jsx        — project 1a (Lambda) én 1b (FastAPI)
 │       ├── BehaviorDashboard.jsx    — project 2a (AWS)
 │       ├── PowerBIDashboard.jsx     — project 2b (Power BI iframe)
-│       └── LakehouseDashboard.jsx   — project 2c (Databricks + dbt)
+│       ├── LakehouseDashboard.jsx   — project 2c (Databricks + dbt)
+│       └── AiDashboard.jsx          — project 4 (Claude + MCP chat)
 ├── Dockerfile                       — multi-stage build (node → nginx)
 ├── nginx.conf                       — nginx config for SPA routing
 ├── package.json
