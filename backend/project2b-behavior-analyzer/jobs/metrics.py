@@ -14,7 +14,9 @@ def init_meter(service_name: str) -> metrics.Meter:
         from opentelemetry.sdk.metrics import MeterProvider
         from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 
-        exporter = OTLPMetricExporter(endpoint=endpoint)
+        # The HTTP exporter uses an explicit endpoint as-is — unlike the env-var
+        # path, the SDK does NOT append the signal path, so add it ourselves.
+        exporter = OTLPMetricExporter(endpoint=f"{endpoint.rstrip('/')}/v1/metrics")
         reader = PeriodicExportingMetricReader(exporter, export_interval_millis=5_000)
         _provider = MeterProvider(metric_readers=[reader])
         metrics.set_meter_provider(_provider)
