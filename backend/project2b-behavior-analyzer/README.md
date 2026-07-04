@@ -229,6 +229,18 @@ postgres-exporter ──►┘
 
 `jobs/metrics.py` is a no-op if `OTEL_EXPORTER_OTLP_ENDPOINT` is not set — jobs simply run without metrics in the local dev environment.
 
+### Grafana dashboards
+
+The pipeline dashboard lives in the repo as code: [`grafana/pipeline-dashboard.json`](grafana/pipeline-dashboard.json) (import via Dashboards → New → Import). It shows the headline counters of the last run, task duration and pipeline results per run, and Airflow scheduler health:
+
+![Grafana pipeline dashboard](../../docs/screenshots/project2b-PySpark/project2b-grafana-pipeline-dashboard.png)
+
+PostgreSQL serving-layer health via the community postgres-exporter dashboard (ID 9628):
+
+![Grafana PostgreSQL dashboard](../../docs/screenshots/project2b-PySpark/project2b-grafana-postgres.png)
+
+> **Debugging note:** the custom job counters initially never reached Grafana — every export failed with a silent `404`. Cause: `OTLPMetricExporter(endpoint=...)` uses an explicitly passed endpoint *as-is*; unlike the env-var path, the SDK does not append the `/v1/metrics` signal path. Found via the Airflow task logs, fixed in `jobs/metrics.py` (PR #84).
+
 ## Installation & Usage
 
 ```bash
