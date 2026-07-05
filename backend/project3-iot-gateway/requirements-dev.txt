@@ -1,0 +1,9 @@
+-r requirements.txt
+pytest==8.4.1
+pytest-asyncio==1.4.0
+pytest-cov==6.0.0
+httpx==0.28.1
+moto[dynamodb]==5.0.28
+mypy==1.7.0
+types-PyYAML==6.0.12.20240917
+types-python-jose==3.3.4.20240106
