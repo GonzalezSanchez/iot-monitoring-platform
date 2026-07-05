@@ -1,0 +1,9 @@
+# Per-device rate limits — messages per minute, keyed by device_type.
+# Unknown types fall back to default_per_minute (docs/project3-prd.md §5.3).
+default_per_minute: 60
+
+per_device_type:
+  temperature_sensor: 60
+  humidity_sensor: 60
+  occupancy_sensor: 120
+  motion_sensor: 120

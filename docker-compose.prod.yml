@@ -38,3 +38,34 @@ services:
       - backend
       - ai-assistant
     restart: unless-stopped
+
+  # Project 3b — device gateway. Redpanda and the gateway are internal-only:
+  # devices are simulated in-network (docs/project3-prd.md §2, §8).
+  redpanda:
+    image: redpandadata/redpanda:v24.2.7
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=512M
+      - --overprovisioned
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:9092
+    expose:
+      - "9092"
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    restart: unless-stopped
+
+  gateway:
+    image: ghcr.io/gonzalezsanchez/iot-gateway:latest
+    env_file:
+      - ./backend/project3-iot-gateway/.env.prod
+    depends_on:
+      - redpanda
+    expose:
+      - "8002"
+    restart: unless-stopped
+
+volumes:
+  redpanda_data:
