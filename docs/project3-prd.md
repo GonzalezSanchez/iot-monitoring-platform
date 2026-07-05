@@ -5,9 +5,27 @@ Build contract for project 3b. Base spec: [project3-iot-gateway.md](project3-iot
 split into three phases — each with its own test contract and acceptance criteria,
 following the 4a/4b pattern of [project4-prd.md](project4-prd.md).
 
-Scope decision (2026-07-05): **only 3b is built now.** The AWS variant (3a — Cognito,
-API Gateway authorizer, SQS, Lambda) stays fully specced in the base document as an
-optional later variant.
+## 0. What is project 3?
+
+Project 3 is the **device layer** of the platform (root README architecture table):
+how physical sensors register, authenticate, and send data securely *before* it reaches
+the ingestion layer. Today the platform trusts whatever is POSTed to it; project 3 puts
+a secure gateway in front and thereby becomes the owner of the shared
+`prod-SensorEvents` data contract.
+
+Like projects 1 and 2, it is designed in two variants — same security concept,
+different infrastructure:
+
+| Variant | Stack | Status |
+|---|---|---|
+| **3a** | AWS-native: Cognito (JWT), API Gateway authorizer, SQS + DLQ, Lambda — deploy/destroy like 2a | Specced only ([base spec](project3-iot-gateway.md)) |
+| **3b** | Self-hosted: FastAPI (async), custom API keys + JWT, Kafka (Redpanda) + DLQ topic — always-on, on acer-server | **Built now — this PRD** |
+
+Within 3b the build is phased (§7): **3b-1** gateway + security core, **3b-2** consumer +
+data contract, **3b-3** device simulator + load-test proof.
+
+Scope decision (2026-07-05): **only 3b is built now.** 3a stays fully specced in the
+base document as an optional later variant.
 
 ## 1. Goal
 
