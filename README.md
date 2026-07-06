@@ -186,7 +186,7 @@ Delta Lake Gold    (fact_anomalies, fact_patterns, dim_rooms, dim_buildings)
 
 Secure gateway for device registration, authentication and rate limiting — the layer that
 would own the shared `prod-SensorEvents` data contract.
-Full spec: [docs/project3b-iot-gateway.md](docs/project3b-iot-gateway.md)
+Full spec: [docs/project3b-iot-gateway.md](docs/project3b-iot-gateway.md) (implemented variant) · [docs/project3a-iot-gateway.md](docs/project3a-iot-gateway.md) (AWS-native, specced only)
 
 ---
 
