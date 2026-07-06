@@ -1,0 +1,47 @@
+name: Deploy Project 3 Infrastructure
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/project3-iot-gateway/infrastructure/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - prod
+          - staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: eu-central-1
+
+    - name: Deploy CloudFormation stack
+      working-directory: ./backend/project3-iot-gateway
+      run: |
+        aws cloudformation deploy \
+          --template-file infrastructure/cloudformation.yaml \
+          --stack-name iot-gateway-${{ github.event.inputs.environment || 'prod' }} \
+          --parameter-overrides Environment=${{ github.event.inputs.environment || 'prod' }} \
+          --capabilities CAPABILITY_NAMED_IAM \
+          --no-fail-on-empty-changeset
+
+    - name: Show stack outputs
+      run: |
+        aws cloudformation describe-stacks \
+          --stack-name iot-gateway-${{ github.event.inputs.environment || 'prod' }} \
+          --query 'Stacks[0].Outputs' \
+          --output table
