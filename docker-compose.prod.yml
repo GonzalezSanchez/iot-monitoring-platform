@@ -60,7 +60,7 @@ services:
   gateway:
     image: ghcr.io/gonzalezsanchez/iot-gateway:latest
     env_file:
-      - ./backend/project3-iot-gateway/.env.prod
+      - ./backend/project3b-iot-gateway/.env.prod
     depends_on:
       - redpanda
     expose:

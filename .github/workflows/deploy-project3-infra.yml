@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'backend/project3-iot-gateway/infrastructure/**'
+      - 'backend/project3b-iot-gateway/infrastructure/**'
   workflow_dispatch:
     inputs:
       environment:
@@ -30,7 +30,7 @@ jobs:
         aws-region: eu-central-1
 
     - name: Deploy CloudFormation stack
-      working-directory: ./backend/project3-iot-gateway
+      working-directory: ./backend/project3b-iot-gateway
       run: |
         aws cloudformation deploy \
           --template-file infrastructure/cloudformation.yaml \

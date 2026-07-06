@@ -1,4 +1,4 @@
-"""Request/response models — the API contract from docs/project3-iot-gateway.md."""
+"""Request/response models — the API contract from docs/project3b-iot-gateway.md."""
 
 from datetime import datetime
 from typing import Any, Dict, Literal, Optional

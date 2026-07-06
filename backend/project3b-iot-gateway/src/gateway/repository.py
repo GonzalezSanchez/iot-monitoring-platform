@@ -1,4 +1,4 @@
-"""Devices table access (p3-{env}-Devices, docs/project3-iot-gateway.md schema).
+"""Devices table access (p3-{env}-Devices, docs/project3b-iot-gateway.md schema).
 
 boto3 is synchronous — routes call these functions via asyncio.to_thread so the
 event loop never blocks. Registration/auth are low-frequency; the message hot

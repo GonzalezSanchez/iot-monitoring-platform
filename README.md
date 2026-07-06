@@ -186,7 +186,7 @@ Delta Lake Gold    (fact_anomalies, fact_patterns, dim_rooms, dim_buildings)
 
 Secure gateway for device registration, authentication and rate limiting — the layer that
 would own the shared `prod-SensorEvents` data contract.
-Full spec: [docs/project3-iot-gateway.md](docs/project3-iot-gateway.md)
+Full spec: [docs/project3b-iot-gateway.md](docs/project3b-iot-gateway.md)
 
 ---
 
@@ -296,7 +296,7 @@ iot-monitoring-platform/
 │   ├── project2a-behavior-analyzer/          # AWS native ETL pipeline (complete)
 │   ├── project2b-behavior-analyzer/          # Airflow + PySpark + S3 data lake (live)
 │   ├── project2c-lakehouse-dbt/              # Azure Databricks + dbt Gold layer (live)
-│   ├── project3-iot-gateway/                 # Device gateway (planned)
+│   ├── project3b-iot-gateway/                 # Device gateway (planned)
 │   └── project4-ai-assistant/                # Claude + MCP chat service (live)
 ├── docs/                                      # Project specs and architecture
 ├── frontend/                                  # React dashboard
