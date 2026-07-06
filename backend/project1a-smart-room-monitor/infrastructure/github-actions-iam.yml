@@ -16,12 +16,15 @@ Resources:
         - Key: Purpose
           Value: github-actions-cicd
 
+  # Managed policy instead of inline: inline policies on a user are capped at
+  # 2048 characters combined, a managed policy allows 6144.
   GitHubActionsPolicy:
-    Type: AWS::IAM::UserPolicy
+    Type: AWS::IAM::ManagedPolicy
     DeletionPolicy: Retain
     Properties:
-      PolicyName: iot-monitoring-github-actions-policy
-      UserName: !Ref GitHubActionsUser
+      ManagedPolicyName: iot-monitoring-github-actions-policy
+      Users:
+        - !Ref GitHubActionsUser
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
