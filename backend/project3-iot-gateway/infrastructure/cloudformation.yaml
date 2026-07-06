@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  IoT Monitoring Platform (Project 3b) — DynamoDB Devices table and
+  least-privilege IAM user for the device gateway.
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [prod, staging]
+    Description: Deployment environment prefix for table names
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # DynamoDB Table
+  # ---------------------------------------------------------------------------
+
+  DevicesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'p3-${Environment}-Devices'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: device_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: device_id
+          KeyType: HASH
+      Tags:
+        - Key: Project
+          Value: iot-monitoring-platform
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ---------------------------------------------------------------------------
+  # IAM User (least privilege — only what the gateway needs)
+  # ---------------------------------------------------------------------------
+
+  GatewayUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: iot-gateway-app
+      Tags:
+        - Key: Project
+          Value: iot-monitoring-platform
+
+  GatewayUserPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: iot-gateway-app-dynamodb
+      Users:
+        - !Ref GatewayUser
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+            Resource:
+              - !GetAtt DevicesTable.Arn
+
+# ---------------------------------------------------------------------------
+# Outputs
+# ---------------------------------------------------------------------------
+
+Outputs:
+  DevicesTableName:
+    Description: DynamoDB table name for registered devices
+    Value: !Ref DevicesTable
+
+  GatewayUserArn:
+    Description: IAM user ARN — create access key manually after deployment
+    Value: !GetAtt GatewayUser.Arn
