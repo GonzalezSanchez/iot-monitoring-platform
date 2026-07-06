@@ -1,6 +1,6 @@
 # PRD — Project 3b: IoT Device Gateway (FastAPI + Kafka)
 
-Build contract for project 3b. Base spec: [project3b-iot-gateway.md](project3b-iot-gateway.md)
+Build contract for project 3b. Base spec: [project3-iot-gateway.md](project3-iot-gateway.md)
 (architecture, endpoints, Kafka decision). This PRD locks the decisions needed to build,
 split into three phases — each with its own test contract and acceptance criteria,
 following the 4a/4b pattern of [project4-prd.md](project4-prd.md).
@@ -18,7 +18,7 @@ different infrastructure:
 
 | Variant | Stack | Status |
 |---|---|---|
-| **3a** | AWS-native: Cognito (JWT), API Gateway authorizer, SQS + DLQ, Lambda — deploy/destroy like 2a | Specced only ([base spec](project3b-iot-gateway.md)) |
+| **3a** | AWS-native: Cognito (JWT), API Gateway authorizer, SQS + DLQ, Lambda — deploy/destroy like 2a | Specced only ([base spec](project3-iot-gateway.md)) |
 | **3b** | Self-hosted: FastAPI (async), custom API keys + JWT, Kafka (Redpanda) + DLQ topic — always-on, on acer-server | **Built now — this PRD** |
 
 Within 3b the build is phased (§7): **3b-1** gateway + security core, **3b-2** consumer +
