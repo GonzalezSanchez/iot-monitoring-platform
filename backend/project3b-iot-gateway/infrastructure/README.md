@@ -32,7 +32,7 @@ admin AWS CLI access:
 aws iam create-access-key --user-name iot-gateway-app
 ```
 
-Put the key pair in `backend/project3-iot-gateway/.env.prod` on the server
+Put the key pair in `backend/project3b-iot-gateway/.env.prod` on the server
 (never in git, `chmod 600`) and rotate by creating a new key, updating
 `.env.prod`, then deleting the old one:
 

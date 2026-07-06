@@ -240,7 +240,7 @@ Provisioned via CloudFormation in `infrastructure/`:
 ## Local Setup
 
 ```bash
-cd backend/project3-iot-gateway
+cd backend/project3b-iot-gateway
 
 # Start LocalStack (DynamoDB + SQS + Cognito simulation)
 docker-compose up -d
@@ -268,7 +268,7 @@ pytest tests/integration/ -v
 ## Project Structure
 
 ```
-project3-iot-gateway/
+project3b-iot-gateway/
 ├── src/
 │   ├── handlers/          # Lambda entry points
 │   │   ├── register_device.py

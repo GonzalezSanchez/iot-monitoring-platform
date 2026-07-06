@@ -5,7 +5,7 @@ on:
     branches: [main, develop]
     paths:
       - 'backend/project1b-smart-room-monitor-fastapi/**'
-      - 'backend/project3-iot-gateway/**'
+      - 'backend/project3b-iot-gateway/**'
       - 'backend/project4-ai-assistant/**'
       - 'frontend/**'
   workflow_dispatch:
@@ -37,7 +37,7 @@ jobs:
       - name: Build and push gateway image
         uses: docker/build-push-action@v5
         with:
-          context: ./backend/project3-iot-gateway
+          context: ./backend/project3b-iot-gateway
           push: true
           tags: ghcr.io/gonzalezsanchez/iot-gateway:latest
 
