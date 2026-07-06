@@ -107,6 +107,48 @@ Resources:
               - apigateway:DELETE
             Resource: "arn:aws:apigateway:eu-central-1::*"
 
+          # --- Project 3b (device gateway) — deploy-project3-infra.yml -------
+
+          - Sid: CloudFormationProject3
+            Effect: Allow
+            Action:
+              - cloudformation:CreateStack
+              - cloudformation:UpdateStack
+              - cloudformation:DeleteStack
+              - cloudformation:DescribeStacks
+              - cloudformation:DescribeStackEvents
+              - cloudformation:GetTemplate
+              - cloudformation:ValidateTemplate
+              - cloudformation:CreateChangeSet
+              - cloudformation:ExecuteChangeSet
+              - cloudformation:DescribeChangeSet
+            Resource: "arn:aws:cloudformation:eu-central-1:*:stack/iot-gateway-*"
+
+          - Sid: DynamoDBProject3
+            Effect: Allow
+            Action:
+              - dynamodb:CreateTable
+              - dynamodb:DeleteTable
+              - dynamodb:DescribeTable
+              - dynamodb:UpdateTable
+              - dynamodb:TagResource
+              - dynamodb:UntagResource
+              - dynamodb:ListTagsOfResource
+            Resource: "arn:aws:dynamodb:eu-central-1:*:table/p3-*-Devices"
+
+          - Sid: IAMForGatewayUser
+            Effect: Allow
+            Action:
+              - iam:CreateUser
+              - iam:DeleteUser
+              - iam:GetUser
+              - iam:TagUser
+              - iam:UntagUser
+              - iam:PutUserPolicy
+              - iam:DeleteUserPolicy
+              - iam:GetUserPolicy
+            Resource: "arn:aws:iam::*:user/iot-gateway-app"
+
 Outputs:
   GitHubActionsUserArn:
     Description: IAM user ARN for GitHub Actions — create access key manually after deployment
