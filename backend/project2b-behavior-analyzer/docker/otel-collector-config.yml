@@ -22,6 +22,19 @@ processors:
   batch:
     timeout: 10s
 
+  # Grafana Cloud's OTLP endpoint rejects these scheduler-internal StatsD
+  # metrics ("invalid temporality and type combination") and then drops the
+  # ENTIRE batch they arrive in. None of them feed our dashboards — drop them
+  # before export so the rest of the batch survives.
+  filter/grafana_incompatible:
+    metrics:
+      metric:
+        - 'name == "airflow.scheduler_heartbeat"'
+        - 'name == "airflow.triggerer_heartbeat"'
+        - 'name == "airflow.dag_processing.processes"'
+        - 'name == "airflow.dag_processing.file_path_queue_update_count"'
+        - 'IsMatch(name, "airflow\\.scheduler\\.orphaned_tasks\\..*")'
+
 exporters:
   otlphttp:
     endpoint: ${GRAFANA_OTLP_ENDPOINT}
@@ -32,7 +45,7 @@ service:
   pipelines:
     metrics:
       receivers: [otlp, statsd, prometheus]
-      processors: [batch]
+      processors: [filter/grafana_incompatible, batch]
       exporters: [otlphttp]
     logs:
       receivers: [otlp]
