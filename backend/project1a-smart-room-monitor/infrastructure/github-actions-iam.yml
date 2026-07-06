@@ -17,8 +17,9 @@ Resources:
           Value: github-actions-cicd
 
   # Managed policy instead of inline: inline policies on a user are capped at
-  # 2048 characters combined, a managed policy allows 6144.
-  GitHubActionsPolicy:
+  # 2048 characters combined, a managed policy allows 6144. Own logical ID —
+  # CloudFormation does not allow changing the type of an existing resource.
+  GitHubActionsManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
     DeletionPolicy: Retain
     Properties:
