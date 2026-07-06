@@ -206,7 +206,7 @@ API Gateway ──► Lambda (POST /analyze/patterns)  → Step Functions (start
 
 ## Security
 
-Intentionally excluded from this project — see [Project 3: IoT Device Gateway](../../docs/project3-iot-gateway.md) for authentication with JWT via Cognito.
+Intentionally excluded from this project — see [Project 3: IoT Device Gateway](../../docs/project3a-iot-gateway.md) for authentication with JWT via Cognito.
 
 Aurora credentials are managed via AWS Secrets Manager (production) or `.env` (local).
 
