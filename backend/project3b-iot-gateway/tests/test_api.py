@@ -91,6 +91,9 @@ def test_message_produced_with_device_key(client):
     assert event["schema_version"] == config.SCHEMA_VERSION
     assert event["payload"] == {"temperature": 22.5, "humidity": 45}
     assert event["device_type"] == "temperature_sensor"
+    # register_device registers with metadata {"location": "lab"} — the gateway
+    # enriches the message so the consumer can map room_id without Devices access
+    assert event["location"] == "lab"
 
 
 def test_message_without_token_is_401(client):

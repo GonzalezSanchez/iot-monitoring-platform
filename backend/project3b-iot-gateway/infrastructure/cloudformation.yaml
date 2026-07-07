@@ -62,6 +62,41 @@ Resources:
             Resource:
               - !GetAtt DevicesTable.Arn
 
+  # ---------------------------------------------------------------------------
+  # IAM User for the consumer (3b-2) — writes the shared contract tables owned
+  # by project 1b; deliberately a separate user (least privilege: the gateway
+  # can only touch Devices, the consumer only the contract tables)
+  # ---------------------------------------------------------------------------
+
+  ConsumerUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: iot-gateway-consumer
+      Tags:
+        - Key: Project
+          Value: iot-monitoring-platform
+
+  ConsumerUserPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: iot-gateway-consumer-dynamodb
+      Users:
+        - !Ref ConsumerUser
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:PutItem
+            Resource:
+              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Environment}-SensorEvents'
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+            Resource:
+              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Environment}-RoomStatus'
+
 # ---------------------------------------------------------------------------
 # Outputs
 # ---------------------------------------------------------------------------
@@ -74,3 +109,7 @@ Outputs:
   GatewayUserArn:
     Description: IAM user ARN — create access key manually after deployment
     Value: !GetAtt GatewayUser.Arn
+
+  ConsumerUserArn:
+    Description: IAM user ARN for the normalizer consumer — create access key manually
+    Value: !GetAtt ConsumerUser.Arn

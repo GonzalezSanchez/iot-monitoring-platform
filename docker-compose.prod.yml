@@ -67,5 +67,16 @@ services:
       - "8002"
     restart: unless-stopped
 
+  # Same image as the gateway, different entrypoint — normalises topic messages
+  # to the shared contract tables. Own env file: separate least-privilege AWS user.
+  consumer:
+    image: ghcr.io/gonzalezsanchez/iot-gateway:latest
+    command: ["python", "-m", "consumer.main"]
+    env_file:
+      - ./backend/project3b-iot-gateway/.env.consumer.prod
+    depends_on:
+      - redpanda
+    restart: unless-stopped
+
 volumes:
   redpanda_data:
