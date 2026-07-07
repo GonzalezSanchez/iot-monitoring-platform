@@ -221,6 +221,25 @@ pytest
 mypy src
 ```
 
+## Future Extensions
+
+Deliberately out of scope for the 3b build, recorded here for later:
+
+- **DLQ replay** — a script that re-offers `sensor-events.dlq` messages to the
+  consumer after a normaliser fix; the DLQ record carries the original message
+  untouched, so replay is lossless. (The DLQ is the streaming equivalent of the
+  2c quarantine table — same never-lose-data philosophy; today inspection is
+  manual via `rpk topic consume sensor-events.dlq`.)
+- **DLQ alerting/observability** — alert on DLQ growth and a small dashboard of
+  failure reasons, so a misbehaving device is noticed instead of discovered.
+- **Room-status enrichment** — the consumer's RoomStatus refresh is mechanical
+  (current values + last_update); anomaly detection and status recalculation
+  remain project 1b business logic. If gateway traffic ever becomes the primary
+  ingest path, that logic should move to a shared library instead of being
+  duplicated.
+- **Stack drift detection** — periodic `cloudformation detect-stack-drift` on
+  the platform's stacks (lesson from the 2026-07-06 IAM drift incident).
+
 ## Load Testing (locust — phase 3b-3)
 
 Rate limiting is only credible if you can prove it. Load testing with locust demonstrates that:

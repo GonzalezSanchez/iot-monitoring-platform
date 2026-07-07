@@ -141,6 +141,9 @@ async def messages(
         "message_id": message_id,
         "device_id": body.device_id,
         "device_type": device["device_type"],
+        # location makes the topic message self-contained: the consumer maps it
+        # to room_id without needing access to the Devices table
+        "location": (device.get("metadata") or {}).get("location"),
         "payload": body.payload,
         "timestamp": body.timestamp.isoformat(),
         "received_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

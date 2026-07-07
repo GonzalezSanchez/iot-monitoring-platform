@@ -3,6 +3,8 @@ import os
 # Test environment BEFORE the app modules load config
 os.environ["JWT_SECRET"] = "test-secret-for-unit-tests-only"
 os.environ["DEVICES_TABLE"] = "test-Devices"
+os.environ["SENSOR_EVENTS_TABLE"] = "test-SensorEvents"
+os.environ["ROOM_STATUS_TABLE"] = "test-RoomStatus"
 os.environ["AWS_REGION"] = "eu-central-1"
 os.environ["AWS_ACCESS_KEY_ID"] = "test"
 os.environ["AWS_SECRET_ACCESS_KEY"] = "test"
@@ -13,6 +15,7 @@ import pytest
 from fastapi.testclient import TestClient
 from moto import mock_aws
 
+from consumer import config as consumer_config
 from gateway import config
 from gateway import main as gateway_main
 
@@ -52,6 +55,42 @@ def client(monkeypatch):
             gateway_main.app.state.producer = fake
             test_client.fake_producer = fake
             yield test_client
+
+
+@pytest.fixture()
+def contract_tables():
+    """moto versions of the shared contract tables the consumer writes."""
+    with mock_aws():
+        dynamodb = boto3.resource("dynamodb", region_name=consumer_config.AWS_REGION)
+        events = dynamodb.create_table(
+            TableName=consumer_config.SENSOR_EVENTS_TABLE,
+            KeySchema=[
+                {"AttributeName": "room_id", "KeyType": "HASH"},
+                {"AttributeName": "timestamp", "KeyType": "RANGE"},
+            ],
+            AttributeDefinitions=[
+                {"AttributeName": "room_id", "AttributeType": "S"},
+                {"AttributeName": "timestamp", "AttributeType": "S"},
+            ],
+            BillingMode="PAY_PER_REQUEST",
+        )
+        rooms = dynamodb.create_table(
+            TableName=consumer_config.ROOM_STATUS_TABLE,
+            KeySchema=[{"AttributeName": "room_id", "KeyType": "HASH"}],
+            AttributeDefinitions=[{"AttributeName": "room_id", "AttributeType": "S"}],
+            BillingMode="PAY_PER_REQUEST",
+        )
+        yield events, rooms
+
+
+class FakeDlq:
+    """Collects DLQ records the consumer produces in tests."""
+
+    def __init__(self):
+        self.records = []
+
+    async def __call__(self, record: bytes):
+        self.records.append(record)
 
 
 def register_device(client, device_id="sensor-001", device_type="temperature_sensor"):

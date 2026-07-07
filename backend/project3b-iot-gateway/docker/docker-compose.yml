@@ -29,3 +29,13 @@ services:
     depends_on:
       redpanda:
         condition: service_healthy
+
+  consumer:
+    build: ..
+    command: ["python", "-m", "consumer.main"]
+    env_file: ../.env
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+    depends_on:
+      redpanda:
+        condition: service_healthy
