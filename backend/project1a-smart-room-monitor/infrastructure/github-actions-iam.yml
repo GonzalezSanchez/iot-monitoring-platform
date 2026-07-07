@@ -151,7 +151,11 @@ Resources:
               - iam:PutUserPolicy
               - iam:DeleteUserPolicy
               - iam:GetUserPolicy
-            Resource: "arn:aws:iam::*:user/iot-gateway-app"
+              # CloudFormation's user handler needs this in the delete/rollback flow
+              - iam:ListAccessKeys
+            Resource:
+              - "arn:aws:iam::*:user/iot-gateway-app"
+              - "arn:aws:iam::*:user/iot-gateway-consumer"
 
 Outputs:
   GitHubActionsUserArn:
