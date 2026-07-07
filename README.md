@@ -182,11 +182,18 @@ Delta Lake Gold    (fact_anomalies, fact_patterns, dim_rooms, dim_buildings)
 
 ---
 
-### Project 3 — IoT Device Gateway Simulator *(planned)*
+### Project 3b — IoT Device Gateway (FastAPI + Kafka)
 
-Secure gateway for device registration, authentication and rate limiting — the layer that
-would own the shared `prod-SensorEvents` data contract.
-Full spec: [docs/project3b-iot-gateway.md](docs/project3b-iot-gateway.md) (implemented variant) · [docs/project3a-iot-gateway.md](docs/project3a-iot-gateway.md) (AWS-native, specced only)
+Secure gateway for device registration, authentication and rate limiting — the device
+layer that owns the shared `prod-SensorEvents` data contract. Devices register once,
+exchange a bcrypt-hashed API key for a short-lived JWT, and stream readings through
+Kafka (Redpanda); a consumer normalises them into the same DynamoDB tables the live
+dashboard reads, with a dead-letter topic for anything that fails normalisation.
+
+**Stack:** Python, FastAPI (async), Redpanda/Kafka (`aiokafka`), DynamoDB, bcrypt + JWT, locust, CloudFormation, Docker
+**Design variants:** [3b spec (built)](docs/project3b-iot-gateway.md) · [3a spec (AWS-native, specced only)](docs/project3a-iot-gateway.md)
+
+[View project](backend/project3b-iot-gateway/)
 
 ---
 
