@@ -4,6 +4,7 @@ Represents a single sensor reading event
 """
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -48,7 +49,8 @@ class SensorEvent(BaseModel):
             "timestamp": self.timestamp.isoformat(),
             "event_id": self.event_id or str(ULID()),
             "sensor_type": self.sensor_type,
-            "value": self.value,
+            # DynamoDB does not support float — convert to Decimal
+            "value": Decimal(str(self.value)),
             "unit": self.unit,
             "status": self.status,
         }

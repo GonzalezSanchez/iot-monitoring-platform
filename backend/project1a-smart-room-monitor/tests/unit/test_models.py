@@ -3,6 +3,7 @@ Unit tests for models
 """
 
 from datetime import datetime
+from decimal import Decimal
 
 import pytest
 
@@ -74,7 +75,9 @@ class TestSensorEvent:
 
         assert item["room_id"] == "room-a"
         assert item["sensor_type"] == "temperature"
-        assert item["value"] == 22.5
+        # boto3 rejects float — value must be Decimal for DynamoDB
+        assert isinstance(item["value"], Decimal)
+        assert item["value"] == Decimal("22.5")
         assert "timestamp" in item
         assert isinstance(item["timestamp"], str)
         assert item["timestamp"].startswith("2026-01-09T12:00:00")
