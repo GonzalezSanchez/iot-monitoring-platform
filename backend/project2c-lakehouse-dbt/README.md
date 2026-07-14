@@ -2,6 +2,8 @@
 
 IoT sensor data pipeline on a fully managed Azure stack. Same domain as [project 2b](../../docs/project2b-behavior-analyzer.md) — 10 simulated rooms with temperature, CO₂, occupancy, and humidity sensors — but rebuilt on Azure Databricks with Delta Lake, Unity Catalog, and dbt.
 
+Design doc (architecture + key decisions): [docs/project2c-lakehouse-dbt.md](../../docs/project2c-lakehouse-dbt.md)
+
 ## Stack
 
 | Layer | Tool | Purpose |
