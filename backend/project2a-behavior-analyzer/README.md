@@ -4,6 +4,8 @@
 
 ETL pipeline that reads historical sensor data from project 1a (DynamoDB), detects behavior patterns and anomalies per room, and stores the results in Aurora PostgreSQL. Results are queryable via a REST API.
 
+Design doc (architecture + key decisions): [docs/project2a-behavior-analyzer.md](../../docs/project2a-behavior-analyzer.md)
+
 ## Deployment
 
 Deployed on-demand for demos — infrastructure is destroyed after each session to minimise AWS costs (Aurora Serverless v2 has a minimum cost even when idle).
