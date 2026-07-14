@@ -137,8 +137,8 @@ function SendEventForm({ onEventSent, apiBase }) {
       {result && (
         <ResultBanner ok={result.ok}>
           {result.ok
-            ? `Status: ${result.data.status} — event saved for ${result.data.room_id}`
-            : `Error: ${result.data.detail || 'Unknown error'}`}
+            ? `Status: ${result.data.status ?? result.data.event_status} — event saved for ${result.data.room_id ?? roomId}`
+            : `Error: ${result.data.detail || result.data.error || 'Unknown error'}`}
         </ResultBanner>
       )}
     </CollapsibleForm>
