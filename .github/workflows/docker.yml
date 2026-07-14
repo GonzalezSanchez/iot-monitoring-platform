@@ -58,3 +58,4 @@ jobs:
             VITE_API_ENDPOINT=${{ secrets.VITE_API_ENDPOINT }}
             VITE_P2A_API_ENDPOINT=${{ secrets.VITE_P2A_API_ENDPOINT }}
             VITE_AI_ENDPOINT=${{ secrets.VITE_AI_ENDPOINT }}
+            VITE_FARO_URL=${{ secrets.VITE_FARO_URL }}
