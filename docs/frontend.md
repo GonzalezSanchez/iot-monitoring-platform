@@ -91,6 +91,18 @@ React SPA (built with Vite)
 
 ---
 
+## Observability (Grafana Faro)
+
+The dashboard ships with real user monitoring (RUM) via the **Grafana Faro Web SDK** (`@grafana/faro-web-sdk` + `@grafana/faro-web-tracing`), initialised once in [`src/faro.js`](../frontend/src/faro.js) before the app renders.
+
+- Collects Web Vitals (TTFB, FCP, LCP, CLS, INP), JS errors, HTTP calls and per-session user journeys
+- Sends beacons to the Grafana Cloud Frontend Observability collector; access is restricted by a domain allowlist (`iot.gonzalezsanchez.dev`), not by keeping the collect URL secret — it is public in the bundle by nature
+- Initialisation is conditional on `VITE_FARO_URL`: production builds get it as a Docker build arg, local dev builds tree-shake Faro out entirely
+
+![Web Vitals overview in Grafana Cloud](screenshots/frontend/1-faro-overview-web-vitals.png)
+
+---
+
 ## Environment Variables
 
 | Variable | Description |
@@ -98,6 +110,7 @@ React SPA (built with Vite)
 | `VITE_API_ENDPOINT` | Project 1b FastAPI base URL |
 | `VITE_P2A_API_ENDPOINT` | Project 2a API Gateway URL (commented out when AWS destroyed) |
 | `VITE_AI_ENDPOINT` | Project 4 AI assistant base URL (`/ai/*` routes) |
+| `VITE_FARO_URL` | Grafana Faro collect endpoint — Faro stays disabled when unset (local dev) |
 
 Set in `.env` for local development. In production, injected at build time via GitHub Actions secrets as Docker build args.
 

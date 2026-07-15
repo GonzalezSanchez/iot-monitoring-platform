@@ -62,7 +62,7 @@ containerised application. A deliberate choice to show infrastructure independen
 **Live:** [iot.gonzalezsanchez.dev](https://iot.gonzalezsanchez.dev)
 **API docs:** [iot.gonzalezsanchez.dev/docs](https://iot.gonzalezsanchez.dev/docs)
 **Auth:** Intentionally excluded — device authentication (JWT via Cognito) is covered in Project 3
-**Observability:** End-to-end with OpenTelemetry auto-instrumentation → OTel Collector → Datadog APM — see [Observability section](#observability-project-1b) below
+**Observability:** End-to-end with OpenTelemetry auto-instrumentation → OTel Collector → Datadog APM — see [Observability section](#observability-project-1b) below. The React frontend has real user monitoring via Grafana Faro — see [Frontend Observability](#frontend-observability-grafana-faro).
 
 [View project](backend/project1b-smart-room-monitor-fastapi/)
 
@@ -259,6 +259,25 @@ More screenshots — service map, flame graphs, log patterns, log-trace correlat
 
 ---
 
+## Frontend Observability (Grafana Faro)
+
+Real user monitoring (RUM) on the React dashboard with the **Grafana Faro Web SDK** — Web Vitals, JS errors, failing HTTP calls and per-session user journeys flow into the same Grafana Cloud stack the data pipelines report to.
+
+**What's collected out of the box:**
+- Web Vitals per page (TTFB, FCP, LCP, CLS, INP) with good/poor thresholds
+- JS errors and failing HTTP requests, grouped per user session
+- User journeys: the exact sequence of page loads, requests and errors in a session
+
+Faro only initialises when `VITE_FARO_URL` is set (production builds); local dev builds contain no telemetry code at all. See [docs/frontend.md](docs/frontend.md#observability-grafana-faro) for the setup.
+
+### It paid off on day one — a session's user journey exposed a silent production bug
+
+> A failing `POST /events` (422) showed up between healthy requests in my own session: project 1a's event writer passed floats to DynamoDB, which only accepts `Decimal`. Broken for every decimal sensor value since April, invisible in every backend dashboard — found via RUM, fixed and deployed the same day.
+
+![Session user journey — failing POST 422 between healthy requests](docs/screenshots/frontend/2-faro-user-journey-422.png)
+
+---
+
 ## Operations
 
 Merges to `main` are pulled to the server immediately — `main` is production. All projects run live except 2a, which deploys on-demand.
@@ -286,7 +305,7 @@ Merges to `main` are pulled to the server immediately — `main` is production. 
 | Azure & Databricks | Databricks, Delta Lake, Unity Catalog, dbt-databricks, DABs, ADLS Gen2, Key Vault, Managed Identity | 2c |
 | Data engineering | Airflow, PySpark, ETL design, medallion architecture, WAP pattern, idempotent writes, anomaly detection (threshold + z-score) | 2a, 2b, 2c |
 | IaC & CI/CD | Terraform, CloudFormation, GitHub Actions, Jenkins (environment promotion), Docker, nginx | all projects |
-| Observability | OpenTelemetry auto-instrumentation, Datadog APM (traces, Watchdog, log-trace correlation), Grafana Cloud | 1b, 2b |
+| Observability | OpenTelemetry auto-instrumentation, Datadog APM (traces, Watchdog, log-trace correlation), Grafana Cloud, Grafana Faro (RUM, Web Vitals) | 1b, 2b, frontend |
 | LLM & MCP | Claude API (streaming, tool use), MCP server + client, agent loop design, SSE, prompt hygiene, LLM cost/abuse controls | 4 |
 | Testing & quality | pytest + moto, 80%+ coverage, regression tests, mypy, ruff, pre-commit | 1, 1b, 2a, 2b, 2c, 4 |
 | Production deployment | Cloudflare tunnel, self-hosted Docker Compose, Power BI reporting | 1b, 2b, 4 |
