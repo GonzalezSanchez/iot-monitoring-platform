@@ -103,6 +103,26 @@ locust -f loadtest/locustfile.py --host http://localhost:8002 \
 A 429 on the aggressive device counts as a pass (the limiter doing its job);
 a 429 on a steady device fails the run — that would be cross-device impact.
 
+### Acceptance run (2026-07-17)
+
+Ran against the production gateway on the server's Docker network (throwaway
+`python:3.12-slim` + locust, 90s per scenario):
+
+| Scenario | Requests | Failures | Evidence |
+|---|---|---|---|
+| `normal` | 731 (711 messages) | 0 | all steady traffic, 0 rate limiting |
+| `ratelimit` | 274 (272 messages) | 0† | gateway access log: **120× 202 / 152× 429** past the 60/min threshold |
+| `isolation` | 987 (712 steady + 255 aggressive) | 0 | steady devices: 0 failures — aggressor's 429s never touched its neighbours |
+
+† Locust's own "0 Fails" on the `ratelimit`/aggressive stream is expected, not
+misleading — a 429 there is the pass criterion by design (see docstring). The
+gateway's own access log is the record that the limiter actually fired.
+
+Kafka stayed clean under load: `sensor-events` high-watermark advanced by
+~1600 messages, **zero new entries on the DLQ**.
+
+![Isolation scenario — request statistics](../../docs/screenshots/project3/project3b-locust-isolation-stats.png)
+
 ## Deployment
 
 Runs permanently on the home server via the root `docker-compose.prod.yml`
