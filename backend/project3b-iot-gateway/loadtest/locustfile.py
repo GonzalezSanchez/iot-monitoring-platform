@@ -15,9 +15,15 @@ Run (gateway reachable on --host, e.g. the local compose stack):
     locust -f loadtest/locustfile.py --host http://localhost:8002 \
         --headless -u 10 -r 10 -t 90s --tags normal
     locust -f loadtest/locustfile.py --host http://localhost:8002 \
-        --headless -u 1 -r 1 -t 90s --tags ratelimit
-    locust -f loadtest/locustfile.py --host http://localhost:8002 \
         --headless -u 10 -r 10 -t 90s --tags isolation
+
+For a `ratelimit`-only run, select the class explicitly instead of --tags:
+at -u 1, Locust's tag filter can end up spawning zero matching tasks even
+though only one class carries the tag (observed during the 2026-07-17
+acceptance run — register/auth fired but no /messages requests were sent).
+
+    locust -f loadtest/locustfile.py AggressiveDevice --host http://localhost:8002 \
+        --headless -u 1 -r 1 -t 90s
 """
 
 import random
