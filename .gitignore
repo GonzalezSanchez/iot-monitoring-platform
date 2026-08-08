@@ -19,7 +19,7 @@ build/
 .env.prod
 
 # IDE settings
-.vscode/
+# .vscode/ is committed on purpose: shared project settings (CFN YAML tags, python paths)
 .idea/
 *.swp
 *.swo
