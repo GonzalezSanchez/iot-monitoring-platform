@@ -58,3 +58,6 @@ htmlcov/
 *.tfstate.*
 .terraform.lock.hcl
 terraform.tfvars
+
+# Claude Code personal overrides (shared config in .claude/settings.json IS committed)
+.claude/settings.local.json
