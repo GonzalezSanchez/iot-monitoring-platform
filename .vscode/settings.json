@@ -1,0 +1,29 @@
+{
+    "python.analysis.extraPaths": [
+        "backend/project2a-behavior-analyzer/lambdas",
+        "backend/project2a-behavior-analyzer/scripts"
+    ],
+    "python-envs.defaultEnvManager": "ms-python.python:venv",
+    "python-envs.defaultPackageManager": "ms-python.python:pip",
+    "yaml.customTags": [
+        "!And sequence",
+        "!If sequence",
+        "!Not sequence",
+        "!Equals sequence",
+        "!Or sequence",
+        "!FindInMap sequence",
+        "!Base64",
+        "!Select sequence",
+        "!Split sequence",
+        "!Join sequence",
+        "!Cidr sequence",
+        "!Sub",
+        "!Sub sequence",
+        "!GetAtt",
+        "!GetAZs",
+        "!ImportValue",
+        "!ImportValue sequence",
+        "!Ref",
+        "!Condition"
+    ]
+}

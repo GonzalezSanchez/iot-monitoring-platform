@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(sudo:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(terraform apply:*)",
+      "Bash(terraform destroy:*)",
+      "Bash(aws s3 rm:*)",
+      "Bash(aws s3 rb:*)",
+      "Bash(aws dynamodb delete-table:*)",
+      "Bash(aws cloudformation delete-stack:*)",
+      "Read(**/.env)",
+      "Edit(**/.env)",
+      "Read(**/*.pem)",
+      "Read(**/id_rsa*)",
+      "Read(**/.aws/**)",
+      "Read(**/terraform.tfstate*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty' 2>/dev/null); case \"$f\" in *.py) command -v ruff >/dev/null && { ruff format --quiet \"$f\"; ruff check --fix --quiet \"$f\"; } ;; *.tf) command -v terraform >/dev/null && terraform fmt \"$f\" >/dev/null ;; esac; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

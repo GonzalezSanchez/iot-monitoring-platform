@@ -19,7 +19,7 @@ build/
 .env.prod
 
 # IDE settings
-.vscode/
+# .vscode/ is committed on purpose: shared project settings (CFN YAML tags, python paths)
 .idea/
 *.swp
 *.swo
@@ -58,3 +58,6 @@ htmlcov/
 *.tfstate.*
 .terraform.lock.hcl
 terraform.tfvars
+
+# Claude Code personal overrides (shared config in .claude/settings.json IS committed)
+.claude/settings.local.json
