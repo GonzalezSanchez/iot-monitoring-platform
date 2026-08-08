@@ -114,7 +114,7 @@ def test_failure_callback_logs_task_info(capsys):
             "task_instance": ti,
             "dag": dag_mock,
             "run_id": "manual__2026-01-01",
-            "execution_date": "2026-01-01",
+            "logical_date": "2026-01-01",
         }
     )
 

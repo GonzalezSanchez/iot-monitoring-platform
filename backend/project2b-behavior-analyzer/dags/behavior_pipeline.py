@@ -2,8 +2,8 @@ import os
 from datetime import datetime, timedelta
 
 from airflow import DAG
-from airflow.operators.bash import BashOperator
-from airflow.utils.context import Context
+from airflow.providers.standard.operators.bash import BashOperator
+from airflow.sdk.definitions.context import Context
 
 SPARK_MASTER = os.environ.get("SPARK_MASTER", "local[*]")
 SPARK_CONF = "--conf spark.driver.memory=1g --conf spark.executor.memory=1g"
@@ -23,7 +23,7 @@ def on_failure(context: Context) -> None:
     dag_id = context["dag"].dag_id
     print(
         f"[ALERT] Task failed after all retries — dag={dag_id} task={ti.task_id} "
-        f"run={context['run_id']} execution={context['execution_date']}"
+        f"run={context['run_id']} logical_date={context['logical_date']}"
     )
 
 
