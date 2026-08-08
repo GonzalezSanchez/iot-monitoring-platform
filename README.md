@@ -322,10 +322,12 @@ iot-monitoring-platform/
 │   ├── project2a-behavior-analyzer/          # AWS native ETL pipeline (complete)
 │   ├── project2b-behavior-analyzer/          # Airflow + PySpark + S3 data lake (live)
 │   ├── project2c-lakehouse-dbt/              # Azure Databricks + dbt Gold layer (live)
-│   ├── project3b-iot-gateway/                 # Device gateway (planned)
+│   ├── project3b-iot-gateway/                 # FastAPI + Kafka device gateway (live)
 │   └── project4-ai-assistant/                # Claude + MCP chat service (live)
 ├── docs/                                      # Project specs and architecture
 ├── frontend/                                  # React dashboard
+├── .claude/                                   # Claude Code config: reviewer agents, guardrails, hooks
+├── .vscode/                                   # Shared editor settings (CFN YAML tags, python paths)
 ├── docker-compose.prod.yml                    # Production deployment
 └── .github/workflows/                         # CI + deploy pipelines
 ```
