@@ -1,0 +1,34 @@
+name: project2b Airflow Docker Smoke Test
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - 'backend/project2b-behavior-analyzer/docker/Dockerfile'
+      - 'backend/project2b-behavior-analyzer/requirements.txt'
+  workflow_dispatch:
+
+jobs:
+  build-and-smoketest:
+    name: project2b Airflow Docker build + smoke test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/project2b-behavior-analyzer
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Airflow image
+        run: docker build -t project2b-airflow-smoketest -f docker/Dockerfile .
+
+      - name: Smoke test — airflow CLI resolves
+        run: docker run --rm project2b-airflow-smoketest airflow version
+
+      - name: Smoke test — DAG imports without errors
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/backend/project2b-behavior-analyzer/dags:/opt/airflow/dags" \
+            -w /opt/airflow \
+            project2b-airflow-smoketest \
+            python -c "import dags.behavior_pipeline"
