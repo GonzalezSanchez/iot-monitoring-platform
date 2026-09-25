@@ -11,8 +11,8 @@ IoT Monitoring Platform — a portfolio of seven connected projects (serverless 
 
 ## Repo gotchas
 
-- `temp/` is a private submodule (planning notes). Never commit its content to this repo; only the submodule pointer is tracked, and it is bumped only on explicit request.
-- `submodule.recurse=true` is set: a `git checkout`/`git pull` at the repo root resets the `temp/` checkout to the recorded pointer. If you were on a newer commit inside `temp/`, restore it with `git -C temp checkout main && git -C temp pull`.
+- `temp/` is a private submodule (planning notes), but unlike a typical vendored submodule it's actively developed in place — its own branches, commits, PRs. Never commit its content to this repo; only the submodule pointer is tracked, and it is bumped only on explicit request (a plain `git add temp && git commit` on `main`, no PR needed for the pointer bump itself).
+- Run `git config --local submodule.recurse false` once per machine/clone. With it left at Git's default (`true`), any root-level `git checkout`/`git pull` silently resets `temp/`'s working tree to the recorded pointer commit — destructive to whatever branch/work was checked out inside `temp/`, and exactly wrong for a submodule that's developed in place rather than just consumed. If you hit this on a machine where it's still `true`: recover with `git -C temp checkout main && git -C temp pull`, then set the config so it stops recurring.
 
 ## Conventions
 
