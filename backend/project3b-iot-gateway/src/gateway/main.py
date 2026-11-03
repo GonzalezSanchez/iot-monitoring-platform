@@ -13,9 +13,6 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict, Optional, Tuple
 
 from aiokafka import AIOKafkaProducer
-from fastapi import Depends, FastAPI, HTTPException, Request
-from jose import JWTError
-
 from common.models import (
     AuthRequest,
     AuthResponse,
@@ -25,6 +22,9 @@ from common.models import (
     RegisterRequest,
     RegisterResponse,
 )
+from fastapi import Depends, FastAPI, HTTPException, Request
+from jwt import PyJWTError as JWTError
+
 from gateway import config, repository, security
 from gateway.rate_limiter import RateLimiter
 
@@ -109,7 +109,9 @@ async def auth(device_id: str, body: AuthRequest):
         raise HTTPException(status_code=403, detail="Device suspended")
     await asyncio.to_thread(repository.touch_device, device_id)
     _device_cache.pop(device_id, None)
-    return AuthResponse(access_token=security.issue_token(device_id), expires_in=config.JWT_EXPIRY_SECONDS)
+    return AuthResponse(
+        access_token=security.issue_token(device_id), expires_in=config.JWT_EXPIRY_SECONDS
+    )
 
 
 @app.post("/messages", response_model=MessageResponse, status_code=202)
