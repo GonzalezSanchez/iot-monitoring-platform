@@ -9,7 +9,7 @@ repos:
     rev: v1.7.0
     hooks:
       - id: mypy
-        additional_dependencies: ["pydantic>=2.7.0", "boto3>=1.34.0"]
+        additional_dependencies: ["pydantic>=2.7.0", "boto3>=1.34.0", "types-PyYAML"]
         exclude: ^backend/project1a-smart-room-monitor/
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0

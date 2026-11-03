@@ -3,5 +3,5 @@ pytest==9.0.3
 pytest-cov==6.1.0
 ruff==0.4.4
 mypy==1.7.0
-pyspark==3.5.2
+pyspark==3.5.8
 delta-spark==3.2.0

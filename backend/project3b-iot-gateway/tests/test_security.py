@@ -2,10 +2,10 @@
 
 import time
 
+import jwt
 import pytest
-from jose import JWTError, jwt
-
 from gateway import config, security
+from jwt import PyJWTError as JWTError
 
 
 def test_api_key_has_prefix_and_is_unique():
