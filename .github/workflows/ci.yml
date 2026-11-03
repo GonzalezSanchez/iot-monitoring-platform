@@ -9,7 +9,7 @@ on:
 jobs:
   test-project1:
     name: project1 lambda tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend/project1a-smart-room-monitor
@@ -33,7 +33,7 @@ jobs:
 
   test-project1b:
     name: project1b tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend/project1b-smart-room-monitor-fastapi
@@ -57,7 +57,7 @@ jobs:
 
   test-project4b:
     name: project4b tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend/project4-ai-assistant
@@ -81,7 +81,7 @@ jobs:
 
   test-project2a:
     name: project2a tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend/project2a-behavior-analyzer
@@ -108,7 +108,7 @@ jobs:
 
   terraform-project2a:
     name: project2a terraform validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend/project2a-behavior-analyzer/infrastructure
@@ -129,7 +129,7 @@ jobs:
 
   test-project2b-jobs:
     name: project2b PySpark tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend/project2b-behavior-analyzer
@@ -162,7 +162,7 @@ jobs:
 
   test-project2b-dag:
     name: project2b Airflow DAG tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend/project2b-behavior-analyzer
@@ -191,7 +191,7 @@ jobs:
 
   test-project2b-dbt:
     name: project2b dbt parse
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend/project2b-behavior-analyzer
@@ -212,7 +212,7 @@ jobs:
 
   terraform-project2b:
     name: project2b terraform validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend/project2b-behavior-analyzer/infrastructure
@@ -233,13 +233,19 @@ jobs:
 
   test-project2c:
     name: project2c tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend/project2c-lakehouse-dbt
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -260,7 +266,7 @@ jobs:
 
   test-project2c-dbt:
     name: project2c dbt parse
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend/project2c-lakehouse-dbt
@@ -285,7 +291,7 @@ jobs:
 
   bundle-validate-project2c:
     name: project2c DABs bundle validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend/project2c-lakehouse-dbt
@@ -304,7 +310,7 @@ jobs:
 
   terraform-project2c:
     name: project2c terraform validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend/project2c-lakehouse-dbt/infrastructure
@@ -325,7 +331,7 @@ jobs:
 
   test-project3b:
     name: project3b tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend/project3b-iot-gateway
