@@ -1,10 +1,10 @@
-"""Unit tests for silver_wap.py — WAP validation and batch splitting.
+"""Unit tests for silver_wap.py — WAP validation, batch splitting, quarantine keying.
 
 Tests run with PySpark in local mode (no Databricks or Azure connection needed).
 SparkSession is shared across the module via a module-scoped fixture.
 
-Only validate_batch() is tested here — it contains all the business logic.
-merge_good_records() and write_quarantine() require a live Delta catalog
+validate_batch() and add_quarantine_key() are the pure, testable business logic.
+merge_good_records() and write_quarantine() themselves require a live Delta catalog
 and are covered by integration tests run after terraform apply.
 """
 
@@ -12,7 +12,7 @@ import pytest
 from pyspark.sql import DataFrame, Row, SparkSession
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType, TimestampType
 
-from jobs.silver_wap import VALID_SENSOR_TYPES, validate_batch
+from jobs.silver_wap import VALID_SENSOR_TYPES, add_quarantine_key, validate_batch
 
 # Schema mirrors what bronze_autoloader.py writes to the Bronze Delta table
 BRONZE_SCHEMA = StructType(
@@ -184,3 +184,41 @@ class TestMixedBatchSplit:
             "_ingestion_time",
         }
         assert set(good.columns) == expected
+
+
+# ---------------------------------------------------------------------------
+# Quarantine dedup key — makes re-running the job on the same batch idempotent
+# ---------------------------------------------------------------------------
+
+
+class TestQuarantineKey:
+    def test_uses_event_id_when_present(self, spark: SparkSession) -> None:
+        row = {**VALID_ROW, "sensor_type": "radiation"}
+        df = _make_df(spark, [row])
+        keyed = add_quarantine_key(df)
+        assert keyed.collect()[0]["_quarantine_key"] == VALID_ROW["event_id"]
+
+    def test_falls_back_to_content_hash_when_event_id_missing(self, spark: SparkSession) -> None:
+        row = {**VALID_ROW, "event_id": None}
+        df = _make_df(spark, [row])
+        keyed = add_quarantine_key(df)
+        key = keyed.collect()[0]["_quarantine_key"]
+        assert key is not None
+        assert key != VALID_ROW["event_id"]
+
+    def test_same_bad_row_reread_twice_gets_the_same_key(self, spark: SparkSession) -> None:
+        row = {**VALID_ROW, "event_id": None, "room_id": ""}
+        df = _make_df(spark, [row, row])  # same bad row read on two separate runs
+        keyed = add_quarantine_key(df)
+        keys = [r["_quarantine_key"] for r in keyed.collect()]
+        assert keys[0] == keys[1]
+
+    def test_different_bad_rows_get_different_keys(self, spark: SparkSession) -> None:
+        rows = [
+            {**VALID_ROW, "event_id": None, "room_id": "room_001"},
+            {**VALID_ROW, "event_id": None, "room_id": "room_002"},
+        ]
+        df = _make_df(spark, rows)
+        keyed = add_quarantine_key(df)
+        keys = {r["_quarantine_key"] for r in keyed.collect()}
+        assert len(keys) == 2

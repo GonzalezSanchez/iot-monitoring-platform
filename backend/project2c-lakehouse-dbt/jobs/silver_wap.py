@@ -4,14 +4,18 @@ Pipeline position:
     {catalog}.bronze.sensor_events
         ↓  schema enforcement + WAP validation
     {catalog}.silver.sensor_events            (good records — MERGE INTO on event_id)
-    {catalog}.silver.sensor_events_quarantine (bad records — append, never deleted)
+    {catalog}.silver.sensor_events_quarantine (bad records — MERGE INTO on _quarantine_key,
+                                                never deleted)
 
 WAP = Write → Audit → Publish:
     Write:   read batch from Bronze
     Audit:   validate each row (null checks, sensor_type whitelist, value non-null)
-    Publish: good → Silver via MERGE INTO (idempotent), bad → quarantine via append
+    Publish: good → Silver via MERGE INTO (idempotent), bad → quarantine via MERGE INTO (idempotent)
 
-MERGE INTO on event_id makes the job safe to re-run on the same batch without duplicates.
+Both MERGEs are insert-only (whenNotMatchedInsertAll), keyed on event_id for good records.
+Quarantine records often lack a usable event_id (that's frequently *why* they're bad), so
+they're keyed on a hash of their content instead — see add_quarantine_key(). Either way,
+re-running the job on the same Bronze batch never produces duplicates.
 
 Environment variables:
     DATABRICKS_CATALOG -- defaults to "p2c_dev"
@@ -57,13 +61,14 @@ def ensure_tables(spark: SparkSession, catalog: str) -> None:  # pragma: no cove
     """)
     spark.sql(f"""
         CREATE TABLE IF NOT EXISTS {catalog}.silver.sensor_events_quarantine (
-            event_id        STRING,
-            room_id         STRING,
-            sensor_type     STRING,
-            value           DOUBLE,
-            ts              TIMESTAMP,
-            _source_file    STRING,
-            _ingestion_time TIMESTAMP
+            event_id         STRING,
+            room_id          STRING,
+            sensor_type      STRING,
+            value            DOUBLE,
+            ts               TIMESTAMP,
+            _source_file     STRING,
+            _ingestion_time  TIMESTAMP,
+            _quarantine_key  STRING
         )
         USING DELTA
     """)
@@ -104,6 +109,31 @@ def validate_batch(df: DataFrame) -> tuple[DataFrame, DataFrame]:
     return good, quarantine
 
 
+def add_quarantine_key(df: DataFrame) -> DataFrame:
+    """Add a deterministic dedup key for quarantine records.
+
+    Bad records often lack a usable event_id (missing/null event_id is itself
+    one of the quarantine reasons), so event_id alone can't key the MERGE the
+    way it does for good records. Falls back to a hash of the row's own
+    content — the same bad row read again on a re-run hashes to the same key,
+    so the MERGE below stays insert-only without duplicating it.
+
+    Pure PySpark — no Delta or Azure connection needed, fully unit-testable.
+    """
+    row_hash = F.sha2(
+        F.concat_ws(
+            "||",
+            F.coalesce(F.col("room_id"), F.lit("")),
+            F.coalesce(F.col("sensor_type"), F.lit("")),
+            F.coalesce(F.col("value").cast("string"), F.lit("")),
+            F.coalesce(F.col("timestamp"), F.lit("")),
+            F.coalesce(F.col("_source_file"), F.lit("")),
+        ),
+        256,
+    )
+    return df.withColumn("_quarantine_key", F.coalesce(F.col("event_id"), row_hash))
+
+
 def merge_good_records(spark: SparkSession, df: DataFrame, catalog: str) -> int:  # pragma: no cover
     """Merge good records into silver.sensor_events — idempotent on event_id."""
     from delta.tables import DeltaTable
@@ -125,16 +155,25 @@ def merge_good_records(spark: SparkSession, df: DataFrame, catalog: str) -> int:
     return count
 
 
-def write_quarantine(df: DataFrame, catalog: str) -> int:  # pragma: no cover
-    """Append bad records to quarantine — never overwrite, never delete."""
+def write_quarantine(spark: SparkSession, df: DataFrame, catalog: str) -> int:  # pragma: no cover
+    """Merge bad records into quarantine — idempotent on _quarantine_key, never overwrite/delete."""
+    from delta.tables import DeltaTable
+
     target = f"{catalog}.silver.sensor_events_quarantine"
     count = int(df.count())
     if count == 0:
         log.info("No quarantine records | target=%s", target)
         return 0
 
-    df.write.format("delta").mode("append").saveAsTable(target)
-    log.info("Appended %d quarantine records | target=%s", count, target)
+    keyed = add_quarantine_key(df)
+    (
+        DeltaTable.forName(spark, target)
+        .alias("t")
+        .merge(keyed.alias("s"), "t._quarantine_key = s._quarantine_key")
+        .whenNotMatchedInsertAll()
+        .execute()
+    )
+    log.info("Merged %d quarantine records | target=%s", count, target)
     return count
 
 
@@ -148,7 +187,7 @@ def run(spark: SparkSession, catalog: str) -> None:  # pragma: no cover
     good_df, quarantine_df = validate_batch(bronze_df)
 
     good_count = merge_good_records(spark, good_df, catalog)
-    bad_count = write_quarantine(quarantine_df, catalog)
+    bad_count = write_quarantine(spark, quarantine_df, catalog)
 
     total = good_count + bad_count
     pct_good = round(good_count / total * 100, 1) if total > 0 else 0.0
