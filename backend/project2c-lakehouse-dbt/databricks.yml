@@ -66,6 +66,10 @@ resources:
         - task_key: bronze_autoloader
           description: "Auto Loader: ADLS Bronze JSON → Delta bronze.sensor_events"
           job_cluster_key: main
+          # Transient failures (cluster not up yet, a throttled ADLS call) shouldn't need a
+          # human — retry before the email_notifications.on_failure above ever fires.
+          max_retries: 2
+          min_retry_interval_millis: 300000
           spark_python_task:
             python_file: ./jobs/bronze_autoloader.py
           libraries:
@@ -77,6 +81,8 @@ resources:
           depends_on:
             - task_key: bronze_autoloader
           job_cluster_key: main
+          max_retries: 2
+          min_retry_interval_millis: 300000
           spark_python_task:
             python_file: ./jobs/silver_wap.py
           libraries:
@@ -88,6 +94,8 @@ resources:
           depends_on:
             - task_key: silver_wap
           job_cluster_key: main
+          max_retries: 2
+          min_retry_interval_millis: 300000
           dbt_task:
             project_directory: ./dbt
             warehouse_id: ${var.warehouse_id}
