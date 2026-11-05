@@ -53,7 +53,7 @@ def build_checkpoint_path(account_name: str, container: str) -> str:
     return f"abfss://{container}@{account_name}.dfs.core.windows.net/_checkpoints/silver_wap"
 
 
-def ensure_tables(spark: SparkSession, catalog: str) -> None:  # pragma: no cover
+def ensure_tables(spark: SparkSession, catalog: str) -> None:
     """Create Silver tables if they don't exist — idempotent DDL.
 
     CLUSTER BY (room_id, sensor_type): Liquid Clustering for efficient filtered queries.
@@ -147,11 +147,10 @@ def add_quarantine_key(df: DataFrame) -> DataFrame:
     return df.withColumn("_quarantine_key", F.coalesce(F.col("event_id"), row_hash))
 
 
-def merge_good_records(spark: SparkSession, df: DataFrame, catalog: str) -> int:  # pragma: no cover
-    """Merge good records into silver.sensor_events — idempotent on event_id."""
+def merge_good_records(spark: SparkSession, df: DataFrame, target: str) -> int:
+    """Merge good records into `target` (e.g. silver.sensor_events) — idempotent on event_id."""
     from delta.tables import DeltaTable
 
-    target = f"{catalog}.silver.sensor_events"
     count = int(df.count())
     if count == 0:
         log.info("No good records to merge | target=%s", target)
@@ -168,11 +167,10 @@ def merge_good_records(spark: SparkSession, df: DataFrame, catalog: str) -> int:
     return count
 
 
-def write_quarantine(spark: SparkSession, df: DataFrame, catalog: str) -> int:  # pragma: no cover
-    """Merge bad records into quarantine — idempotent on _quarantine_key, never overwrite/delete."""
+def write_quarantine(spark: SparkSession, df: DataFrame, target: str) -> int:
+    """Merge bad records into `target` — idempotent on _quarantine_key, never overwrite/delete."""
     from delta.tables import DeltaTable
 
-    target = f"{catalog}.silver.sensor_events_quarantine"
     count = int(df.count())
     if count == 0:
         log.info("No quarantine records | target=%s", target)
@@ -192,6 +190,8 @@ def write_quarantine(spark: SparkSession, df: DataFrame, catalog: str) -> int:  
 
 def run(spark: SparkSession, catalog: str, checkpoint_path: str) -> None:  # pragma: no cover
     bronze_table = f"{catalog}.bronze.sensor_events"
+    good_target = f"{catalog}.silver.sensor_events"
+    quarantine_target = f"{catalog}.silver.sensor_events_quarantine"
     log.info("Silver WAP start | source=%s | catalog=%s", bronze_table, catalog)
 
     ensure_tables(spark, catalog)
@@ -200,8 +200,8 @@ def run(spark: SparkSession, catalog: str, checkpoint_path: str) -> None:  # pra
 
     def process_batch(batch_df: DataFrame, batch_id: int) -> None:
         good_df, quarantine_df = validate_batch(batch_df)
-        good_count = merge_good_records(spark, good_df, catalog)
-        bad_count = write_quarantine(spark, quarantine_df, catalog)
+        good_count = merge_good_records(spark, good_df, good_target)
+        bad_count = write_quarantine(spark, quarantine_df, quarantine_target)
         totals["good"] += good_count
         totals["bad"] += bad_count
         log.info("Batch %d done | good=%d | quarantine=%d", batch_id, good_count, bad_count)

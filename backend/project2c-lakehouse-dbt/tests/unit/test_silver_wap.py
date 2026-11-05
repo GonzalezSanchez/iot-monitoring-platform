@@ -4,14 +4,19 @@ Tests run with PySpark in local mode (no Databricks or Azure connection needed).
 SparkSession is shared across the module via a module-scoped fixture.
 
 validate_batch() and add_quarantine_key() are the pure, testable business logic.
-merge_good_records() and write_quarantine() themselves call DeltaTable.forName()
-with a catalog-qualified name (catalog.schema.table) — Databricks Runtime resolves
-that fine, but the open-source delta-spark package's forName() can't parse a
-3-part identifier at all (confirmed: it raises ParseException even for the
-default catalog, while spark.read.table() accepts the same name). So those two
-functions can't be exercised locally; TestMergeIdempotency below proves the
-underlying MERGE statements are idempotent against a locally-addressable table
-instead of calling those two functions directly.
+ensure_tables(), merge_good_records() and write_quarantine() are exercised for real
+in TestMergeIdempotency, against a local Delta table addressed by a 2-part name
+(schema.table, under Spark's default catalog) rather than the 3-part
+catalog-qualified name run() builds in production. DeltaTable.forName() in the
+open-source delta-spark package can't parse a 3-part identifier at all (confirmed:
+ParseException, even with the default catalog spelled out — spark.read.table()
+accepts the same name fine), so merge_good_records()/write_quarantine() take a
+plain table name (`target`) rather than a catalog, letting the caller (run(), or
+this test) decide how to address it.
+
+run() and main() still require a live streaming source / Databricks environment and
+are integration-tested manually after `terraform apply` (see README.md) — not run
+in this suite.
 """
 
 from collections.abc import Generator
@@ -24,7 +29,10 @@ from jobs.silver_wap import (
     VALID_SENSOR_TYPES,
     add_quarantine_key,
     build_checkpoint_path,
+    ensure_tables,
+    merge_good_records,
     validate_batch,
+    write_quarantine,
 )
 
 # Schema mirrors what bronze_autoloader.py writes to the Bronze Delta table
@@ -279,72 +287,41 @@ class TestBuildCheckpointPath:
 
 
 class TestMergeIdempotency:
-    """Proves the Silver MERGE pattern is idempotent against a real Delta table.
+    """Proves the real merge_good_records()/write_quarantine() are idempotent.
 
-    merge_good_records()/write_quarantine() can't be called directly here (see the
-    module docstring), so this test performs the identical MERGE statements they
-    use — same whenNotMatchedInsertAll(), same keys (event_id / _quarantine_key) —
-    against a local, 2-part-named Delta table built with the real add_quarantine_key().
-    Uses the module's shared `spark` fixture: Delta's catalog classes must be on the
-    JVM classpath from the very first SparkSession.getOrCreate() call in this process,
-    so a second, separately-configured session here would just reuse the first one
-    without picking up the Delta jars.
+    Calls the actual functions (not a copy of their logic) against a local Delta
+    table addressed by a 2-part name under Spark's default catalog — see the module
+    docstring for why forName() needs that instead of the 3-part name run() builds
+    in production. Uses the module's shared `spark` fixture: Delta's catalog classes
+    must be on the JVM classpath from the very first SparkSession.getOrCreate() call
+    in this process, so a second, separately-configured session here would just
+    reuse the first one without picking up the Delta jars.
     """
 
-    def _merge_good(self, spark: SparkSession, good_df: DataFrame) -> None:
-        from delta.tables import DeltaTable
-
-        (
-            DeltaTable.forName(spark, "silver.sensor_events")
-            .alias("t")
-            .merge(good_df.alias("s"), "t.event_id = s.event_id")
-            .whenNotMatchedInsertAll()
-            .execute()
-        )
-
-    def _merge_quarantine(self, spark: SparkSession, quarantine_df: DataFrame) -> None:
-        from delta.tables import DeltaTable
-
-        keyed = add_quarantine_key(quarantine_df)
-        (
-            DeltaTable.forName(spark, "silver.sensor_events_quarantine")
-            .alias("t")
-            .merge(keyed.alias("s"), "t._quarantine_key = s._quarantine_key")
-            .whenNotMatchedInsertAll()
-            .execute()
-        )
+    GOOD_TARGET = "silver.sensor_events"
+    QUARANTINE_TARGET = "silver.sensor_events_quarantine"
 
     def test_replaying_the_same_batch_twice_adds_no_new_rows(self, spark: SparkSession) -> None:
-        spark.sql("CREATE SCHEMA IF NOT EXISTS silver")
-        spark.sql("""
-            CREATE TABLE IF NOT EXISTS silver.sensor_events (
-                event_id STRING, room_id STRING, sensor_type STRING,
-                value DOUBLE, ts TIMESTAMP, _source_file STRING, _ingestion_time TIMESTAMP
-            ) USING DELTA
-        """)
-        spark.sql("""
-            CREATE TABLE IF NOT EXISTS silver.sensor_events_quarantine (
-                event_id STRING, room_id STRING, sensor_type STRING, value DOUBLE,
-                ts TIMESTAMP, _source_file STRING, _ingestion_time TIMESTAMP,
-                _quarantine_key STRING
-            ) USING DELTA
-        """)
+        spark.sql("CREATE SCHEMA IF NOT EXISTS spark_catalog.silver")
+        ensure_tables(spark, "spark_catalog")
 
         batch = [
             VALID_ROW,
-            {**VALID_ROW, "event_id": None, "room_id": ""},  # lands in quarantine
+            {**VALID_ROW, "event_id": "e2", "room_id": "room_002"},
+            # has event_id but an invalid sensor_type -> quarantine key = event_id
+            {**VALID_ROW, "event_id": "e3", "sensor_type": "radiation"},
+            # no event_id at all -> quarantine key falls back to a content hash
+            {**VALID_ROW, "event_id": None, "room_id": ""},
         ]
-        df = _make_df(spark, batch)
-        good_df, quarantine_df = validate_batch(df)
 
-        self._merge_good(spark, good_df)
-        self._merge_quarantine(spark, quarantine_df)
+        def process(rows: list[dict]) -> None:
+            df = _make_df(spark, rows)
+            good_df, quarantine_df = validate_batch(df)
+            merge_good_records(spark, good_df, self.GOOD_TARGET)
+            write_quarantine(spark, quarantine_df, self.QUARANTINE_TARGET)
 
-        # Re-read the exact same Bronze rows a second time, as a re-run of the job would.
-        df_replay = _make_df(spark, batch)
-        good_replay, quarantine_replay = validate_batch(df_replay)
-        self._merge_good(spark, good_replay)
-        self._merge_quarantine(spark, quarantine_replay)
+        process(batch)
+        process(batch)  # re-run on the exact same Bronze rows, as a real retry would
 
-        assert spark.table("silver.sensor_events").count() == 1
-        assert spark.table("silver.sensor_events_quarantine").count() == 1
+        assert spark.table(self.GOOD_TARGET).count() == 2
+        assert spark.table(self.QUARANTINE_TARGET).count() == 2
