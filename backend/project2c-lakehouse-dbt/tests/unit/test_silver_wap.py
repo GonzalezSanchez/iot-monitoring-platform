@@ -4,9 +4,17 @@ Tests run with PySpark in local mode (no Databricks or Azure connection needed).
 SparkSession is shared across the module via a module-scoped fixture.
 
 validate_batch() and add_quarantine_key() are the pure, testable business logic.
-merge_good_records() and write_quarantine() themselves require a live Delta catalog
-and are covered by integration tests run after terraform apply.
+merge_good_records() and write_quarantine() themselves call DeltaTable.forName()
+with a catalog-qualified name (catalog.schema.table) — Databricks Runtime resolves
+that fine, but the open-source delta-spark package's forName() can't parse a
+3-part identifier at all (confirmed: it raises ParseException even for the
+default catalog, while spark.read.table() accepts the same name). So those two
+functions can't be exercised locally; TestMergeIdempotency below proves the
+underlying MERGE statements are idempotent against a locally-addressable table
+instead of calling those two functions directly.
 """
+
+from collections.abc import Generator
 
 import pytest
 from pyspark.sql import DataFrame, Row, SparkSession
@@ -38,13 +46,30 @@ BRONZE_SCHEMA = StructType(
 
 
 @pytest.fixture(scope="module")
-def spark() -> SparkSession:
-    return (
+def spark() -> Generator[SparkSession, None, None]:
+    import shutil
+    import tempfile
+
+    from delta import configure_spark_with_delta_pip
+
+    # Delta extensions are configured here (not in a second, separate fixture) because
+    # they must be present on the JVM's classpath at SparkSession creation time — once
+    # a session exists, a later .getOrCreate() silently reuses it without adding jars.
+    warehouse_dir = tempfile.mkdtemp(prefix="p2c_test_warehouse_")
+    builder = (
         SparkSession.builder.master("local[1]")
         .appName("test_silver_wap")
         .config("spark.sql.shuffle.partitions", "1")
-        .getOrCreate()
+        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+        .config(
+            "spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog"
+        )
+        .config("spark.sql.warehouse.dir", warehouse_dir)
     )
+    spark = configure_spark_with_delta_pip(builder).getOrCreate()
+    yield spark
+    spark.stop()
+    shutil.rmtree(warehouse_dir, ignore_errors=True)
 
 
 def _make_df(spark: SparkSession, rows: list[dict]) -> DataFrame:
@@ -246,3 +271,80 @@ class TestBuildCheckpointPath:
         silver_path = build_checkpoint_path("stp2cdeviotags", "bronze")
         bronze_path = bronze_checkpoint_path("stp2cdeviotags", "bronze")
         assert silver_path != bronze_path
+
+
+# ---------------------------------------------------------------------------
+# MERGE idempotency — replaying the same batch must never duplicate rows
+# ---------------------------------------------------------------------------
+
+
+class TestMergeIdempotency:
+    """Proves the Silver MERGE pattern is idempotent against a real Delta table.
+
+    merge_good_records()/write_quarantine() can't be called directly here (see the
+    module docstring), so this test performs the identical MERGE statements they
+    use — same whenNotMatchedInsertAll(), same keys (event_id / _quarantine_key) —
+    against a local, 2-part-named Delta table built with the real add_quarantine_key().
+    Uses the module's shared `spark` fixture: Delta's catalog classes must be on the
+    JVM classpath from the very first SparkSession.getOrCreate() call in this process,
+    so a second, separately-configured session here would just reuse the first one
+    without picking up the Delta jars.
+    """
+
+    def _merge_good(self, spark: SparkSession, good_df: DataFrame) -> None:
+        from delta.tables import DeltaTable
+
+        (
+            DeltaTable.forName(spark, "silver.sensor_events")
+            .alias("t")
+            .merge(good_df.alias("s"), "t.event_id = s.event_id")
+            .whenNotMatchedInsertAll()
+            .execute()
+        )
+
+    def _merge_quarantine(self, spark: SparkSession, quarantine_df: DataFrame) -> None:
+        from delta.tables import DeltaTable
+
+        keyed = add_quarantine_key(quarantine_df)
+        (
+            DeltaTable.forName(spark, "silver.sensor_events_quarantine")
+            .alias("t")
+            .merge(keyed.alias("s"), "t._quarantine_key = s._quarantine_key")
+            .whenNotMatchedInsertAll()
+            .execute()
+        )
+
+    def test_replaying_the_same_batch_twice_adds_no_new_rows(self, spark: SparkSession) -> None:
+        spark.sql("CREATE SCHEMA IF NOT EXISTS silver")
+        spark.sql("""
+            CREATE TABLE IF NOT EXISTS silver.sensor_events (
+                event_id STRING, room_id STRING, sensor_type STRING,
+                value DOUBLE, ts TIMESTAMP, _source_file STRING, _ingestion_time TIMESTAMP
+            ) USING DELTA
+        """)
+        spark.sql("""
+            CREATE TABLE IF NOT EXISTS silver.sensor_events_quarantine (
+                event_id STRING, room_id STRING, sensor_type STRING, value DOUBLE,
+                ts TIMESTAMP, _source_file STRING, _ingestion_time TIMESTAMP,
+                _quarantine_key STRING
+            ) USING DELTA
+        """)
+
+        batch = [
+            VALID_ROW,
+            {**VALID_ROW, "event_id": None, "room_id": ""},  # lands in quarantine
+        ]
+        df = _make_df(spark, batch)
+        good_df, quarantine_df = validate_batch(df)
+
+        self._merge_good(spark, good_df)
+        self._merge_quarantine(spark, quarantine_df)
+
+        # Re-read the exact same Bronze rows a second time, as a re-run of the job would.
+        df_replay = _make_df(spark, batch)
+        good_replay, quarantine_replay = validate_batch(df_replay)
+        self._merge_good(spark, good_replay)
+        self._merge_quarantine(spark, quarantine_replay)
+
+        assert spark.table("silver.sensor_events").count() == 1
+        assert spark.table("silver.sensor_events_quarantine").count() == 1
