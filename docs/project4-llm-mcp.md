@@ -194,7 +194,7 @@ Or via Claude Code MCP config:
       "command": "uvx",
       "args": ["databricks-mcp-server"],
       "env": {
-        "DATABRICKS_HOST": "https://adb-<workspace-id>.<random-number>.azuredatabricks.net",
+        "DATABRICKS_HOST": "https://adb-<workspace-id>.azuredatabricks.net",
         "DATABRICKS_TOKEN": "<PAT>"
       }
     }
