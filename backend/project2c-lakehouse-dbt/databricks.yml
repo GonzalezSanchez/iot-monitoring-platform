@@ -8,6 +8,14 @@ variables:
     default: stp2cdeviotags
   storage_container_bronze:
     default: bronze
+  # No defaults for these two — not secrets, but real identifiers (a SQL warehouse ID,
+  # an email address) that don't belong hardcoded in a public repo either. Supplied via
+  # BUNDLE_VAR_warehouse_id / BUNDLE_VAR_notification_email (CI: repo variables, not
+  # secrets; locally: your shell env).
+  warehouse_id:
+    description: "SQL warehouse ID for the dbt task — no default, see note above"
+  notification_email:
+    description: "Address for job-failure notifications — no default, see note above"
 
 targets:
   dev:
@@ -30,6 +38,10 @@ resources:
         quartz_cron_expression: "0 0 6 1 * ?"
         timezone_id: "Europe/Brussels"
         pause_status: PAUSED
+
+      email_notifications:
+        on_failure:
+          - ${var.notification_email}
 
       job_clusters:
         - job_cluster_key: main
@@ -70,3 +82,21 @@ resources:
           libraries:
             - pypi:
                 package: python-dotenv==1.2.2
+
+        - task_key: dbt_gold
+          description: "dbt build: silver.sensor_events → gold marts"
+          depends_on:
+            - task_key: silver_wap
+          job_cluster_key: main
+          dbt_task:
+            project_directory: ./dbt
+            warehouse_id: ${var.warehouse_id}
+            catalog: ${var.catalog}
+            schema: gold
+            commands:
+              - "dbt build"
+          libraries:
+            - pypi:
+                package: dbt-databricks==1.9.5
+            - pypi:
+                package: dbt-core==1.9.4

@@ -24,7 +24,7 @@ and dbt for the transformation layer. Completes the analytics trio: AWS-native
 [iot.gonzalezsanchez.dev](https://iot.gonzalezsanchez.dev). The pipeline
 schedule is deliberately **paused** (each run costs ~€4 in cluster time); runs
 are triggered manually via the Databricks UI or
-`databricks bundle run p2c_weekly_pipeline`.
+`databricks bundle run iot_pipeline`.
 
 ## Tech Stack
 

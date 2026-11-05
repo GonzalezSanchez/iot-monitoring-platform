@@ -307,6 +307,11 @@ jobs:
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          # Not secrets — real identifiers (SQL warehouse ID, notification email) that
+          # just don't belong hardcoded in databricks.yml in a public repo. Repo variables,
+          # not secrets, is the correct place for these.
+          BUNDLE_VAR_warehouse_id: ${{ vars.DATABRICKS_WAREHOUSE_ID }}
+          BUNDLE_VAR_notification_email: ${{ vars.DATABRICKS_NOTIFICATION_EMAIL }}
 
   terraform-project2c:
     name: project2c terraform validate
