@@ -122,3 +122,37 @@ def test_failure_callback_logs_task_info(capsys):
     assert "ALERT" in captured.out
     assert "extract" in captured.out
     assert "behavior_pipeline" in captured.out
+
+
+def test_failure_callback_emits_a_real_metric(monkeypatch):
+    """The print() alone never left this process — assert a metric is also emitted."""
+    from unittest.mock import MagicMock
+
+    import dags.behavior_pipeline as behavior_pipeline
+
+    fake_counter = MagicMock()
+    fake_meter = MagicMock()
+    fake_meter.create_counter.return_value = fake_counter
+    fake_init_meter = MagicMock(return_value=fake_meter)
+    fake_shutdown = MagicMock()
+    monkeypatch.setattr(behavior_pipeline, "init_meter", fake_init_meter)
+    monkeypatch.setattr(behavior_pipeline, "shutdown", fake_shutdown)
+
+    ti = MagicMock()
+    ti.task_id = "transform"
+    dag_mock = MagicMock()
+    dag_mock.dag_id = "behavior_pipeline"
+
+    behavior_pipeline.on_failure(
+        {
+            "task_instance": ti,
+            "dag": dag_mock,
+            "run_id": "manual__2026-01-01",
+            "logical_date": "2026-01-01",
+        }
+    )
+
+    fake_init_meter.assert_called_once_with("p2b.dag")
+    fake_meter.create_counter.assert_called_once_with("p2b.dag.task_failures_total")
+    fake_counter.add.assert_called_once_with(1, {"task_id": "transform"})
+    fake_shutdown.assert_called_once()
