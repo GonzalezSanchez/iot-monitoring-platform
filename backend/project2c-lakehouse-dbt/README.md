@@ -118,7 +118,9 @@ CI runs on every push via GitHub Actions (`.github/workflows/ci.yml`):
 - `databricks bundle validate` — verifies DABs config
 - Terraform validate
 
-The DABs job schedule is **paused** — runs are triggered manually via Databricks UI (Workflows → job → Run now) or `databricks bundle run p2c_weekly_pipeline`.
+The DABs job schedule is **paused** — runs are triggered manually via Databricks UI (Workflows → job → Run now) or `databricks bundle run iot_pipeline`.
+
+`databricks bundle validate`/`deploy` need two extra variables with no committed default — a SQL warehouse ID and a notification email, neither of which belong hardcoded in a public repo. Supply them as `BUNDLE_VAR_warehouse_id` / `BUNDLE_VAR_notification_email` env vars (CI: GitHub Actions repository variables, not secrets — these aren't sensitive, just not meant to be guessable from the file; locally: your shell env or `.env` + `set -a; source .env; set +a`).
 
 ## Infrastructure notes
 
