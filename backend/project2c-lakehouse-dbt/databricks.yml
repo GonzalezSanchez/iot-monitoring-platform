@@ -12,13 +12,12 @@ variables:
 targets:
   dev:
     default: true
-    workspace:
-      host: https://adb-7405609278521333.13.azuredatabricks.net
+    # No workspace.host here on purpose — Databricks hosts can't be bundle variables,
+    # and this repo is public. The CLI resolves the host from DATABRICKS_HOST (CI secret)
+    # or the caller's local profile instead, so no workspace URL is ever committed.
     variables:
       catalog: p2c_dev
   prod:
-    workspace:
-      host: ${workspace.host}
     variables:
       catalog: p2c_prod
 
