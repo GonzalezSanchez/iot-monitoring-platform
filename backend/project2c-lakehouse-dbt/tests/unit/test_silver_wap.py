@@ -12,7 +12,12 @@ import pytest
 from pyspark.sql import DataFrame, Row, SparkSession
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType, TimestampType
 
-from jobs.silver_wap import VALID_SENSOR_TYPES, add_quarantine_key, validate_batch
+from jobs.silver_wap import (
+    VALID_SENSOR_TYPES,
+    add_quarantine_key,
+    build_checkpoint_path,
+    validate_batch,
+)
 
 # Schema mirrors what bronze_autoloader.py writes to the Bronze Delta table
 BRONZE_SCHEMA = StructType(
@@ -222,3 +227,22 @@ class TestQuarantineKey:
         keyed = add_quarantine_key(df)
         keys = {r["_quarantine_key"] for r in keyed.collect()}
         assert len(keys) == 2
+
+
+# ---------------------------------------------------------------------------
+# Streaming checkpoint path — tracks incremental progress across runs
+# ---------------------------------------------------------------------------
+
+
+class TestBuildCheckpointPath:
+    def test_builds_abfss_path_under_checkpoints_root(self) -> None:
+        path = build_checkpoint_path("stp2cdeviotags", "bronze")
+        assert path == "abfss://bronze@stp2cdeviotags.dfs.core.windows.net/_checkpoints/silver_wap"
+
+    def test_differs_from_bronze_autoloaders_own_checkpoint(self) -> None:
+        # Two separate streams must not share a checkpoint, or Spark mixes up their progress.
+        from jobs.bronze_autoloader import build_checkpoint_path as bronze_checkpoint_path
+
+        silver_path = build_checkpoint_path("stp2cdeviotags", "bronze")
+        bronze_path = bronze_checkpoint_path("stp2cdeviotags", "bronze")
+        assert silver_path != bronze_path
