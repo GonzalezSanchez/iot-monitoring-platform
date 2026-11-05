@@ -17,8 +17,15 @@ Quarantine records often lack a usable event_id (that's frequently *why* they're
 they're keyed on a hash of their content instead — see add_quarantine_key(). Either way,
 re-running the job on the same Bronze batch never produces duplicates.
 
+Bronze is read incrementally via a Delta structured-streaming read with
+trigger(availableNow=True): Spark tracks which Bronze rows were already consumed via the
+checkpoint, so each run only sees new rows since the last one — no hand-rolled
+MAX(_ingestion_time) watermark to get wrong, no full-table rescan as Bronze grows.
+
 Environment variables:
-    DATABRICKS_CATALOG -- defaults to "p2c_dev"
+    DATABRICKS_CATALOG             -- defaults to "p2c_dev"
+    AZURE_STORAGE_ACCOUNT_NAME     -- storage account holding the streaming checkpoint
+    AZURE_STORAGE_CONTAINER_BRONZE -- defaults to "bronze"
 """
 
 import logging
@@ -38,6 +45,12 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 VALID_SENSOR_TYPES = frozenset({"temperature", "co2", "occupancy", "humidity"})
+
+
+def build_checkpoint_path(account_name: str, container: str) -> str:
+    # Must be on durable ADLS storage — local paths are lost on cluster restart.
+    # Separate from bronze_autoloader's own checkpoint (different stream, different progress).
+    return f"abfss://{container}@{account_name}.dfs.core.windows.net/_checkpoints/silver_wap"
 
 
 def ensure_tables(spark: SparkSession, catalog: str) -> None:  # pragma: no cover
@@ -177,24 +190,39 @@ def write_quarantine(spark: SparkSession, df: DataFrame, catalog: str) -> int:  
     return count
 
 
-def run(spark: SparkSession, catalog: str) -> None:  # pragma: no cover
+def run(spark: SparkSession, catalog: str, checkpoint_path: str) -> None:  # pragma: no cover
     bronze_table = f"{catalog}.bronze.sensor_events"
     log.info("Silver WAP start | source=%s | catalog=%s", bronze_table, catalog)
 
     ensure_tables(spark, catalog)
 
-    bronze_df = spark.read.table(bronze_table)
-    good_df, quarantine_df = validate_batch(bronze_df)
+    totals = {"good": 0, "bad": 0}
 
-    good_count = merge_good_records(spark, good_df, catalog)
-    bad_count = write_quarantine(spark, quarantine_df, catalog)
+    def process_batch(batch_df: DataFrame, batch_id: int) -> None:
+        good_df, quarantine_df = validate_batch(batch_df)
+        good_count = merge_good_records(spark, good_df, catalog)
+        bad_count = write_quarantine(spark, quarantine_df, catalog)
+        totals["good"] += good_count
+        totals["bad"] += bad_count
+        log.info("Batch %d done | good=%d | quarantine=%d", batch_id, good_count, bad_count)
 
-    total = good_count + bad_count
-    pct_good = round(good_count / total * 100, 1) if total > 0 else 0.0
+    (
+        spark.readStream.table(bronze_table)
+        .writeStream.foreachBatch(process_batch)
+        .option("checkpointLocation", checkpoint_path)
+        # availableNow=True: process everything new since the last run then stop
+        # (this is what makes the read incremental — no manual watermark needed)
+        .trigger(availableNow=True)
+        .start()
+        .awaitTermination()
+    )
+
+    total = totals["good"] + totals["bad"]
+    pct_good = round(totals["good"] / total * 100, 1) if total > 0 else 0.0
     log.info(
         "Silver WAP done | good=%d | quarantine=%d | total=%d | quality=%.1f%%",
-        good_count,
-        bad_count,
+        totals["good"],
+        totals["bad"],
         total,
         pct_good,
     )
@@ -202,8 +230,12 @@ def run(spark: SparkSession, catalog: str) -> None:  # pragma: no cover
 
 def main() -> None:  # pragma: no cover
     catalog = os.environ.get("DATABRICKS_CATALOG", "p2c_dev")
+    account_name = os.environ["AZURE_STORAGE_ACCOUNT_NAME"]
+    container = os.environ.get("AZURE_STORAGE_CONTAINER_BRONZE", "bronze")
+    checkpoint_path = build_checkpoint_path(account_name, container)
+
     spark = SparkSession.builder.getOrCreate()
-    run(spark, catalog)
+    run(spark, catalog, checkpoint_path)
 
 
 if __name__ == "__main__":
