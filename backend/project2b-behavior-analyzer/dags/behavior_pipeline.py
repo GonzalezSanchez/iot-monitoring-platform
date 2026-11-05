@@ -5,6 +5,8 @@ from airflow import DAG
 from airflow.providers.standard.operators.bash import BashOperator
 from airflow.sdk.definitions.context import Context
 
+from jobs.metrics import init_meter, shutdown
+
 SPARK_MASTER = os.environ.get("SPARK_MASTER", "local[*]")
 SPARK_CONF = "--conf spark.driver.memory=1g --conf spark.executor.memory=1g"
 SPARK_PACKAGES = ",".join(
@@ -18,13 +20,22 @@ _submit = f"spark-submit --master {SPARK_MASTER} {SPARK_CONF} --packages {SPARK_
 
 
 def on_failure(context: Context) -> None:
-    """Log a clear failure message after all retries are exhausted."""
+    """Log a clear failure message after all retries are exhausted.
+
+    The print() alone never left this process — nothing watched the Airflow
+    task log for it. Also emit a real metric via the same OTel pipeline the
+    jobs already use (jobs/metrics.py), so a Grafana alert rule can catch it.
+    """
     ti = context["task_instance"]
     dag_id = context["dag"].dag_id
     print(
         f"[ALERT] Task failed after all retries — dag={dag_id} task={ti.task_id} "
         f"run={context['run_id']} logical_date={context['logical_date']}"
     )
+
+    meter = init_meter("p2b.dag")
+    meter.create_counter("p2b.dag.task_failures_total").add(1, {"task_id": ti.task_id})
+    shutdown()
 
 
 with DAG(
