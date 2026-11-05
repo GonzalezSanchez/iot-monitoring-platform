@@ -321,6 +321,24 @@ class TestMergeIdempotency:
             write_quarantine(spark, quarantine_df, self.QUARANTINE_TARGET)
 
         process(batch)
+
+        # The quarantine row without an event_id must get a non-null key: a null
+        # _quarantine_key would never match anything in the MERGE's ON condition,
+        # so whenNotMatchedInsertAll() would treat it as new on every single run.
+        no_event_id_key = (
+            spark.table(self.QUARANTINE_TARGET)
+            .where("event_id IS NULL")
+            .select("_quarantine_key")
+            .first()
+        )
+        assert no_event_id_key is not None
+        assert no_event_id_key["_quarantine_key"] is not None
+
+        # First run must actually have written rows, not just "stayed at 2 and 2"
+        # because nothing was ever inserted in the first place.
+        assert spark.table(self.GOOD_TARGET).count() == 2
+        assert spark.table(self.QUARANTINE_TARGET).count() == 2
+
         process(batch)  # re-run on the exact same Bronze rows, as a real retry would
 
         assert spark.table(self.GOOD_TARGET).count() == 2
