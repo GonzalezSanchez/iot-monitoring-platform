@@ -44,25 +44,22 @@ Validation rules:
 
 ### What is unit-tested
 
-`validate_batch()` contains all the business logic and is fully unit-testable: pure PySpark transformations, no Delta or Azure connection needed.
+`validate_batch()` contains all the business logic and is fully unit-testable: pure PySpark transformations, no Delta or Azure connection needed. `ensure_tables()`, `merge_good_records()` and `write_quarantine()` are also unit-tested for real (`TestMergeIdempotency`), against a local Delta table addressed by a 2-part name — `DeltaTable.forName()` in open-source delta-spark can't parse the 3-part catalog-qualified name `run()` builds in production, so `merge_good_records()`/`write_quarantine()` take a plain `target` table name and let the caller decide how to address it.
 
 ```bash
 pytest tests/unit/test_silver_wap.py -v
 ```
 
-43 tests, 94% coverage on `silver_wap.py`.
+21 tests, 89% coverage on `silver_wap.py`.
 
 ### What isn't unit-tested
 
 | Function | Reason |
 |---------|-------|
-| `ensure_tables()` | Requires a live Unity Catalog for `CREATE TABLE IF NOT EXISTS` |
-| `merge_good_records()` | Requires `DeltaTable.forName()` — live Delta catalog |
-| `write_quarantine()` | Requires `df.write.format("delta").saveAsTable()` — live Delta |
-| `run()`, `main()` | Orchestration of the above |
+| `run()`, `main()` | Orchestration + the live streaming loop itself |
 | `bronze_autoloader.py` | Requires `cloudFiles` (Auto Loader) — Databricks only |
 | `optimize_vacuum.py` | Requires `OPTIMIZE`/`VACUUM` SQL — Delta only |
 
-**Why no mocks?** Mocking `DeltaTable.merge()` only tests whether the mock gets called — not whether the Delta operation actually works correctly. During development, two real bugs were found via integration testing that mocks would never catch (schema mismatch, missing `SINGLE_USER` cluster mode).
+**Why no mocks?** Mocking `DeltaTable.merge()` only tests whether the mock gets called — not whether the Delta operation actually works correctly. During development, two real bugs were found via integration testing that mocks would never catch (schema mismatch, missing `SINGLE_USER` cluster mode). `TestMergeIdempotency` now covers what those integration runs don't check automatically: replaying the same batch twice and asserting zero new rows, against the real functions.
 
-These functions are marked with `# pragma: no cover` and integration-tested after `terraform apply`.
+The remaining functions above are marked with `# pragma: no cover` and integration-tested manually after `terraform apply`.

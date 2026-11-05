@@ -4,9 +4,22 @@ Tests run with PySpark in local mode (no Databricks or Azure connection needed).
 SparkSession is shared across the module via a module-scoped fixture.
 
 validate_batch() and add_quarantine_key() are the pure, testable business logic.
-merge_good_records() and write_quarantine() themselves require a live Delta catalog
-and are covered by integration tests run after terraform apply.
+ensure_tables(), merge_good_records() and write_quarantine() are exercised for real
+in TestMergeIdempotency, against a local Delta table addressed by a 2-part name
+(schema.table, under Spark's default catalog) rather than the 3-part
+catalog-qualified name run() builds in production. DeltaTable.forName() in the
+open-source delta-spark package can't parse a 3-part identifier at all (confirmed:
+ParseException, even with the default catalog spelled out — spark.read.table()
+accepts the same name fine), so merge_good_records()/write_quarantine() take a
+plain table name (`target`) rather than a catalog, letting the caller (run(), or
+this test) decide how to address it.
+
+run() and main() still require a live streaming source / Databricks environment and
+are integration-tested manually after `terraform apply` (see README.md) — not run
+in this suite.
 """
+
+from collections.abc import Generator
 
 import pytest
 from pyspark.sql import DataFrame, Row, SparkSession
@@ -16,7 +29,10 @@ from jobs.silver_wap import (
     VALID_SENSOR_TYPES,
     add_quarantine_key,
     build_checkpoint_path,
+    ensure_tables,
+    merge_good_records,
     validate_batch,
+    write_quarantine,
 )
 
 # Schema mirrors what bronze_autoloader.py writes to the Bronze Delta table
@@ -38,13 +54,30 @@ BRONZE_SCHEMA = StructType(
 
 
 @pytest.fixture(scope="module")
-def spark() -> SparkSession:
-    return (
+def spark() -> Generator[SparkSession, None, None]:
+    import shutil
+    import tempfile
+
+    from delta import configure_spark_with_delta_pip
+
+    # Delta extensions are configured here (not in a second, separate fixture) because
+    # they must be present on the JVM's classpath at SparkSession creation time — once
+    # a session exists, a later .getOrCreate() silently reuses it without adding jars.
+    warehouse_dir = tempfile.mkdtemp(prefix="p2c_test_warehouse_")
+    builder = (
         SparkSession.builder.master("local[1]")
         .appName("test_silver_wap")
         .config("spark.sql.shuffle.partitions", "1")
-        .getOrCreate()
+        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+        .config(
+            "spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog"
+        )
+        .config("spark.sql.warehouse.dir", warehouse_dir)
     )
+    spark = configure_spark_with_delta_pip(builder).getOrCreate()
+    yield spark
+    spark.stop()
+    shutil.rmtree(warehouse_dir, ignore_errors=True)
 
 
 def _make_df(spark: SparkSession, rows: list[dict]) -> DataFrame:
@@ -246,3 +279,67 @@ class TestBuildCheckpointPath:
         silver_path = build_checkpoint_path("stp2cdeviotags", "bronze")
         bronze_path = bronze_checkpoint_path("stp2cdeviotags", "bronze")
         assert silver_path != bronze_path
+
+
+# ---------------------------------------------------------------------------
+# MERGE idempotency — replaying the same batch must never duplicate rows
+# ---------------------------------------------------------------------------
+
+
+class TestMergeIdempotency:
+    """Proves the real merge_good_records()/write_quarantine() are idempotent.
+
+    Calls the actual functions (not a copy of their logic) against a local Delta
+    table addressed by a 2-part name under Spark's default catalog — see the module
+    docstring for why forName() needs that instead of the 3-part name run() builds
+    in production. Uses the module's shared `spark` fixture: Delta's catalog classes
+    must be on the JVM classpath from the very first SparkSession.getOrCreate() call
+    in this process, so a second, separately-configured session here would just
+    reuse the first one without picking up the Delta jars.
+    """
+
+    GOOD_TARGET = "silver.sensor_events"
+    QUARANTINE_TARGET = "silver.sensor_events_quarantine"
+
+    def test_replaying_the_same_batch_twice_adds_no_new_rows(self, spark: SparkSession) -> None:
+        spark.sql("CREATE SCHEMA IF NOT EXISTS spark_catalog.silver")
+        ensure_tables(spark, "spark_catalog")
+
+        batch = [
+            VALID_ROW,
+            {**VALID_ROW, "event_id": "e2", "room_id": "room_002"},
+            # has event_id but an invalid sensor_type -> quarantine key = event_id
+            {**VALID_ROW, "event_id": "e3", "sensor_type": "radiation"},
+            # no event_id at all -> quarantine key falls back to a content hash
+            {**VALID_ROW, "event_id": None, "room_id": ""},
+        ]
+
+        def process(rows: list[dict]) -> None:
+            df = _make_df(spark, rows)
+            good_df, quarantine_df = validate_batch(df)
+            merge_good_records(spark, good_df, self.GOOD_TARGET)
+            write_quarantine(spark, quarantine_df, self.QUARANTINE_TARGET)
+
+        process(batch)
+
+        # The quarantine row without an event_id must get a non-null key: a null
+        # _quarantine_key would never match anything in the MERGE's ON condition,
+        # so whenNotMatchedInsertAll() would treat it as new on every single run.
+        no_event_id_key = (
+            spark.table(self.QUARANTINE_TARGET)
+            .where("event_id IS NULL")
+            .select("_quarantine_key")
+            .first()
+        )
+        assert no_event_id_key is not None
+        assert no_event_id_key["_quarantine_key"] is not None
+
+        # First run must actually have written rows, not just "stayed at 2 and 2"
+        # because nothing was ever inserted in the first place.
+        assert spark.table(self.GOOD_TARGET).count() == 2
+        assert spark.table(self.QUARANTINE_TARGET).count() == 2
+
+        process(batch)  # re-run on the exact same Bronze rows, as a real retry would
+
+        assert spark.table(self.GOOD_TARGET).count() == 2
+        assert spark.table(self.QUARANTINE_TARGET).count() == 2

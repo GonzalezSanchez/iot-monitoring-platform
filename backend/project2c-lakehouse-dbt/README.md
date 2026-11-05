@@ -101,13 +101,14 @@ mypy scripts/ jobs/
 | `validate_batch()` — WAP business logic | Unit tests (PySpark local mode) | `tests/unit/test_silver_wap.py` |
 | `scripts/generate_sensor_data.py` | Unit tests | `tests/unit/test_generate_sensor_data.py` |
 | `scripts/validate.py` | Unit tests | `tests/unit/test_validate.py` |
-| `merge_good_records()`, `write_quarantine()`, `run()` | Not unit tested — require live Delta catalog | Integration tested manually after `terraform apply` |
+| `ensure_tables()`, `merge_good_records()`, `write_quarantine()` | Unit tests against a local Delta table (2-part name — `DeltaTable.forName()` can't parse a catalog-qualified 3-part name in OSS delta-spark) | `tests/unit/test_silver_wap.py::TestMergeIdempotency` |
+| `run()` | Not unit tested — requires a live streaming source | Integration tested manually after `terraform apply` |
 | `bronze_autoloader.py`, `optimize_vacuum.py` | Not unit tested — require Databricks Auto Loader | Integration tested manually after `terraform apply` |
 | dbt models | `dbt test` — 22 data tests on live SQL Warehouse | `dbt/models/staging/sources.yml`, `dbt/models/marts/_schema.yml` |
 
-**Why not mock the Delta functions?** Mocking `DeltaTable.merge()` would only verify that the mock is called correctly — not that the actual Delta operation works. Integration testing on a real cluster caught two real bugs during development (schema mismatch, missing SINGLE_USER mode). The unit tests cover all business logic; the integration layer is Databricks API calls with no branching logic.
+**Why not mock the Delta functions?** Mocking `DeltaTable.merge()` would only verify that the mock is called correctly — not that the actual Delta operation works. Integration testing on a real cluster caught two real bugs during development (schema mismatch, missing SINGLE_USER mode). `TestMergeIdempotency` closes the gap those integration runs don't cover in CI: replaying the same batch twice and asserting zero new rows, against the real functions.
 
-CI coverage (92%) reflects only the unit-testable code. The Delta-dependent functions are marked `# pragma: no cover`.
+`run()` is the only function still marked `# pragma: no cover` in `silver_wap.py` — it owns the streaming loop and needs a live source.
 
 ## CI/CD
 
