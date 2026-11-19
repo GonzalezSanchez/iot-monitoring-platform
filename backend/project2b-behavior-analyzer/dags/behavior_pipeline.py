@@ -12,7 +12,6 @@ SPARK_CONF = "--conf spark.driver.memory=1g --conf spark.executor.memory=1g"
 SPARK_PACKAGES = ",".join(
     [
         "org.apache.hadoop:hadoop-aws:3.4.2",
-        "com.amazonaws:aws-java-sdk-bundle:1.12.262",
         "org.postgresql:postgresql:42.7.3",
     ]
 )
